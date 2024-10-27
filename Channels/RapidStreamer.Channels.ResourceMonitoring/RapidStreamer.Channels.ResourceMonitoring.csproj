@@ -39,7 +39,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="RapidStreamer" Version="1.0.7" />
+        <PackageReference Include="RapidStreamer" Version="1.0.10" />
     </ItemGroup>
 
     <ItemGroup>
