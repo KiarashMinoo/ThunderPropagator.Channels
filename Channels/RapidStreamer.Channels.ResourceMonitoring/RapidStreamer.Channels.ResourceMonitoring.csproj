@@ -13,33 +13,32 @@
         <Version>1.0.2.0</Version>
     </PropertyGroup>
 
-    <PropertyGroup>
+    <PropertyGroup Label="nuget">
         <IsPackable>true</IsPackable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageIcon>RapidStreamer.png</PackageIcon>
-        <Copyright>2024</Copyright>
-        <Title>RapidStreamer</Title>
         <Authors>RapidStreamer</Authors>
         <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <PackageProjectUrl>www.rapidstreamer.com</PackageProjectUrl>
-        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+        <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
+        <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
+        <PackageIcon>RapidStreamer.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
 
-    <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
-        <ItemGroup>
-            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"/>
-        </ItemGroup>
-    </Target>
+    <ItemGroup>
+        <None Include="..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
+        <None Include="..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+    </ItemGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="RapidStreamer" Version="1.0.10" />
+        <PackageReference Include="RapidStreamer" Version="1.0.26" />
     </ItemGroup>
 
     <ItemGroup>
@@ -52,22 +51,6 @@
         <Compile Update="ResourceMonitoringChannelFeederConfiguration.cs">
             <DependentUpon>ResourceMonitoringChannelFeeder.cs</DependentUpon>
         </Compile>
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Include="..\..\RapidStreamer.png">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-            <Link>RapidStreamer.png</Link>
-        </None>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include="..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-            <Link>README.md</Link>
-        </Content>
     </ItemGroup>
 
 </Project>

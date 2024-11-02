@@ -17,12 +17,17 @@ env:
   Project_Version: "*.*.^.*"
 
 jobs:
-  project_version:
+  versioning_and_pack:
     runs-on: ubuntu-latest
-    name: Update version    
+    name: Update version and Pack nugets
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
       - name: Set project versions
         id: update
@@ -31,42 +36,20 @@ jobs:
           file: |
             "**/*.csproj", "**/*.nuspec", "**/AssemblyInfo.cs"
           version: ${{ env.Project_Version }}
-      
+
+      - run: |
+          dotnet restore
+          dotnet clean
+          dotnet build -c Debug
+          
+          dotnet pack -c Debug -o ${{ env.ArtifactsDirectory }}                        
+
       - run: |
           git config user.name "Kiarash Minoo"
           git config user.email "yanis_1984@msn.com"
           git add .
           git commit -m "Update project version to ${{ steps.update.outputs.newVersion }}"
-          git push
-          
-  pack_nugets:
-    runs-on: ubuntu-latest
-    name: Create nuget
-    needs: [project_version]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-        
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'          
-
-      - run: |
-          dotnet restore --configfile nuget.config
-          dotnet clean 
-          dotnet build -c Debug
-          
-          dotnet pack ./Channels/Games/RapidStreamer.Channels.Games.RockPaperScissors/RapidStreamer.Channels.Games.RockPaperScissors.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
-          
-          dotnet pack ./Channels/RapidStreamer.Channels.Clock/RapidStreamer.Channels.Clock.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
-          dotnet pack ./Channels/RapidStreamer.Channels.NetworkMonitoring/RapidStreamer.Channels.NetworkMonitoring.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
-          dotnet pack ./Channels/RapidStreamer.Channels.Notifications/RapidStreamer.Channels.Notifications.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
-          dotnet pack ./Channels/RapidStreamer.Channels.ResourceMonitoring/RapidStreamer.Channels.ResourceMonitoring.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
-          dotnet pack ./Channels/RapidStreamer.Channels.Throughput/RapidStreamer.Channels.Throughput.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
-          dotnet pack ./Channels/RapidStreamer.Channels.TimeZones/RapidStreamer.Channels.TimeZones.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          git push            
 
       - uses: actions/upload-artifact@v3
         with:
@@ -74,29 +57,29 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           path: ${{ env.ArtifactsDirectory }}/*.nupkg
-             
-
-  push_nuget:    
+  
+  
+  push_nuget:
     runs-on: ubuntu-latest
-    name: Deploy to myget    
-    needs: [pack_nugets]
+    name: Deploy to myget
+    needs: [ versioning_and_pack ]
     steps:
       - uses: actions/download-artifact@v3
         with:
           name: nuget
           path: ${{ env.ArtifactsDirectory }}
-        
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'   
+          dotnet-version: '8.0.x'
           source-url: https://www.myget.org/F/rapidstreamer/api/v3/index.json
         env:
           NUGET_AUTH_TOKEN: ${{secrets.MYGET_APIKEY}}
 
       - name: Publish NuGet package
         run: |
-            foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
-              dotnet nuget push $file --api-key "${{ secrets.MYGET_APIKEY }}" --skip-duplicate              
-            }
+          foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
+            dotnet nuget push $file --api-key "${{ secrets.MYGET_APIKEY }}" --skip-duplicate              
+          }
 

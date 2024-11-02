@@ -23,11 +23,13 @@ namespace RapidStreamer.Channels.Notifications
 
             var userId = subscription.SubscribedPrograms.SubscribedKeys[nameof(NotificationsChannelFeederMessage.UserId)];
 
-            SearchSnapshots(snapshotEntries => snapshotEntries
+            SearchSnapshotsAsync(snapshotEntries => snapshotEntries
                     .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
                     .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
                     .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
                     .Select(grouped => grouped.First()))
+                .Result
+                .ToList()
                 .ForEach(snapshotEntry => base.EmitMessage(null, CastType.Broadcast, snapshotEntry.Snapshot, typeof(NotificationsChannelFeederMessage)));
         }
 
@@ -36,10 +38,12 @@ namespace RapidStreamer.Channels.Notifications
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
             if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
             {
-                SearchSnapshots(snapshotEntries => snapshotEntries
+                SearchSnapshotsAsync(snapshotEntries => snapshotEntries
                         .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
                         .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)])
                         .Select(grouped => grouped.First()))
+                    .Result
+                    .ToList()
                     .ForEach(snapshotEntry =>
                     {
                         var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
@@ -53,7 +57,7 @@ namespace RapidStreamer.Channels.Notifications
                 base.EmitMessage(notificationsChannelFeederMessage);
         }
 
-        public override List<SnapshotEntry> SnapshotsToSend(Subscription subscription, IEnumerable<int> hashKeys)
-            => SearchSnapshots(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot) && !hashKeys.Contains(snapshotEntry.HashKey));
+        public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, IEnumerable<int> hashKeys, CancellationToken cancellationToken = default)
+            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot) && !hashKeys.Contains(snapshotEntry.HashKey), cancellationToken);
     }
 }
