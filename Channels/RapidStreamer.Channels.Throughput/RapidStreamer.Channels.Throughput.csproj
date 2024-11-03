@@ -21,7 +21,7 @@
         <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
         <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.Channels</RepositoryUrl>
         <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
         <PackageIcon>RapidStreamer.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
