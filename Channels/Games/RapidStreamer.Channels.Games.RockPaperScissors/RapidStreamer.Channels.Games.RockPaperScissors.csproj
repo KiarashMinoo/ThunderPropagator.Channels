@@ -2,15 +2,17 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Configurations>Debug;Release</Configurations>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
         <Platforms>AnyCPU;x86;x64</Platforms>
         <Version>1.0.19.0</Version>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">

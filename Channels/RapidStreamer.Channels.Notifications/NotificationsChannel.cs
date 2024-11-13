@@ -1,4 +1,6 @@
-﻿using RapidStreamer.Application.Channels;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Channels.Snapshots;
 using RapidStreamer.Application.Channels.Subscribers;
 using RapidStreamer.BuildingBlocks.Application;
@@ -13,8 +15,11 @@ namespace RapidStreamer.Channels.Notifications
         class NotificationsChannel<TNotificationsChannelConfiguration> : AbstractChannel<NotificationsChannelMetadata<TNotificationsChannelConfiguration>, TNotificationsChannelConfiguration>
         where TNotificationsChannelConfiguration : AbstractChannelConfiguration, new()
     {
+        private readonly CancellationToken _cancellationToken;
+
         public NotificationsChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
+            _cancellationToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         }
 
         protected override void OnSubscriptionAdded(Subscription subscription)
@@ -24,10 +29,14 @@ namespace RapidStreamer.Channels.Notifications
             var userId = subscription.SubscribedPrograms.SubscribedKeys[nameof(NotificationsChannelFeederMessage.UserId)];
 
             SearchSnapshotsAsync(snapshotEntries => snapshotEntries
-                    .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
-                    .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
-                    .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
-                    .Select(grouped => grouped.First()))
+                        .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
+                        .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
+                        .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
+                        .Select(grouped => grouped.First()),
+                    0,
+                    0,
+                    _cancellationToken
+                )
                 .Result
                 .ToList()
                 .ForEach(snapshotEntry => base.EmitMessage(null, CastType.Broadcast, snapshotEntry.Snapshot, typeof(NotificationsChannelFeederMessage)));
@@ -39,9 +48,13 @@ namespace RapidStreamer.Channels.Notifications
             if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
             {
                 SearchSnapshotsAsync(snapshotEntries => snapshotEntries
-                        .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
-                        .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)])
-                        .Select(grouped => grouped.First()))
+                            .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
+                            .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)])
+                            .Select(grouped => grouped.First()),
+                        0,
+                        0,
+                        _cancellationToken
+                    )
                     .Result
                     .ToList()
                     .ForEach(snapshotEntry =>
@@ -58,6 +71,9 @@ namespace RapidStreamer.Channels.Notifications
         }
 
         public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, IEnumerable<int> hashKeys, CancellationToken cancellationToken = default)
-            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot) && !hashKeys.Contains(snapshotEntry.HashKey), cancellationToken);
+            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot) && !hashKeys.Contains(snapshotEntry.HashKey),
+                0,
+                0,
+                cancellationToken);
     }
 }
