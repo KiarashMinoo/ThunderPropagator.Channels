@@ -6,6 +6,7 @@ using System.Net;
 using System.Reflection;
 using Polly;
 using Polly.Extensions.Http;
+using RapidStreamer.BuildingBlocks.Application.Helpers;
 
 namespace RapidStreamer.Channels.TimeZones
 {
@@ -22,7 +23,7 @@ namespace RapidStreamer.Channels.TimeZones
                     services
                         .AddStackExchangeRedisCache(options =>
                         {
-                            options.Configuration = configuration.RedisCacheConnectionString;
+                            options.Configuration = ConnectionStringHelper.EnrichConnectionString(configuration.RedisCacheConnectionString);
                             options.InstanceName = typeof(TimeZonesChannelExtensions).GetTypeInfo().Namespace;
                         })
                         .AddScoped<CachedWeatherHandler>()

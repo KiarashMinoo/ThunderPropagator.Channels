@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using RapidStreamer.Application.Channels;
+using RapidStreamer.BuildingBlocks.Application.Helpers;
 
 namespace RapidStreamer.Channels.TimeZones
 {
@@ -14,7 +15,7 @@ namespace RapidStreamer.Channels.TimeZones
             var timeZonesChannelFeederConfiguration = serviceProvider.GetRequiredService<TimeZonesChannelFeederConfiguration>();
 
             Metadata.SetChannelSnapshot(
-                timeZonesChannelFeederConfiguration.SnapshotConnectionString,
+                ConnectionStringHelper.EnrichConnectionString(timeZonesChannelFeederConfiguration.SnapshotConnectionString),
                 timeZonesChannelFeederConfiguration.SnapshotRecoveryStorage,
                 timeZonesChannelFeederConfiguration.SnapshotTtlHours);
         }
