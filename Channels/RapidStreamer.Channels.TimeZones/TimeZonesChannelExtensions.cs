@@ -18,6 +18,7 @@ namespace RapidStreamer.Channels.TimeZones
                 {
                     builder.Invoke(configuration);
 
+
                     services
                         .AddStackExchangeRedisCache(options =>
                         {

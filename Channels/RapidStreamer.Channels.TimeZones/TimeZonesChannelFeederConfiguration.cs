@@ -1,4 +1,5 @@
 ﻿using RapidStreamer.Application.Feeders;
+using RapidStreamer.BuildingBlocks.Application.Enums;
 
 namespace RapidStreamer.Channels.TimeZones;
 
@@ -32,9 +33,21 @@ public
         set => Set(value);
     }
 
-    public string MongoDbSnapshotConnectionString
+    public string SnapshotConnectionString
     {
         get => Get(string.Empty);
+        set => Set(value);
+    }
+
+    public RecoveryStorage SnapshotRecoveryStorage
+    {
+        get => Get(RecoveryStorage.Postgresql);
+        set => Set(value);
+    }
+
+    public int SnapshotTtlHours
+    {
+        get => Get(24);
         set => Set(value);
     }
 }

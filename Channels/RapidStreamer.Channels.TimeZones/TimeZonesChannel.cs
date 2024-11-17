@@ -11,7 +11,12 @@ namespace RapidStreamer.Channels.TimeZones
     {
         public TimeZonesChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
-            Metadata.SetChannelSnapshot(serviceProvider.GetRequiredService<TimeZonesChannelFeederConfiguration>().MongoDbSnapshotConnectionString);
+            var timeZonesChannelFeederConfiguration = serviceProvider.GetRequiredService<TimeZonesChannelFeederConfiguration>();
+
+            Metadata.SetChannelSnapshot(
+                timeZonesChannelFeederConfiguration.SnapshotConnectionString,
+                timeZonesChannelFeederConfiguration.SnapshotRecoveryStorage,
+                timeZonesChannelFeederConfiguration.SnapshotTtlHours);
         }
     }
 }
