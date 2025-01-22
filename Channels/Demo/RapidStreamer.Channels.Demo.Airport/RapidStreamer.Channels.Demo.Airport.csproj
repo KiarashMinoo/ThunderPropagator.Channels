@@ -11,8 +11,8 @@
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
         <Version>1.0.43.0</Version>
-        <LangVersion>latestmajor</LangVersion>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -55,8 +55,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
     </ItemGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
@@ -64,14 +64,18 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Update="ResourceMonitoringChannelMetadata.cs">
-            <DependentUpon>ResourceMonitoringChannel.cs</DependentUpon>
+        <PackageReference Include="Bogus" Version="35.6.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="AirportDemoChannelFeederMessage.cs">
+            <DependentUpon>AirportDemoChannel.cs</DependentUpon>
         </Compile>
-        <Compile Update="ResourceMonitoringChannelFeederMessage.cs">
-            <DependentUpon>ResourceMonitoringChannelFeeder.cs</DependentUpon>
+        <Compile Update="AirportDemoChannelMetadata.cs">
+            <DependentUpon>AirportDemoChannel.cs</DependentUpon>
         </Compile>
-        <Compile Update="ResourceMonitoringChannelFeederConfiguration.cs">
-            <DependentUpon>ResourceMonitoringChannelFeeder.cs</DependentUpon>
+        <Compile Update="AirportDemoChannelFeederConfiguration.cs">
+            <DependentUpon>AirportDemoChannelFeeder.cs</DependentUpon>
         </Compile>
     </ItemGroup>
 

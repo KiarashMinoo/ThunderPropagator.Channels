@@ -7,7 +7,8 @@ namespace RapidStreamer.Channels.Clock
     {
         public static IServiceCollection AddClockChannel(this IServiceCollection services)
         {
-            services.AddChannel<ClockChannel>().AddChannelFeeder<ClockChannel, NowClockFeeder, ClockChannelFeederMessage, NowClockFeederConfiguration>()
+            services.AddChannel<ClockChannel>()
+                .AddChannelFeeder<ClockChannel, NowClockFeeder, ClockChannelFeederMessage, NowClockFeederConfiguration>()
                 .AddChannelFeeder<ClockChannel, UtcNowClockFeeder, ClockChannelFeederMessage, UtcNowClockFeederConfiguration>();
 
             return services;
