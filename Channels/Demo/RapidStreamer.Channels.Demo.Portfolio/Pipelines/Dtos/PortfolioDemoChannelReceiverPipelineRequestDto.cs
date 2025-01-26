@@ -7,7 +7,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Dtos
 #if !DEBUG
         sealed
 #endif
-        class PortfolioRequestDto : BindingDictionary<string, object>, IRequestContentFormCollection
+        class PortfolioDemoChannelReceiverPipelineRequestDto : BindingDictionary<string, object>, IRequestContentFormCollection
     {
         public required string Key
         {

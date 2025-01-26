@@ -14,19 +14,19 @@ using RapidStreamer.Infrastructure.Channels;
 
 namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
 {
-    [ReceivePipelineRequestSchema(typeof(PortfolioRequestDto))]
-    [ReceivePipelineResponseSchema(typeof(PortfolioResponseDto))]
+    [ReceivePipelineRequestSchema(typeof(PortfolioDemoChannelReceiverPipelineRequestDto))]
+    [ReceivePipelineResponseSchema(typeof(PortfolioDemoChannelReceiverPipelineResponseDto))]
     public
 #if !DEBUG
         sealed
 #endif
-        class PortfolioDemoChannelBuyPipeline : AbstractReceivePipeline<PortfolioDemoChannel>
+        class PortfolioDemoChannelBuyReceiverPipeline : AbstractReceivePipeline<PortfolioDemoChannel>
     {
         private Counter<long>? _counter;
 
         public override string RequestKey => "Buy";
 
-        public PortfolioDemoChannelBuyPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
+        public PortfolioDemoChannelBuyReceiverPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
         {
         }
 
@@ -49,7 +49,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
                 var isBuy = context.Request.RouteTable["RequestType"].Equals(RequestKey);
                 if (isBuy)
                 {
-                    var portfolioRequest = context.Request.GetRequestContentFormData<PortfolioRequestDto>()!;
+                    var portfolioRequest = context.Request.GetRequestContentFormData<PortfolioDemoChannelReceiverPipelineRequestDto>()!;
                     if (!portfolioRequest.IsBuy)
                     {
                         Logger.LogWarning("The request content form is not buy");
@@ -95,7 +95,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
                     }
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = new PortfolioResponseDto
+                    context.Response.ResponseContent = new PortfolioDemoChannelReceiverPipelineResponseDto
                     {
                         Echo = "Bought \ud83d\udc4d"
                     };

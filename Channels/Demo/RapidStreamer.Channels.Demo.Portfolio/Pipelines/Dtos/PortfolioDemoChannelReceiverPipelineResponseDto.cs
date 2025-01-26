@@ -6,7 +6,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Dtos
 #if !DEBUG
         sealed
 #endif
-        class PortfolioResponseDto : ResponseContentFormCollection
+        class PortfolioDemoChannelReceiverPipelineResponseDto : ResponseContentFormCollection
     {
         public required string Echo { get; init; }
     }

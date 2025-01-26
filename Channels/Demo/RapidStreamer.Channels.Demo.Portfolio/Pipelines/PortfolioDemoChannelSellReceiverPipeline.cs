@@ -14,19 +14,19 @@ using RapidStreamer.Infrastructure.Channels;
 
 namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
 {
-    [ReceivePipelineRequestSchema(typeof(PortfolioRequestDto))]
-    [ReceivePipelineResponseSchema(typeof(PortfolioResponseDto))]
+    [ReceivePipelineRequestSchema(typeof(PortfolioDemoChannelReceiverPipelineRequestDto))]
+    [ReceivePipelineResponseSchema(typeof(PortfolioDemoChannelReceiverPipelineResponseDto))]
     public
 #if !DEBUG
         sealed
 #endif
-        class PortfolioDemoChannelSellPipeline : AbstractReceivePipeline<PortfolioDemoChannel>
+        class PortfolioDemoChannelSellReceiverPipeline : AbstractReceivePipeline<PortfolioDemoChannel>
     {
         private Counter<long>? _counter;
 
         public override string RequestKey => "Sell";
 
-        public PortfolioDemoChannelSellPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
+        public PortfolioDemoChannelSellReceiverPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
         {
         }
 
@@ -49,7 +49,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
                 var isSell = context.Request.RouteTable["RequestType"].Equals(RequestKey);
                 if (isSell)
                 {
-                    var portfolioRequest = context.Request.GetRequestContentFormData<PortfolioRequestDto>()!;
+                    var portfolioRequest = context.Request.GetRequestContentFormData<PortfolioDemoChannelReceiverPipelineRequestDto>()!;
                     if (portfolioRequest.IsBuy)
                     {
                         Logger.LogWarning("The request content form is not sell");
@@ -81,7 +81,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
                     }
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = new PortfolioResponseDto
+                    context.Response.ResponseContent = new PortfolioDemoChannelReceiverPipelineResponseDto
                     {
                         Echo = "Sold \ud83d\udc4d"
                     };
