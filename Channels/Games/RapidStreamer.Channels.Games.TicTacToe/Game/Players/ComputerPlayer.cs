@@ -101,6 +101,7 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Game.Players
         private int Minimax(bool isMaximizing)
         {
             ArgumentNullException.ThrowIfNull(TicTacToeGame);
+            ArgumentNullException.ThrowIfNull(_otherPlayer);
 
             if (TicTacToeGame.CheckWinner(this)) return 1;
             if (TicTacToeGame.CheckWinner(_otherPlayer)) return -1;
