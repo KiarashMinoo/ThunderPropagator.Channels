@@ -13,9 +13,9 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Game.Players
 
         public override PlayerKind Kind => PlayerKind.Computer;
 
-        public ComputerPlayer(PlayerSign sign, DifficultyLevel Difficulty) : base($"{nameof(RapidStreamer)} Computer", sign, null)
+        public ComputerPlayer(PlayerSign sign, DifficultyLevel difficulty) : base($"{nameof(RapidStreamer)} Computer", sign, null)
         {
-            _difficulty = Difficulty;
+            _difficulty = difficulty;
         }
 
         internal override void SetTicTacToeGame(TicTacToeGame ticTacToeGame)

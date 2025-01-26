@@ -51,6 +51,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RapidStreamer.Channels.Demo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RapidStreamer.Channels.Games.TicTacToe", "Channels\Games\RapidStreamer.Channels.Games.TicTacToe\RapidStreamer.Channels.Games.TicTacToe.csproj", "{318A3C60-C907-48D1-8F29-479ED40679AA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demo", "Demo", "{D5CB83E5-A218-422A-995B-C7122ED3F95D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RapidStreamer.Channels.Demo.Airport.UnitTests", "Tests\Demo\RapidStreamer.Channels.Demo.Airport.UnitTests\RapidStreamer.Channels.Demo.Airport.UnitTests.csproj", "{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -245,6 +249,22 @@ Global
 		{318A3C60-C907-48D1-8F29-479ED40679AA}.Release|x64.Build.0 = Release|x64
 		{318A3C60-C907-48D1-8F29-479ED40679AA}.Release|x86.ActiveCfg = Release|x86
 		{318A3C60-C907-48D1-8F29-479ED40679AA}.Release|x86.Build.0 = Release|x86
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|x64.Build.0 = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Debug|x86.Build.0 = Debug|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|ARM64.Build.0 = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|x64.ActiveCfg = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|x64.Build.0 = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|x86.ActiveCfg = Release|Any CPU
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -266,6 +286,8 @@ Global
 		{CADC523C-4AD4-4403-BDBA-B2A7B28CC49F} = {33E4743A-17E0-4C90-B4F6-6581B72E1069}
 		{962883FA-6051-437C-88E8-59B1D067136C} = {33E4743A-17E0-4C90-B4F6-6581B72E1069}
 		{318A3C60-C907-48D1-8F29-479ED40679AA} = {2E093943-8EED-4B40-9220-DF1EA11CBE5D}
+		{D5CB83E5-A218-422A-995B-C7122ED3F95D} = {1F9B76FE-3A57-4AB5-8657-3EAB232B84AF}
+		{72E6BBC5-37E0-4348-B7A3-0F314D36B25E} = {D5CB83E5-A218-422A-995B-C7122ED3F95D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3D6B7E96-5169-4380-ADCD-B781CDCE795C}

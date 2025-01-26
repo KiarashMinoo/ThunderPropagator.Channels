@@ -429,7 +429,7 @@ namespace RapidStreamer.Channels.Demo.Airport
             IServiceProvider serviceProvider)
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
-            _airports = GenerateAirports();
+            _airports = GenerateAirports(DateTime.UtcNow.TimeOfDay.Hours);
         }
 
         private static HashSet<AirportDemoChannelFeederMessage> GenerateAirports(int minHour = 0)
@@ -447,10 +447,10 @@ namespace RapidStreamer.Channels.Demo.Airport
         protected override async IAsyncEnumerable<FeederReceivedMessage<AirportDemoChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
 
             var toRemoveAirports = _airports
-                .Where(airport => airport.Departure < DateTime.Now.AddMinutes(-30).TimeOfDay)
+                .Where(airport => airport.Departure < DateTime.UtcNow.AddMinutes(-30).TimeOfDay)
                 .ToArray();
 
             if (toRemoveAirports.Length > 0)
