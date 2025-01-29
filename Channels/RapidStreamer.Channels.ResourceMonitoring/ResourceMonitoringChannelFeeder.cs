@@ -44,12 +44,24 @@ namespace RapidStreamer.Channels.ResourceMonitoring
                     alerts.Add(new AlertInfo("Memory",
                         $"Memory usage has exceeded the threshold of {_feederConfiguration.MemoryUsedPercentageThreshold}%. Please investigate immediately."));
 
-                DriveInfo.GetDrives().Where(drive => drive.IsReady).Select(drive => new
-                {
-                    Drive = drive,
-                    Usage = 100.0 - ((1.0 * drive.TotalFreeSpace / drive.TotalSize) * 100)
-                }).Where(x => x.Usage > _feederConfiguration.StorageUsedPercentageThreshold).ToArray().ForEach(drive => alerts.Add(new AlertInfo("Storage",
-                    $"Storage usage on <code>{drive.Drive.Name}</code> has exceeded the threshold of {_feederConfiguration.StorageUsedPercentageThreshold}%. Please investigate immediately.")));
+                DriveInfo.GetDrives()
+                    .Where(drive => drive.IsReady)
+                    .Select(drive =>
+                    {
+                        var usage = .0;
+                        if (drive.TotalSize > 0)
+                            usage = 100.0 - ((1.0 * drive.TotalFreeSpace / drive.TotalSize) * 100);
+
+                        return new
+                        {
+                            Drive = drive,
+                            Usage = usage
+                        };
+                    })
+                    .Where(x => x.Usage > _feederConfiguration.StorageUsedPercentageThreshold)
+                    .ToArray()
+                    .ForEach(drive => alerts.Add(new AlertInfo("Storage",
+                        $"Storage usage on <code>{drive.Drive.Name}</code> has exceeded the threshold of {_feederConfiguration.StorageUsedPercentageThreshold}%. Please investigate immediately.")));
 
                 return alerts.ToNJson();
             }

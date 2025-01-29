@@ -1,4 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using RapidStreamer.Channels.Games.TicTacToe.Pipelines.AddGame;
+using RapidStreamer.Channels.Games.TicTacToe.Pipelines.GetGames;
+using RapidStreamer.Channels.Games.TicTacToe.Pipelines.Move;
+using RapidStreamer.Channels.Games.TicTacToe.Pipelines.StartGame;
 using RapidStreamer.Infrastructure.Extensions;
 
 namespace RapidStreamer.Channels.Games.TicTacToe
@@ -7,7 +11,11 @@ namespace RapidStreamer.Channels.Games.TicTacToe
     {
         public static IServiceCollection AddTicTacToeChannel(this IServiceCollection services)
         {
-            services.AddChannel<TicTacToeChannel>();
+            services.AddChannel<TicTacToeChannel>()
+                .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelAddGameReceiverPipeline>()
+                .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelGetGamesReceiverPipeline>()
+                .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelMoveReceiverPipeline>()
+                .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelStartGameReceiverPipeline>();
 
             return services;
         }

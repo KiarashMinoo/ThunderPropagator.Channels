@@ -59,12 +59,14 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
                     if (stock.LastPrice == 0)
                     {
                         stock.Change = stock.TradePrice - stock.ReferencePrice;
-                        stock.ChangePercent = stock.Change / stock.ReferencePrice;
+                        if (stock.ReferencePrice != 0)
+                            stock.ChangePercent = stock.Change / stock.ReferencePrice;
                     }
                     else
                     {
                         stock.Change = stock.TradePrice - stock.LastPrice;
-                        stock.ChangePercent = stock.Change / stock.LastPrice;
+                        if (stock.LastPrice != 0)
+                            stock.ChangePercent = stock.Change / stock.LastPrice;
                     }
 
                     stock.LastPrice = stock.TradePrice;
