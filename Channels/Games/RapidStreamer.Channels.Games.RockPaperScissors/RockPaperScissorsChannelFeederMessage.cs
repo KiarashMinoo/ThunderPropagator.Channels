@@ -17,13 +17,13 @@ namespace RapidStreamer.Channels.Games.RockPaperScissors
 
         public PlayerType Opponent
         {
-            get => GetValue<PlayerType>();
+            get => GetValueOrDefault(PlayerType.Human);
             internal set => SetValue(value);
         }
 
         public MoveKind Move
         {
-            get => GetValue<MoveKind>();
+            get => GetValueOrDefault(MoveKind.Rock);
             internal set => SetValue(value);
         }
 
@@ -36,20 +36,20 @@ namespace RapidStreamer.Channels.Games.RockPaperScissors
 
         public MoveKind OpponentMove
         {
-            get => GetValue<MoveKind>();
+            get => GetValueOrDefault(MoveKind.Rock);
             internal set => SetValue(value);
         }
 
         //Status
         public bool IsDraw
         {
-            get => GetValue<bool>();
+            get => GetValueOrDefault(false);
             internal set => SetValue(value);
         }
 
         public bool IsWin
         {
-            get => GetValue<bool>();
+            get => GetValueOrDefault(false);
             internal set => SetValue(value);
         }
     }

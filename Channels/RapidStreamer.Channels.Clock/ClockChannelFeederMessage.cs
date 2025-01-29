@@ -29,19 +29,19 @@ namespace RapidStreamer.Channels.Clock
 
         public DateTime Date
         {
-            get => GetValue<DateTime>();
+            get => GetValueOrDefault(DateTime.UtcNow);
             private set => SetValue(value);
         }
 
         public TimeSpan Time
         {
-            get => GetValue<TimeSpan>();
+            get => GetValueOrDefault(DateTime.UtcNow.TimeOfDay);
             private set => SetValue(value);
         }
 
         public DateTime DateTime
         {
-            get => GetValue<DateTime>();
+            get => GetValueOrDefault(DateTime.UtcNow);
             private set => SetValue(value);
         }
     }

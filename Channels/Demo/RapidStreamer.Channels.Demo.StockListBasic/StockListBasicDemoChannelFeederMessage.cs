@@ -10,31 +10,31 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
     {
         public string Key
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
 
         public string Stock
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
 
         public decimal OrderPrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public decimal TradePrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public decimal ReferencePrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set
             {
                 SetValue(value);
@@ -46,49 +46,49 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
 
         public decimal LowerPrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             private set => SetValue(value);
         }
 
         public decimal UpperPrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             private set => SetValue(value);
         }
 
         public decimal LastPrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public decimal OpeningPrice
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public decimal Change
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public decimal ChangePercent
         {
-            get => GetValue<decimal>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public int Quantity
         {
-            get => GetValue<int>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public TimeSpan Time
         {
-            get => GetValue<TimeSpan>();
+            get => GetValueOrDefault(DateTime.UtcNow.TimeOfDay);
             internal set => SetValue(value);
         }
     }

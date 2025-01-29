@@ -10,43 +10,43 @@ namespace RapidStreamer.Channels.Demo.Airport
     {
         public string Key
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
 
         public string Destination
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
 
         public TimeSpan Departure
         {
-            get => GetValue<TimeSpan>();
+            get => GetValueOrDefault(DateTime.UtcNow.TimeOfDay);
             internal set => SetValue(value);
         }
 
         public string Flight
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
 
         public string Airline
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
 
         public int Terminal
         {
-            get => GetValue<int>();
+            get => GetValueOrDefault(0);
             internal set => SetValue(value);
         }
 
         public string Status
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             internal set => SetValue(value);
         }
     }

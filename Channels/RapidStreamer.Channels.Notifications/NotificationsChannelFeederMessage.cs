@@ -28,13 +28,13 @@ namespace RapidStreamer.Channels.Notifications
 
         public DateTime Date
         {
-            get => GetValue<DateTime>();
+            get => GetValueOrDefault(DateTime.UtcNow);
             private set => SetValue(value);
         }
 
         public TimeSpan Time
         {
-            get => GetValue<TimeSpan>();
+            get => GetValueOrDefault(DateTime.UtcNow.TimeOfDay);
             private set => SetValue(value);
         }
 
@@ -52,13 +52,13 @@ namespace RapidStreamer.Channels.Notifications
 
         public NotificationType Type
         {
-            get => GetValue<NotificationType>();
+            get => GetValueOrDefault(NotificationType.Text);
             private set => SetValue(value);
         }
 
         public NotificationPriority Priority
         {
-            get => GetValue<NotificationPriority>();
+            get => GetValueOrDefault(NotificationPriority.Normal);
             private set => SetValue(value);
         }
 

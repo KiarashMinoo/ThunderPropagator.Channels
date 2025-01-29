@@ -16,13 +16,13 @@ namespace RapidStreamer.Channels.TimeZones
 
         public DateTime Date
         {
-            get => GetValue<DateTime>();
+            get => GetValueOrDefault(DateTime.UtcNow);
             set => SetValue(value);
         }
 
         public TimeSpan Time
         {
-            get => GetValue<TimeSpan>();
+            get => GetValueOrDefault(DateTime.UtcNow.TimeOfDay);
             set => SetValue(value);
         }
 
@@ -31,31 +31,31 @@ namespace RapidStreamer.Channels.TimeZones
         /// </summary>
         public string WeatherKey
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             set => SetValue(value);
         }
 
         public double Celsius
         {
-            get => GetValue<int>();
+            get => GetValueOrDefault(0);
             set => SetValue(value);
         }
 
         public double Fahrenheit
         {
-            get => GetValue<int>();
+            get => GetValueOrDefault(0);
             set => SetValue(value);
         }
 
         public string Condition
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             set => SetValue(value);
         }
 
         public string ConditionIcon
         {
-            get => GetValue<string>();
+            get => GetValueOrDefault(string.Empty);
             set => SetValue(value);
         }
 
@@ -67,13 +67,13 @@ namespace RapidStreamer.Channels.TimeZones
 
         public DateTime TargetDate
         {
-            get => GetValue<DateTime>();
+            get => GetValueOrDefault(DateTime.UtcNow);
             set => SetValue(value);
         }
 
         public TimeSpan TargetTime
         {
-            get => GetValue<TimeSpan>();
+            get => GetValueOrDefault(DateTime.UtcNow.TimeOfDay);
             set => SetValue(value);
         }
     }

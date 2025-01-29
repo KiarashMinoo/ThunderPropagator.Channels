@@ -23,19 +23,19 @@ namespace RapidStreamer.Channels.Games.TicTacToe
 
         public int Row
         {
-            get => GetValue<int>();
+            get => GetValueOrDefault(0);
             set => SetValue(value);
         }
 
         public int Column
         {
-            get => GetValue<int>();
+            get => GetValueOrDefault(0);
             set => SetValue(value);
         }
 
         public PlayerSign Sign
         {
-            get => GetValue<PlayerSign>();
+            get => GetValueOrDefault(PlayerSign.X);
             set => SetValue(value);
         }
     }
