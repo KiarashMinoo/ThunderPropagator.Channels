@@ -10,7 +10,7 @@
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-        <Version>1.0.50.0</Version>
+        <Version>1.0.51.0</Version>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
         <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
