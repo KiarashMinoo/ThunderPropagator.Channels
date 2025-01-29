@@ -8,10 +8,6 @@ namespace RapidStreamer.Channels.Demo.Airport
 #endif
         class AirportDemoChannelFeederMessage : FeederMessage
     {
-        internal AirportDemoChannelFeederMessage()
-        {
-        }
-
         public string Key
         {
             get => GetValue<string>();

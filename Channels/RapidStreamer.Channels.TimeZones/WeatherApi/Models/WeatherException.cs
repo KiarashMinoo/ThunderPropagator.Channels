@@ -9,7 +9,7 @@ namespace RapidStreamer.Channels.TimeZones.WeatherApi.Models
 #endif
         class WeatherException
     {
-        public class WeatherExceptionError
+        public sealed class WeatherExceptionError
         {
             [JsonProperty("code")]
             [JsonPropertyName("code")]

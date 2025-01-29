@@ -8,7 +8,11 @@ namespace RapidStreamer.Channels.Notifications
 #endif
         class NotificationsChannelFeederMessage : FeederMessage
     {
-        internal NotificationsChannelFeederMessage(IDictionary<string, object?> feederMessage)
+        public NotificationsChannelFeederMessage()
+        {
+        }
+
+        internal NotificationsChannelFeederMessage(IDictionary<string, object?> feederMessage) : this()
         {
             foreach (var item in feederMessage)
             {

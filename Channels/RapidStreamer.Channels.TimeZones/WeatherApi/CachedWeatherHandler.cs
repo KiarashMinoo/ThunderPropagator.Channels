@@ -3,7 +3,7 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace RapidStreamer.Channels.TimeZones.WeatherApi
 {
-    public class CachedWeatherHandler : DelegatingHandler
+    public sealed class CachedWeatherHandler : DelegatingHandler
     {
         private readonly IDistributedCache _distributedCache;
 

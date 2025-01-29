@@ -8,11 +8,11 @@ namespace RapidStreamer.Channels.Demo.Portfolio
 #endif
         class PortfolioDemoChannelFeederMessage : FeederMessage
     {
-        internal PortfolioDemoChannelFeederMessage()
+        public PortfolioDemoChannelFeederMessage()
         {
         }
 
-        internal PortfolioDemoChannelFeederMessage(IReadOnlyDictionary<string, object?> feederMessage)
+        internal PortfolioDemoChannelFeederMessage(IReadOnlyDictionary<string, object?> feederMessage) : this()
         {
             foreach (var item in feederMessage)
             {

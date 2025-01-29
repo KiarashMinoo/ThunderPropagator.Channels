@@ -8,7 +8,11 @@ namespace RapidStreamer.Channels.Clock
 #endif
         class ClockChannelFeederMessage : FeederMessage
     {
-        public ClockChannelFeederMessage(string key, DateTime dateTime)
+        public ClockChannelFeederMessage()
+        {
+        }
+
+        internal ClockChannelFeederMessage(string key, DateTime dateTime) : this()
         {
             Key = key;
 

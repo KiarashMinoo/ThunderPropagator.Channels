@@ -8,10 +8,6 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
 #endif
         class StockListBasicDemoChannelFeederMessage : FeederMessage
     {
-        internal StockListBasicDemoChannelFeederMessage()
-        {
-        }
-
         public string Key
         {
             get => GetValue<string>();

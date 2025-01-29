@@ -3,7 +3,7 @@ using RapidStreamer.Application.Feeders;
 
 namespace RapidStreamer.Channels.Demo.Airport.UnitTests
 {
-    public class AirportDemoChannelFeederTest
+    public sealed class AirportDemoChannelFeederTest
     {
         [Fact]
         public void xxx()
