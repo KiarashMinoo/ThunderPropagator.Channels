@@ -24,6 +24,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		RapidStreamer.png = RapidStreamer.png
 		RapidStreamer.svg = RapidStreamer.svg
 		README.md = README.md
+		nuget.config = nuget.config
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RapidStreamer.Channels.ResourceMonitoring", "Channels\RapidStreamer.Channels.ResourceMonitoring\RapidStreamer.Channels.ResourceMonitoring.csproj", "{4451EC85-3A52-4CC8-93CF-CA518F83B719}"
