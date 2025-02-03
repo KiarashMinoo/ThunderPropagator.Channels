@@ -17,10 +17,5 @@ namespace RapidStreamer.Channels.Clock
             new TimeChannelProgramsDescriptor(2, nameof(ClockChannelFeederMessage.Time), "The current time"),
             new DateTimeChannelProgramsDescriptor(3, nameof(ClockChannelFeederMessage.DateTime), "The current date and time")
         };
-
-        public ClockChannelMetadata()
-        {
-            SetMaxFrequency(3);
-        }
     }
 }
