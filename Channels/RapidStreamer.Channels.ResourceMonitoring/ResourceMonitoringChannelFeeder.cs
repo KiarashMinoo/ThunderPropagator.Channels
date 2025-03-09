@@ -41,10 +41,10 @@ namespace RapidStreamer.Channels.ResourceMonitoring
 
             try
             {
-                if (metrics.MemoryMetrics.UsagePercentage > _feederConfiguration.MemoryUsedPercentageThreshold)
+                if (metrics.Memory.UsagePercentage > _feederConfiguration.MemoryUsedPercentageThreshold)
                     alerts.Add(new AlertInfo("Memory", $"Memory usage has exceeded the threshold of {_feederConfiguration.MemoryUsedPercentageThreshold}%. Please investigate immediately."));
 
-                metrics.SystemDrives
+                metrics.Drives
                     .Where(drive => drive.IsReady && drive.UsagePercentage > _feederConfiguration.StorageUsedPercentageThreshold)
                     .ToList()
                     .ForEach(drive =>
@@ -63,7 +63,6 @@ namespace RapidStreamer.Channels.ResourceMonitoring
         {
             await Task.Delay(TimeSpan.FromMilliseconds(_window), cancellationToken);
 
-            var processes = Process.GetProcesses();
             var metrics = _resourceMonitor.GetMetrics(_window, true);
 
             var sendAlert = false;
@@ -78,13 +77,13 @@ namespace RapidStreamer.Channels.ResourceMonitoring
             {
                 Alert = sendAlert ? alert : null,
                 DateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                MemoryUsedPercentage = metrics.MemoryMetrics.UsagePercentage,
-                MemoryUsedInBytes = metrics.MemoryMetrics.Used,
-                MaximumMemoryInBytes = metrics.MemoryMetrics.Total,
-                CpuUsedPercentage = metrics.CpuMetrics.Usage,
-                MaximumCpuUnits = metrics.CpuMetrics.ProcessorCount,
-                Processes = processes.Length,
-                Threads = processes.Sum(x => x.Threads.Count)
+                MemoryUsedPercentage = metrics.Memory.UsagePercentage,
+                MemoryUsedInBytes = metrics.Memory.Used,
+                MaximumMemoryInBytes = metrics.Memory.Total,
+                CpuUsedPercentage = metrics.Cpu.Usage,
+                MaximumCpuUnits = metrics.Cpu.ProcessorCount,
+                Processes = metrics.Cpu.Processes,
+                Threads = metrics.Cpu.TotalThreads
             };
 
             yield return resourceMonitoringChannelFeederMessage;
