@@ -9,7 +9,7 @@
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-        <Version>1.0.60.0</Version>
+        <Version>1.0.61.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
