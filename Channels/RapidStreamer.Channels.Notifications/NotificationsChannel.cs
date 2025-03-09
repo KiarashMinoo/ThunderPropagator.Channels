@@ -70,8 +70,8 @@ namespace RapidStreamer.Channels.Notifications
                 base.EmitMessage(notificationsChannelFeederMessage);
         }
 
-        public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, IEnumerable<int> hashKeys, CancellationToken cancellationToken = default)
-            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot) && !hashKeys.Contains(snapshotEntry.HashKey),
+        public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = new CancellationToken())
+            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot),
                 0,
                 0,
                 cancellationToken);
