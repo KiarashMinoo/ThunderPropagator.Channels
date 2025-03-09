@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.ResourceMonitoring;
 using RapidStreamer.Application.Feeders;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using RapidStreamer.BuildingBlocks.Infrastructure.SystemResourceMonitor;
 
 namespace RapidStreamer.Channels.ResourceMonitoring
 {
@@ -16,8 +16,8 @@ namespace RapidStreamer.Channels.ResourceMonitoring
         private sealed record AlertInfo(string Type, string Alert);
 
         private readonly ResourceMonitoringChannelFeederConfiguration _feederConfiguration;
-        private readonly IResourceMonitor _resourceMonitor;
-        private readonly TimeSpan _window;
+        private readonly ISystemResourceMonitor _resourceMonitor;
+        private readonly long _window;
         private string _lastAlert = "";
 
         public ResourceMonitoringChannelFeeder(ResourceMonitoringChannel channel,
@@ -27,41 +27,28 @@ namespace RapidStreamer.Channels.ResourceMonitoring
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
             _feederConfiguration = feederConfiguration;
-            _resourceMonitor = serviceProvider.GetRequiredService<IResourceMonitor>();
+            _resourceMonitor = serviceProvider.GetRequiredService<ISystemResourceMonitor>();
 
             HealthName = nameof(ResourceMonitoringChannelFeeder);
             HealthTags = [.. HealthTags, "StaticFeeder"];
 
-            _window = TimeSpan.FromSeconds(feederConfiguration.UtilizationWindow);
+            _window = feederConfiguration.UtilizationWindow * 1000;
         }
 
-        private string GetAlert(ResourceUtilization utilization)
+        private string GetAlert(SystemResourceMonitorMetrics metrics)
         {
             List<AlertInfo> alerts = [];
+
             try
             {
-                if (utilization.MemoryUsedPercentage > _feederConfiguration.MemoryUsedPercentageThreshold)
-                    alerts.Add(new AlertInfo("Memory",
-                        $"Memory usage has exceeded the threshold of {_feederConfiguration.MemoryUsedPercentageThreshold}%. Please investigate immediately."));
+                if (metrics.MemoryMetrics.UsagePercentage > _feederConfiguration.MemoryUsedPercentageThreshold)
+                    alerts.Add(new AlertInfo("Memory", $"Memory usage has exceeded the threshold of {_feederConfiguration.MemoryUsedPercentageThreshold}%. Please investigate immediately."));
 
-                DriveInfo.GetDrives()
-                    .Where(drive => drive.IsReady)
-                    .Select(drive =>
-                    {
-                        var usage = .0;
-                        if (drive.TotalSize > 0)
-                            usage = 100.0 - ((1.0 * drive.TotalFreeSpace / drive.TotalSize) * 100);
-
-                        return new
-                        {
-                            Drive = drive,
-                            Usage = usage
-                        };
-                    })
-                    .Where(x => x.Usage > _feederConfiguration.StorageUsedPercentageThreshold)
-                    .ToArray()
-                    .ForEach(drive => alerts.Add(new AlertInfo("Storage",
-                        $"Storage usage on <code>{drive.Drive.Name}</code> has exceeded the threshold of {_feederConfiguration.StorageUsedPercentageThreshold}%. Please investigate immediately.")));
+                metrics.SystemDrives
+                    .Where(drive => drive.IsReady && drive.UsagePercentage > _feederConfiguration.StorageUsedPercentageThreshold)
+                    .ToList()
+                    .ForEach(drive =>
+                        alerts.Add(new AlertInfo("Storage", $"Storage usage on <code>{drive.Letter}</code> has exceeded the threshold of {_feederConfiguration.StorageUsedPercentageThreshold}%. Please investigate immediately.")));
 
                 return alerts.ToNJson();
             }
@@ -74,14 +61,13 @@ namespace RapidStreamer.Channels.ResourceMonitoring
         protected override async IAsyncEnumerable<FeederReceivedMessage<ResourceMonitoringChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await Task.Delay(_window, cancellationToken);
+            await Task.Delay(TimeSpan.FromMilliseconds(_window), cancellationToken);
 
             var processes = Process.GetProcesses();
-            var utilization = _resourceMonitor.GetUtilization(_window);
-            var resources = utilization.SystemResources;
+            var metrics = _resourceMonitor.GetMetrics(_window, true);
 
             var sendAlert = false;
-            var alert = GetAlert(utilization);
+            var alert = GetAlert(metrics);
             if (!_lastAlert.Equals(alert))
             {
                 sendAlert = true;
@@ -92,13 +78,11 @@ namespace RapidStreamer.Channels.ResourceMonitoring
             {
                 Alert = sendAlert ? alert : null,
                 DateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                CpuUsedPercentage = (utilization.CpuUsedPercentage / resources.GuaranteedCpuUnits) / _window.TotalSeconds,
-                MemoryUsedPercentage = utilization.MemoryUsedPercentage,
-                MemoryUsedInBytes = utilization.MemoryUsedInBytes,
-                GuaranteedMemoryInBytes = resources.GuaranteedMemoryInBytes,
-                MaximumMemoryInBytes = resources.MaximumMemoryInBytes,
-                GuaranteedCpuUnits = resources.GuaranteedCpuUnits,
-                MaximumCpuUnits = resources.MaximumCpuUnits,
+                MemoryUsedPercentage = metrics.MemoryMetrics.UsagePercentage,
+                MemoryUsedInBytes = metrics.MemoryMetrics.Used,
+                MaximumMemoryInBytes = metrics.MemoryMetrics.Total,
+                CpuUsedPercentage = metrics.CpuMetrics.Usage,
+                MaximumCpuUnits = metrics.CpuMetrics.ProcessorCount,
                 Processes = processes.Length,
                 Threads = processes.Sum(x => x.Threads.Count)
             };

@@ -38,9 +38,9 @@ namespace RapidStreamer.Channels.ResourceMonitoring
             set => SetValue(value);
         }
 
-        public ulong MemoryUsedInBytes
+        public double MemoryUsedInBytes
         {
-            get => GetValueOrDefault(0UL);
+            get => GetValueOrDefault(0D);
             set => SetValue(value);
         }
 
@@ -50,9 +50,9 @@ namespace RapidStreamer.Channels.ResourceMonitoring
             set => SetValue(value);
         }
 
-        public ulong MaximumMemoryInBytes
+        public double MaximumMemoryInBytes
         {
-            get => GetValueOrDefault(0UL);
+            get => GetValueOrDefault(0D);
             set => SetValue(value);
         }
 
