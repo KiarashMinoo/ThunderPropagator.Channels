@@ -34,13 +34,12 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.AddGame
             CancellationToken cancellationToken = default)
         {
             var activityName = $"{channelInfo.ChannelName}_{GetType().GetTypeInfo().Name}_{nameof(Invoke)}";
-            if (_counter == null)
-                _counter = Telemetry.CreateCounter<long>(activityName.ToSnakeCase());
+            _counter ??= Telemetry.CreateCounter<long>(activityName.ToSnakeCase());
 
-#if DEBUG
             using var activity = Telemetry.StartActivity(activityName, ActivityKind.Consumer)?
-                .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType).SetTag(nameof(ChannelInfo.ChannelKey), channelInfo.ChannelKey).SetTag(nameof(ChannelInfo.ChannelName), channelInfo.ChannelName);
-#endif
+                .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType)
+                .SetTag(nameof(ChannelInfo.ChannelKey), channelInfo.ChannelKey)
+                .SetTag(nameof(ChannelInfo.ChannelName), channelInfo.ChannelName);
 
             try
             {
@@ -72,9 +71,7 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.AddGame
             }
             finally
             {
-#if DEBUG
                 activity?.SetStatus(ActivityStatusCode.Ok);
-#endif
             }
         }
     }
