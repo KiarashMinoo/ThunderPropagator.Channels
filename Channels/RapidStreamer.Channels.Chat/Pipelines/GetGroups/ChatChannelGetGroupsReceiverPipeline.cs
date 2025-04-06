@@ -8,20 +8,21 @@ using RapidStreamer.Application.Channels.Contexts;
 using RapidStreamer.Application.Pipelines.Receivers;
 using RapidStreamer.Application.Pipelines.Receivers.Attributes;
 using RapidStreamer.BuildingBlocks.Application;
+using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Infrastructure.Channels;
 
-namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.GetGames
+namespace RapidStreamer.Channels.Chat.Pipelines.GetGroups
 {
-    [ReceivePipelineResponseSchema(typeof(TicTacToeChannelGetGamesReceiverPipelineResponseDto))]
+    [ReceivePipelineResponseSchema(typeof(ChatChannelGetGroupsReceiverPipelineResponseDto))]
     internal
 #if !DEBUG
         sealed
 #endif
-        class TicTacToeChannelGetGamesReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<TicTacToeChannel>(loggerFactory)
+        class ChatChannelGetGroupsReceiverPipeline(ILoggerFactory loggerFactory, GroupService groupService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => "GetGames";
+        public override string RequestKey => nameof(GetGroups);
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -38,15 +39,13 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.GetGames
 
             try
             {
-                var addGame = context.Request.RouteTable["RequestType"].Equals(RequestKey);
-                if (addGame)
+                var getGroups = context.Request.RouteTable["RequestType"].Equals(RequestKey);
+                if (getGroups)
                 {
-                    var channel = (TicTacToeChannel)channelInfo.Channel;
-
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = new TicTacToeChannelGetGamesReceiverPipelineResponseDto
+                    context.Response.ResponseContent = new ChatChannelGetGroupsReceiverPipelineResponseDto
                     {
-                        Items = channel.GetGames().Select(game => new GetGamesItemResponseDto(game.SessionId, game.PlayerName))
+                        Groups = await groupService.GetAllAsync(cancellationToken)
                     };
 
                     _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));

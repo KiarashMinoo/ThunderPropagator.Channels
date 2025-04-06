@@ -16,19 +16,15 @@ namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines
 {
     [ReceivePipelineRequestSchema(typeof(PortfolioDemoChannelReceiverPipelineRequestDto))]
     [ReceivePipelineResponseSchema(typeof(PortfolioDemoChannelReceiverPipelineResponseDto))]
-    public
+    internal
 #if !DEBUG
         sealed
 #endif
-        class PortfolioDemoChannelSellReceiverPipeline : AbstractReceivePipeline<PortfolioDemoChannel>
+        class PortfolioDemoChannelSellReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<PortfolioDemoChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
         public override string RequestKey => "Sell";
-
-        public PortfolioDemoChannelSellReceiverPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
-        {
-        }
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,

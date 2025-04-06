@@ -8,20 +8,22 @@ using RapidStreamer.Application.Channels.Contexts;
 using RapidStreamer.Application.Pipelines.Receivers;
 using RapidStreamer.Application.Pipelines.Receivers.Attributes;
 using RapidStreamer.BuildingBlocks.Application;
+using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Infrastructure.Channels;
 
-namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.GetGames
+namespace RapidStreamer.Channels.Chat.Pipelines.CreateGroup
 {
-    [ReceivePipelineResponseSchema(typeof(TicTacToeChannelGetGamesReceiverPipelineResponseDto))]
+    [ReceivePipelineRequestSchema(typeof(ChatChannelCreateGroupReceiverPipelineRequestDto))]
+    [ReceivePipelineResponseSchema(typeof(ChatChannelCreateGroupReceiverPipelineResponseDto))]
     internal
 #if !DEBUG
         sealed
 #endif
-        class TicTacToeChannelGetGamesReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<TicTacToeChannel>(loggerFactory)
+        class ChatChannelCreateGroupReceiverPipeline(ILoggerFactory loggerFactory, GroupService groupService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => "GetGames";
+        public override string RequestKey => nameof(CreateGroup);
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -38,15 +40,15 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.GetGames
 
             try
             {
-                var addGame = context.Request.RouteTable["RequestType"].Equals(RequestKey);
-                if (addGame)
+                var createGroup = context.Request.RouteTable["RequestType"].Equals(RequestKey);
+                if (createGroup)
                 {
-                    var channel = (TicTacToeChannel)channelInfo.Channel;
+                    var createGroupRequest = context.Request.GetRequestContentFormData<ChatChannelCreateGroupReceiverPipelineRequestDto>()!;
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = new TicTacToeChannelGetGamesReceiverPipelineResponseDto
+                    context.Response.ResponseContent = new ChatChannelCreateGroupReceiverPipelineResponseDto
                     {
-                        Items = channel.GetGames().Select(game => new GetGamesItemResponseDto(game.SessionId, game.PlayerName))
+                        Group = await groupService.CreateAsync(createGroupRequest.Name, cancellationToken, createGroupRequest.Users)
                     };
 
                     _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));

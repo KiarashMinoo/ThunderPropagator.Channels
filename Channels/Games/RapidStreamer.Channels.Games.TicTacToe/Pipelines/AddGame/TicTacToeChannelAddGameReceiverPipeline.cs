@@ -14,19 +14,15 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.AddGame
 {
     [ReceivePipelineRequestSchema(typeof(TicTacToeChannelAddGameReceiverPipelineRequestDto))]
     [ReceivePipelineResponseSchema(typeof(TicTacToeChannelAddGameReceiverPipelineResponseDto))]
-    public
+    internal
 #if !DEBUG
         sealed
 #endif
-        class TicTacToeChannelAddGameReceiverPipeline : AbstractReceivePipeline<TicTacToeChannel>
+        class TicTacToeChannelAddGameReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<TicTacToeChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => "AddGame";
-
-        public TicTacToeChannelAddGameReceiverPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
-        {
-        }
+        public override string RequestKey => nameof(AddGame);
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -62,7 +58,7 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.AddGame
                         Subscription = subscription
                     };
 
-                    _counter.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));
+                    _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));
                 }
                 else
                 {

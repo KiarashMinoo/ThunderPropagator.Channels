@@ -14,19 +14,15 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.Move
 {
     [ReceivePipelineRequestSchema(typeof(TicTacToeChannelMoveReceiverPipelineRequestDto))]
     [ReceivePipelineResponseSchema(typeof(TicTacToeChannelMoveReceiverPipelineResponseDto))]
-    public
+    internal
 #if !DEBUG
         sealed
 #endif
-        class TicTacToeChannelMoveReceiverPipeline : AbstractReceivePipeline<TicTacToeChannel>
+        class TicTacToeChannelMoveReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<TicTacToeChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => "Move";
-
-        public TicTacToeChannelMoveReceiverPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
-        {
-        }
+        public override string RequestKey => nameof(Move);
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,

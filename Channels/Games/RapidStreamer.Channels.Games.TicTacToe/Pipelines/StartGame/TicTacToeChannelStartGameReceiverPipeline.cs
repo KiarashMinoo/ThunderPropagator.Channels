@@ -14,19 +14,15 @@ namespace RapidStreamer.Channels.Games.TicTacToe.Pipelines.StartGame
 {
     [ReceivePipelineRequestSchema(typeof(TicTacToeChannelStartGameReceiverPipelineRequestDto))]
     [ReceivePipelineResponseSchema(typeof(TicTacToeChannelStartGameReceiverPipelineResponseDto))]
-    public
+    internal
 #if !DEBUG
         sealed
 #endif
-        class TicTacToeChannelStartGameReceiverPipeline : AbstractReceivePipeline<TicTacToeChannel>
+        class TicTacToeChannelStartGameReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<TicTacToeChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => "StartGame";
-
-        public TicTacToeChannelStartGameReceiverPipeline(ILoggerFactory loggerFactory) : base(loggerFactory)
-        {
-        }
+        public override string RequestKey => nameof(StartGame);
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,

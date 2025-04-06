@@ -458,6 +458,7 @@ namespace RapidStreamer.Channels.Demo.Airport
                 foreach (var airport in toRemoveAirports)
                 {
                     airport.IsDeleted = true;
+                    _airports.Remove(airport);
                     yield return airport;
                 }
 
