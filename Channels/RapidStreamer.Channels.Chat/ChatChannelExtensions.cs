@@ -15,6 +15,9 @@ using RapidStreamer.Channels.Chat.Pipelines.Groups.UserLeave;
 using RapidStreamer.Channels.Chat.Pipelines.Messages.Send;
 using RapidStreamer.Channels.Chat.Pipelines.Users.Login;
 using RapidStreamer.Channels.Chat.Pipelines.Users.Register;
+using RapidStreamer.Channels.Chat.Pipelines.Users.SetAvatar;
+using RapidStreamer.Channels.Chat.Pipelines.Users.SetName;
+using RapidStreamer.Channels.Chat.Pipelines.Users.Update;
 using RapidStreamer.Infrastructure.Extensions;
 
 namespace RapidStreamer.Channels.Chat
@@ -43,6 +46,9 @@ namespace RapidStreamer.Channels.Chat
                 //Users
                 .AddReceivePipeline<ChatChannel, ChatChannelLoginReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelRegisterReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelUserSetAvatarReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelUserSetNameReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelUpdateUserReceiverPipeline>()
                 //Db Services
                 .AddDbContextPool<IChatContext, TChatContext>(optionsAction)
                 .AddScoped<GroupService>()

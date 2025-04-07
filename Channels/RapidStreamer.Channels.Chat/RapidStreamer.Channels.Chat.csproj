@@ -10,7 +10,7 @@
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-        <Version>1.0.63.0</Version>
+        <Version>1.0.64.0</Version>
         <LangVersion>latestmajor</LangVersion>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     </PropertyGroup>
@@ -60,23 +60,22 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Update="ChatChannelFeederMessage.cs">
-        <DependentUpon>ChatChannel.cs</DependentUpon>
-      </Compile>
-      <Compile Update="ChatChannelMetadata.cs">
-        <DependentUpon>ChatChannel.cs</DependentUpon>
-      </Compile>
+        <Compile Update="ChatChannelFeederMessage.cs">
+            <DependentUpon>ChatChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ChatChannelMetadata.cs">
+            <DependentUpon>ChatChannel.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Pipelines\Messages\" />
-      <Folder Include="Pipelines\Users\Update\" />
+        <Folder Include="Pipelines\Messages\"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.3" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.3"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.3"/>
     </ItemGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">

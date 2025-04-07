@@ -49,5 +49,36 @@ namespace RapidStreamer.Channels.Chat.Models.Users
 
         public async Task<IReadOnlyCollection<User>> GetUserContactsAsync(Guid id, CancellationToken cancellationToken = default)
             => await chatContext.Messages.Where(x => x.ReceiverId == id).Select(x => x.Sender).Distinct().ToListAsync(cancellationToken);
+
+        public async Task<User> UpdateAsync(Guid userId, string bio, DateOnly? birthDate, CancellationToken cancellationToken = default)
+        {
+            var user = await chatContext.Users.SingleAsync(x => x.Id == userId, cancellationToken: cancellationToken);
+
+            user.SetBio(bio);
+
+            user.SetBirthDate(birthDate);
+
+            await chatContext.SaveChangesAsync(cancellationToken);
+
+            return user;
+        }
+
+        public async Task SetNameAsync(Guid userId, string name, CancellationToken cancellationToken = default)
+        {
+            var user = await chatContext.Users.SingleAsync(x => x.Id == userId, cancellationToken: cancellationToken);
+
+            user.SetName(name);
+
+            await chatContext.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task SetAvatarAsync(Guid userId, string avatar, CancellationToken cancellationToken = default)
+        {
+            var user = await chatContext.Users.SingleAsync(x => x.Id == userId, cancellationToken: cancellationToken);
+
+            user.SetAvatar(avatar);
+
+            await chatContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

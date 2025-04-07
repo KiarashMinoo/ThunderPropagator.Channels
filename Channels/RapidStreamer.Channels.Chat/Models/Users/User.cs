@@ -15,10 +15,10 @@ namespace RapidStreamer.Channels.Chat.Models.Users
         [Newtonsoft.Json.JsonIgnore]
         public string Password { get; } = null!;
 
-        public string Name { get; } = null!;
+        public string Name { get; private set; } = null!;
         public string? Avatar { get; private set; }
         public string? Bio { get; private set; }
-        public DateTime? BirthDate { get; private set; }
+        public DateOnly? BirthDate { get; private set; }
 
         private User()
         {
@@ -27,9 +27,24 @@ namespace RapidStreamer.Channels.Chat.Models.Users
 
         private User(string userName, string password, string name) : this()
         {
+            if (string.IsNullOrWhiteSpace(userName))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(userName));
+
+            if (string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(password));
+
             UserName = userName;
             Password = password;
+            SetName(name);
+        }
+
+        internal User SetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
+
             Name = name;
+            return this;
         }
 
         internal User SetAvatar(string avatar)
@@ -44,7 +59,7 @@ namespace RapidStreamer.Channels.Chat.Models.Users
             return this;
         }
 
-        internal User SetBirthDate(DateTime birthDate)
+        internal User SetBirthDate(DateOnly? birthDate)
         {
             BirthDate = birthDate;
             return this;
