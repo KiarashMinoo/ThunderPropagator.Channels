@@ -10,8 +10,11 @@ namespace RapidStreamer.Channels.Chat.Models.Users
 #endif
         class UserService(IChatContext chatContext)
     {
+        public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+            => chatContext.Users.SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
+
         public Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
-            => chatContext.Users.FirstOrDefaultAsync(x => x.UserName == username, cancellationToken);
+            => chatContext.Users.SingleOrDefaultAsync(x => x.UserName == username, cancellationToken);
 
         public async Task<User> RegisterAsync(string username, string password, string name, CancellationToken cancellationToken = default)
         {

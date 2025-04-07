@@ -1,7 +1,7 @@
 ﻿using RapidStreamer.Application.Collections;
 using RapidStreamer.Channels.Chat.Models.Users;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.Register
+namespace RapidStreamer.Channels.Chat.Pipelines.Users.Register
 {
     internal
 #if !DEBUG

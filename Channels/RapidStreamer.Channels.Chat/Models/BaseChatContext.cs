@@ -47,6 +47,8 @@ namespace RapidStreamer.Channels.Chat.Models
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.HasDefaultSchema("Chat");
+
             modelBuilder.ApplyConfiguration(new UserEntityTypeConfiguration());
             modelBuilder.ApplyConfiguration(new GroupEntityTypeConfiguration());
             modelBuilder.ApplyConfiguration(new MessageEntityTypeConfiguration());

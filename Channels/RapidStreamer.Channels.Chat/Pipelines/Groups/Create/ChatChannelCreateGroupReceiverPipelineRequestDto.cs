@@ -1,7 +1,7 @@
 ﻿using RapidStreamer.Application.Collections;
 using RapidStreamer.BuildingBlocks.Application.Collections;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.CreateGroup
+namespace RapidStreamer.Channels.Chat.Pipelines.Groups.Create
 {
     internal
 #if !DEBUG

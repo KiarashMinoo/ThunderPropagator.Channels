@@ -1,13 +1,13 @@
 ﻿using RapidStreamer.Application.Collections;
 using RapidStreamer.BuildingBlocks.Application.Collections;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.Login
+namespace RapidStreamer.Channels.Chat.Pipelines.Users.Register
 {
     internal
 #if !DEBUG
         sealed
 #endif
-        class ChatChannelLoginReceiverPipelineRequestDto : BindingDictionary<string, object>, IRequestContentFormCollection
+        class ChatChannelRegisterReceiverPipelineRequestDto : BindingDictionary<string, object>, IRequestContentFormCollection
     {
         public required string UserName
         {
@@ -19,6 +19,12 @@ namespace RapidStreamer.Channels.Chat.Pipelines.Login
         {
             get => (string)this[nameof(Password)];
             set => this[nameof(Password)] = value;
+        }
+
+        public required string Name
+        {
+            get => (string)this[nameof(Name)];
+            set => this[nameof(Name)] = value;
         }
     }
 }

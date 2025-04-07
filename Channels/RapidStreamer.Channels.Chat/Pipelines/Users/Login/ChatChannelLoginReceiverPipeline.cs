@@ -12,7 +12,7 @@ using RapidStreamer.BuildingBlocks.Application;
 using RapidStreamer.Channels.Chat.Models.Users;
 using RapidStreamer.Infrastructure.Channels;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.Login
+namespace RapidStreamer.Channels.Chat.Pipelines.Users.Login
 {
     [ReceivePipelineRequestSchema(typeof(ChatChannelLoginReceiverPipelineRequestDto))]
     [ReceivePipelineResponseSchema(typeof(ChatChannelLoginReceiverPipelineResponseDto))]
@@ -24,7 +24,7 @@ namespace RapidStreamer.Channels.Chat.Pipelines.Login
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => nameof(Login);
+        public override string RequestKey => $"{nameof(Users)}/{nameof(Login)}";
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -41,8 +41,7 @@ namespace RapidStreamer.Channels.Chat.Pipelines.Login
 
             try
             {
-                var createGroup = context.Request.RouteTable["RequestType"].Equals(RequestKey);
-                if (createGroup)
+                if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
                 {
                     var loginRequest = context.Request.GetRequestContentFormData<ChatChannelLoginReceiverPipelineRequestDto>()!;
 

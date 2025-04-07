@@ -4,10 +4,17 @@ using RapidStreamer.Channels.Chat.Models;
 using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Channels.Chat.Models.Messages;
 using RapidStreamer.Channels.Chat.Models.Users;
-using RapidStreamer.Channels.Chat.Pipelines.CreateGroup;
-using RapidStreamer.Channels.Chat.Pipelines.GetGroups;
-using RapidStreamer.Channels.Chat.Pipelines.Login;
-using RapidStreamer.Channels.Chat.Pipelines.Register;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.AddUser;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.Create;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.GetAll;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.Join;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.RemoveUser;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.Rename;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.SetIcon;
+using RapidStreamer.Channels.Chat.Pipelines.Groups.UserLeave;
+using RapidStreamer.Channels.Chat.Pipelines.Messages.Send;
+using RapidStreamer.Channels.Chat.Pipelines.Users.Login;
+using RapidStreamer.Channels.Chat.Pipelines.Users.Register;
 using RapidStreamer.Infrastructure.Extensions;
 
 namespace RapidStreamer.Channels.Chat
@@ -22,10 +29,21 @@ namespace RapidStreamer.Channels.Chat
             where TChatContext : BaseChatContext<TChatContext>
         {
             services.AddChannel<ChatChannel>()
+                //Groups
+                .AddReceivePipeline<ChatChannel, ChatChannelAddUserToGroupReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelCreateGroupReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelGetGroupsReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelJoinUserToGroupReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelRemoveUserToGroupReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelRenameGroupReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelSetGroupIconReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelUserLeaveFromGroupReceiverPipeline>()
+                //Messages
+                .AddReceivePipeline<ChatChannel, ChatChannelSendMessageReceiverPipeline>()
+                //Users
                 .AddReceivePipeline<ChatChannel, ChatChannelLoginReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelRegisterReceiverPipeline>()
+                //Db Services
                 .AddDbContextPool<IChatContext, TChatContext>(optionsAction)
                 .AddScoped<GroupService>()
                 .AddScoped<MessageService>()

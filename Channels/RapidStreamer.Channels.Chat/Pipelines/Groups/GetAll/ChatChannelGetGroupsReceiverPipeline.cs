@@ -8,22 +8,21 @@ using RapidStreamer.Application.Channels.Contexts;
 using RapidStreamer.Application.Pipelines.Receivers;
 using RapidStreamer.Application.Pipelines.Receivers.Attributes;
 using RapidStreamer.BuildingBlocks.Application;
-using RapidStreamer.Channels.Chat.Models.Users;
+using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Infrastructure.Channels;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.Register
+namespace RapidStreamer.Channels.Chat.Pipelines.Groups.GetAll
 {
-    [ReceivePipelineRequestSchema(typeof(ChatChannelRegisterReceiverPipelineRequestDto))]
-    [ReceivePipelineResponseSchema(typeof(ChatChannelRegisterReceiverPipelineResponseDto))]
+    [ReceivePipelineResponseSchema(typeof(ChatChannelGetGroupsReceiverPipelineResponseDto))]
     internal
 #if !DEBUG
         sealed
 #endif
-        class ChatChannelRegisterReceiverPipeline(ILoggerFactory loggerFactory, UserService userService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
+        class ChatChannelGetGroupsReceiverPipeline(ILoggerFactory loggerFactory, GroupService groupService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => nameof(Register);
+        public override string RequestKey => $"{nameof(Groups)}/{nameof(GetAll)}";
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -40,15 +39,12 @@ namespace RapidStreamer.Channels.Chat.Pipelines.Register
 
             try
             {
-                var createGroup = context.Request.RouteTable["RequestType"].Equals(RequestKey);
-                if (createGroup)
+                if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
                 {
-                    var registerRequest = context.Request.GetRequestContentFormData<ChatChannelRegisterReceiverPipelineRequestDto>()!;
-
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = new ChatChannelRegisterReceiverPipelineResponseDto
+                    context.Response.ResponseContent = new ChatChannelGetGroupsReceiverPipelineResponseDto
                     {
-                        User = await userService.RegisterAsync(registerRequest.UserName, registerRequest.Password, registerRequest.Name, cancellationToken)
+                        Groups = await groupService.GetAllAsync(cancellationToken)
                     };
 
                     _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));

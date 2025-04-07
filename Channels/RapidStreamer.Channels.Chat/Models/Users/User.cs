@@ -1,4 +1,6 @@
-﻿namespace RapidStreamer.Channels.Chat.Models.Users
+﻿using System.Text.Json.Serialization;
+
+namespace RapidStreamer.Channels.Chat.Models.Users
 {
     public
 #if !DEBUG
@@ -8,7 +10,11 @@
     {
         public Guid Id { get; }
         public string UserName { get; } = null!;
+
+        [JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         public string Password { get; } = null!;
+
         public string Name { get; } = null!;
         public string? Avatar { get; private set; }
         public string? Bio { get; private set; }

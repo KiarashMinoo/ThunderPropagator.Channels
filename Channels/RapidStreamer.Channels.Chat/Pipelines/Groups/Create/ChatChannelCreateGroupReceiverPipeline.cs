@@ -11,18 +11,19 @@ using RapidStreamer.BuildingBlocks.Application;
 using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Infrastructure.Channels;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.GetGroups
+namespace RapidStreamer.Channels.Chat.Pipelines.Groups.Create
 {
-    [ReceivePipelineResponseSchema(typeof(ChatChannelGetGroupsReceiverPipelineResponseDto))]
+    [ReceivePipelineRequestSchema(typeof(ChatChannelCreateGroupReceiverPipelineRequestDto))]
+    [ReceivePipelineResponseSchema(typeof(ChatChannelCreateGroupReceiverPipelineResponseDto))]
     internal
 #if !DEBUG
         sealed
 #endif
-        class ChatChannelGetGroupsReceiverPipeline(ILoggerFactory loggerFactory, GroupService groupService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
+        class ChatChannelCreateGroupReceiverPipeline(ILoggerFactory loggerFactory, GroupService groupService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
-        public override string RequestKey => nameof(GetGroups);
+        public override string RequestKey => $"{nameof(Groups)}/{nameof(Create)}";
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -39,13 +40,14 @@ namespace RapidStreamer.Channels.Chat.Pipelines.GetGroups
 
             try
             {
-                var getGroups = context.Request.RouteTable["RequestType"].Equals(RequestKey);
-                if (getGroups)
+                if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
                 {
+                    var createGroupRequest = context.Request.GetRequestContentFormData<ChatChannelCreateGroupReceiverPipelineRequestDto>()!;
+
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = new ChatChannelGetGroupsReceiverPipelineResponseDto
+                    context.Response.ResponseContent = new ChatChannelCreateGroupReceiverPipelineResponseDto
                     {
-                        Groups = await groupService.GetAllAsync(cancellationToken)
+                        Group = await groupService.CreateAsync(createGroupRequest.Name, cancellationToken, createGroupRequest.Users)
                     };
 
                     _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));

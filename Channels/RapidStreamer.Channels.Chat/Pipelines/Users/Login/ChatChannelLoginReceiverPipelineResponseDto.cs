@@ -2,7 +2,7 @@
 using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Channels.Chat.Models.Users;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.Login
+namespace RapidStreamer.Channels.Chat.Pipelines.Users.Login
 {
     internal
 #if !DEBUG

@@ -1,7 +1,7 @@
 ﻿using RapidStreamer.Application.Collections;
 using RapidStreamer.BuildingBlocks.Application.Collections;
 
-namespace RapidStreamer.Channels.Chat.Pipelines.SendMessage
+namespace RapidStreamer.Channels.Chat.Pipelines.Messages.Send
 {
     internal
 #if !DEBUG

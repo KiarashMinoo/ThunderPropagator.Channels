@@ -8,7 +8,7 @@ using RapidStreamer.Application.Channels.Contexts;
 using RapidStreamer.Application.Pipelines.Receivers;
 using RapidStreamer.Application.Pipelines.Receivers.Attributes;
 using RapidStreamer.BuildingBlocks.Application;
-using RapidStreamer.Channels.Demo.Portfolio.Dtos;
+using RapidStreamer.Channels.Demo.Portfolio.Pipelines.Dtos;
 using RapidStreamer.Infrastructure.Channels;
 
 namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines

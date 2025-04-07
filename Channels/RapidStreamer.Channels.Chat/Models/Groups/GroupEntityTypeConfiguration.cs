@@ -14,6 +14,8 @@ namespace RapidStreamer.Channels.Chat.Models.Groups
             builder.Property(x => x.Name).IsRequired();
             builder.HasIndex(x => x.Name).IsUnique();
 
+            builder.Property(x => x.GroupIcon);
+
             builder
                 .OwnsMany(x => x.GroupUsers, groupUser =>
                 {

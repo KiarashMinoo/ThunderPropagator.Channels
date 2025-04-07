@@ -19,6 +19,7 @@ namespace RapidStreamer.Channels.Chat
             SenderUserId = message.SenderId;
             GroupId = message.GroupId ?? Guid.Empty;
             Message = message.Body;
+            DateTime = message.Created;
         }
 
         public string UserId
@@ -42,6 +43,12 @@ namespace RapidStreamer.Channels.Chat
         public string Message
         {
             get => GetValueOrDefault(string.Empty);
+            private set => SetValue(value);
+        }
+
+        public DateTimeOffset DateTime
+        {
+            get => GetValueOrDefault(DateTimeOffset.UtcNow);
             private set => SetValue(value);
         }
     }

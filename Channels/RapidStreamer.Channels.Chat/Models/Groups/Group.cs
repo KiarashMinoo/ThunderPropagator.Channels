@@ -7,7 +7,8 @@
         class Group
     {
         public Guid Id { get; }
-        public string Name { get; } = null!;
+        public string Name { get; private set; } = null!;
+        public string? GroupIcon { get; private set; }
 
         private readonly HashSet<GroupUser> _groupUsers = [];
         public IReadOnlyCollection<GroupUser> GroupUsers => _groupUsers;
@@ -19,7 +20,7 @@
 
         private Group(string name) : this()
         {
-            Name = name;
+            SetName(name);
         }
 
         internal Group AddUser(Guid userId)
@@ -30,10 +31,25 @@
 
         internal Group RemoveUser(Guid userId)
         {
-            var groupUser = _groupUsers.FirstOrDefault(gu => gu.UserId == userId);
+            var groupUser = _groupUsers.SingleOrDefault(gu => gu.UserId == userId);
             if (groupUser is not null)
                 _groupUsers.Remove(groupUser);
 
+            return this;
+        }
+
+        internal Group SetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(name));
+
+            Name = name;
+            return this;
+        }
+
+        internal Group SetGroupIcon(string icon)
+        {
+            GroupIcon = icon;
             return this;
         }
 

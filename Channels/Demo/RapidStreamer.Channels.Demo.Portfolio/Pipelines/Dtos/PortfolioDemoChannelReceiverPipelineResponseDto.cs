@@ -1,6 +1,6 @@
 ﻿using RapidStreamer.Application.Collections;
 
-namespace RapidStreamer.Channels.Demo.Portfolio.Dtos
+namespace RapidStreamer.Channels.Demo.Portfolio.Pipelines.Dtos
 {
     internal
 #if !DEBUG
