@@ -65,7 +65,7 @@ namespace RapidStreamer.Channels.ResourceMonitoring
 
         public ResourceMonitoringChannelMetadata()
         {
-            SetChannelSnapshot(true, TimeSpan.FromMinutes(5), isTimeSeries: true);
+            SetChannelSnapshot(true, TimeSpan.FromMinutes(10), isTimeSeries: true);
         }
     }
 }

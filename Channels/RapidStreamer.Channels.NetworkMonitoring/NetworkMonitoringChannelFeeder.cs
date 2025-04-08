@@ -28,11 +28,14 @@ namespace RapidStreamer.Channels.NetworkMonitoring
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
-            var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces().Select(networkInterface => new
-            {
-                NetworkInterface = networkInterface,
-                IPStatistics = networkInterface.GetIPStatistics()
-            }).ToArray();
+            var networkInterfaces = NetworkInterface
+                .GetAllNetworkInterfaces()
+                .Select(networkInterface => new
+                {
+                    NetworkInterface = networkInterface,
+                    IPStatistics = networkInterface.GetIPStatistics()
+                })
+                .ToArray();
 
             var bytesReceived = networkInterfaces.Sum(networkInterface => networkInterface.IPStatistics.BytesReceived);
             var bytesSent = networkInterfaces.Sum(networkInterface => networkInterface.IPStatistics.BytesSent);
