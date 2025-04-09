@@ -44,9 +44,9 @@ namespace RapidStreamer.Channels.Demo.Airport
             internal set => SetValue(value);
         }
 
-        public string Status
+        public Statuses Status
         {
-            get => GetValueOrDefault(string.Empty);
+            get => GetValueOrDefault(Statuses.ScheduledOnTime);
             internal set => SetValue(value);
         }
     }

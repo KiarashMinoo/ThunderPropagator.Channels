@@ -1,4 +1,5 @@
 ﻿using RapidStreamer.BuildingBlocks.Application;
+using RapidStreamer.BuildingBlocks.Application.Enums;
 
 namespace RapidStreamer.Channels.Demo.Portfolio
 {
@@ -10,6 +11,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio
     {
         public PortfolioDemoChannelFeederMessage()
         {
+            CastType = CastType.Unicast;
         }
 
         internal PortfolioDemoChannelFeederMessage(IReadOnlyDictionary<string, object?> feederMessage) : this()

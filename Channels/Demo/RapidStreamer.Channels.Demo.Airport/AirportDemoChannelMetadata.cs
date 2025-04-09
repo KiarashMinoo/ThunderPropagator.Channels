@@ -22,7 +22,7 @@ namespace RapidStreamer.Channels.Demo.Airport
             new ChannelProgramsDescriptor(3, nameof(AirportDemoChannelFeederMessage.Flight), DataType.String).SetTable(AirportDemoItems),
             new ChannelProgramsDescriptor(4, nameof(AirportDemoChannelFeederMessage.Airline), DataType.String).SetTable(AirportDemoItems),
             new NumberChannelProgramsDescriptor(5, nameof(AirportDemoChannelFeederMessage.Terminal)).SetTable(AirportDemoItems),
-            new ChannelProgramsDescriptor(6, nameof(AirportDemoChannelFeederMessage.Status), DataType.String).SetTable(AirportDemoItems),
+            new EnumChannelProgramsDescriptor<Statuses>(6, nameof(AirportDemoChannelFeederMessage.Status)).SetTable(AirportDemoItems),
         };
     }
 }

@@ -4,6 +4,8 @@ using Microsoft.Extensions.Hosting;
 using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Channels.Exceptions;
 using RapidStreamer.Application.Channels.Subscribers;
+using RapidStreamer.BuildingBlocks.Application;
+using RapidStreamer.BuildingBlocks.Application.Enums;
 
 namespace RapidStreamer.Channels.Demo.Portfolio
 {
@@ -54,6 +56,28 @@ namespace RapidStreamer.Channels.Demo.Portfolio
                 EmitMessage(portfolioDemoChannelFeederMessage);
         }
 
+        protected override void OnSubscriptionRemoved(Subscription subscription)
+        {
+            base.OnSubscriptionRemoved(subscription);
+
+            var key = subscription.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
+
+            var snapshotEntries = SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Snapshot.ContainsKey(key), 0, 0, _cancellationToken)
+                .ConfigureAwait(false)
+                .GetAwaiter()
+                .GetResult();
+
+            if (snapshotEntries.Length > 0)
+            {
+                foreach (var snapshotEntry in snapshotEntries)
+                {
+                    PortfolioDemoChannelFeederMessage portfolioDemoChannelFeederMessage = new(snapshotEntry.Snapshot);
+                    portfolioDemoChannelFeederMessage.IsDeleted = true;
+                    EmitMessage(snapshotEntry.HashKey, CastType.Unicast, portfolioDemoChannelFeederMessage, typeof(PortfolioDemoChannelFeederMessage));
+                }
+            }
+        }
+
         private async void Simulate()
         {
             while (!_cancellationToken.IsCancellationRequested)
@@ -64,7 +88,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio
 
                 snapshotEntries = snapshotEntries
                     .OrderBy(_ => Guid.NewGuid())
-                    .Take(Random.Shared.Next(10, 1000))
+                    .Take(Random.Shared.Next(1, snapshotEntries.Length))
                     .ToArray();
 
                 foreach (var snapshotEntry in snapshotEntries)
