@@ -86,6 +86,9 @@ namespace RapidStreamer.Channels.Demo.Portfolio
 
                 var snapshotEntries = await SearchSnapshotsAsync(_ => true, 0, 0, _cancellationToken);
 
+                if (snapshotEntries.Length == 0)
+                    continue;
+
                 snapshotEntries = snapshotEntries
                     .OrderBy(_ => Guid.NewGuid())
                     .Take(Random.Shared.Next(1, snapshotEntries.Length))
