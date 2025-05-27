@@ -18,7 +18,7 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugSymbols>False</DebugSymbols>
         <DebugType>None</DebugType>
-        <DefineConstants/>
+        <DefineConstants />
     </PropertyGroup>
 
     <PropertyGroup Label="nuget">
@@ -41,22 +41,22 @@
     </PropertyGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.144" Condition="'$(Platform)' == 'ARM64'"/>
-        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.144" Condition="'$(Platform)' == 'x86'"/>
-        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.144" Condition="'$(Platform)' == 'x64'"/>
-        <PackageReference Include="RapidStreamer.Debug" Version="1.0.144" Condition="'$(Platform)' == 'AnyCPU'"/>
+        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.146" Condition="'$(Platform)' == 'ARM64'" />
+        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.146" Condition="'$(Platform)' == 'x86'" />
+        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.146" Condition="'$(Platform)' == 'x64'" />
+        <PackageReference Include="RapidStreamer.Debug" Version="1.0.146" Condition="'$(Platform)' == 'AnyCPU'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Release'">
-        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.144" Condition="'$(Platform)' == 'ARM64'"/>
-        <PackageReference Include="RapidStreamer.x86" Version="1.0.144" Condition="'$(Platform)' == 'x86'"/>
-        <PackageReference Include="RapidStreamer.x64" Version="1.0.144" Condition="'$(Platform)' == 'x64'"/>
-        <PackageReference Include="RapidStreamer" Version="1.0.144" Condition="'$(Platform)' == 'AnyCPU'"/>
+        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.146" Condition="'$(Platform)' == 'ARM64'" />
+        <PackageReference Include="RapidStreamer.x86" Version="1.0.146" Condition="'$(Platform)' == 'x86'" />
+        <PackageReference Include="RapidStreamer.x64" Version="1.0.146" Condition="'$(Platform)' == 'x64'" />
+        <PackageReference Include="RapidStreamer" Version="1.0.146" Condition="'$(Platform)' == 'AnyCPU'" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+        <None Include="..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
@@ -69,11 +69,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Pipelines\Messages\"/>
+        <Folder Include="Pipelines\Messages\" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.4" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.5" />
     </ItemGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
