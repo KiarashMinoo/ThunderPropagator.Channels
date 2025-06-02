@@ -22,18 +22,7 @@ namespace RapidStreamer.Channels.TimeZones
                 .AddChannel<TimeZonesChannel>()
                 .AddChannelFeeder<TimeZonesChannel, TimeZonesChannelFeeder, TimeZonesChannelFeederMessage, TimeZonesChannelFeederConfiguration>(configuration =>
                 {
-                    configuration.IsEnabled = timeZonesChannelConfiguration.FeederConfiguration.IsEnabled;
-                    configuration.Id = timeZonesChannelConfiguration.FeederConfiguration.Id;
-                    configuration.SerializerType = timeZonesChannelConfiguration.FeederConfiguration.SerializerType;
-                    configuration.EnrichmentScript = timeZonesChannelConfiguration.FeederConfiguration.EnrichmentScript;
-                    configuration.MetadataReferences = timeZonesChannelConfiguration.FeederConfiguration.MetadataReferences;
-                    configuration.Proxy = timeZonesChannelConfiguration.FeederConfiguration.Proxy;
-                    configuration.WeatherApiUrl = timeZonesChannelConfiguration.FeederConfiguration.WeatherApiUrl;
-                    configuration.WeatherApiKey = timeZonesChannelConfiguration.FeederConfiguration.WeatherApiKey;
-                    configuration.RedisCacheConnectionString = timeZonesChannelConfiguration.FeederConfiguration.RedisCacheConnectionString;
-                    configuration.SnapshotConnectionString = timeZonesChannelConfiguration.FeederConfiguration.SnapshotConnectionString;
-                    configuration.SnapshotRecoveryStorage = timeZonesChannelConfiguration.FeederConfiguration.SnapshotRecoveryStorage;
-                    configuration.SnapshotTtlHours = timeZonesChannelConfiguration.FeederConfiguration.SnapshotTtlHours;
+                    configuration.Bind(timeZonesChannelConfiguration.FeederConfiguration);
 
                     services
                         .AddStackExchangeRedisCache(options =>

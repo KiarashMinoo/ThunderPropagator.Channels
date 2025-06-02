@@ -17,14 +17,7 @@ namespace RapidStreamer.Channels.ResourceMonitoring
                 .AddChannel<ResourceMonitoringChannel>()
                 .AddChannelFeeder<ResourceMonitoringChannel, ResourceMonitoringChannelFeeder, ResourceMonitoringChannelFeederMessage, ResourceMonitoringChannelFeederConfiguration>(configuration =>
                 {
-                    configuration.IsEnabled = resourceMonitoringChannelConfiguration.FeederConfiguration.IsEnabled;
-                    configuration.Id = resourceMonitoringChannelConfiguration.FeederConfiguration.Id;
-                    configuration.SerializerType = resourceMonitoringChannelConfiguration.FeederConfiguration.SerializerType;
-                    configuration.EnrichmentScript = resourceMonitoringChannelConfiguration.FeederConfiguration.EnrichmentScript;
-                    configuration.MetadataReferences = resourceMonitoringChannelConfiguration.FeederConfiguration.MetadataReferences;
-                    configuration.UtilizationWindow = resourceMonitoringChannelConfiguration.FeederConfiguration.UtilizationWindow;
-                    configuration.MemoryUsedPercentageThreshold = resourceMonitoringChannelConfiguration.FeederConfiguration.MemoryUsedPercentageThreshold;
-                    configuration.StorageUsedPercentageThreshold = resourceMonitoringChannelConfiguration.FeederConfiguration.StorageUsedPercentageThreshold;
+                    configuration.Bind(resourceMonitoringChannelConfiguration.FeederConfiguration);
                 });
 
             return services;

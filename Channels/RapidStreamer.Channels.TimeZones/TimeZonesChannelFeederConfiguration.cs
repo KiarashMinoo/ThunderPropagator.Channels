@@ -50,4 +50,6 @@ public
         get => Get(24);
         set => Set(value);
     }
+
+    internal void Bind(TimeZonesChannelFeederConfiguration timeZonesChannelFeederConfiguration) => base.Bind(timeZonesChannelFeederConfiguration);
 }
