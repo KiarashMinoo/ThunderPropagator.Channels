@@ -1,6 +1,6 @@
 ﻿using System.Security.Authentication;
-using Microsoft.EntityFrameworkCore;
 using RapidStreamer.Channels.Chat.Models.Groups;
+using RapidStreamer.Channels.Chat.Models.Messages;
 
 namespace RapidStreamer.Channels.Chat.Models.Users
 {
@@ -11,10 +11,10 @@ namespace RapidStreamer.Channels.Chat.Models.Users
         class UserService(IChatContext chatContext)
     {
         public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default)
-            => chatContext.Users.SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
+            => chatContext.GetAsync<User, Guid>(userId, cancellationToken);
 
         public Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
-            => chatContext.Users.SingleOrDefaultAsync(x => x.UserName == username, cancellationToken);
+            => chatContext.GetAsync<User>(x => x.UserName == username, cancellationToken);
 
         public async Task<User> RegisterAsync(string username, string password, string name, CancellationToken cancellationToken = default)
         {
@@ -24,61 +24,57 @@ namespace RapidStreamer.Channels.Chat.Models.Users
 
             var user = User.Create(username, password, name);
 
-            var entry = await chatContext.Users.AddAsync(user, cancellationToken);
-
-            await chatContext.SaveChangesAsync(cancellationToken);
-
-            return entry.Entity;
+            return await chatContext.CreateAsync(user, cancellationToken);
         }
 
         public async Task<User> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
         {
             var user = await GetByUsernameAsync(username, cancellationToken);
 
-            if (user is null)
-                throw new InvalidCredentialException();
-
-            if (user.Password != password)
+            if (user is null || user.Password != password)
                 throw new InvalidCredentialException();
 
             return user;
         }
 
         public async Task<IReadOnlyCollection<Group>> GetUserGroupsAsync(Guid id, CancellationToken cancellationToken = default)
-            => await chatContext.Groups.Where(x => x.GroupUsers.Any(y => y.UserId == id)).ToListAsync(cancellationToken);
+            => await chatContext.GetAllAsync<Group>(x => x.GroupUsers.Any(y => y.UserId == id), cancellationToken);
 
         public async Task<IReadOnlyCollection<User>> GetUserContactsAsync(Guid id, CancellationToken cancellationToken = default)
-            => await chatContext.Messages.Where(x => x.ReceiverId == id).Select(x => x.Sender).Distinct().ToListAsync(cancellationToken);
+            => (await chatContext.GetAllAsync<Message>(x => x.ReceiverId == id, cancellationToken))
+                .Select(x => x.Sender)
+                .Distinct()
+                .ToList();
 
         public async Task<User> UpdateAsync(Guid userId, string bio, DateOnly? birthDate, CancellationToken cancellationToken = default)
         {
-            var user = await chatContext.Users.SingleAsync(x => x.Id == userId, cancellationToken: cancellationToken);
+            var user = await chatContext.GetAsync<User, Guid>(userId, cancellationToken: cancellationToken) ?? throw new UserNotFoundException();
 
             user.SetBio(bio);
 
             user.SetBirthDate(birthDate);
 
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(user, cancellationToken);
 
             return user;
         }
 
         public async Task SetNameAsync(Guid userId, string name, CancellationToken cancellationToken = default)
         {
-            var user = await chatContext.Users.SingleAsync(x => x.Id == userId, cancellationToken: cancellationToken);
+            var user = await chatContext.GetAsync<User, Guid>(userId, cancellationToken: cancellationToken) ?? throw new UserNotFoundException();
 
             user.SetName(name);
 
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(user, cancellationToken);
         }
 
         public async Task SetAvatarAsync(Guid userId, string avatar, CancellationToken cancellationToken = default)
         {
-            var user = await chatContext.Users.SingleAsync(x => x.Id == userId, cancellationToken: cancellationToken);
+            var user = await chatContext.GetAsync<User, Guid>(userId, cancellationToken: cancellationToken) ?? throw new UserNotFoundException();
 
             user.SetAvatar(avatar);
 
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(user, cancellationToken);
         }
     }
 }

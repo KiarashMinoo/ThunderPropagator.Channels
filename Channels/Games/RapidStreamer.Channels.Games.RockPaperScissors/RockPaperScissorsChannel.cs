@@ -7,7 +7,7 @@ namespace RapidStreamer.Channels.Games.RockPaperScissors
 #if !DEBUG
         sealed
 #endif
-        class RockPaperScissorsChannel : AbstractChannel<RockPaperScissorsChannelMetadata>
+        class RockPaperScissorsChannel : AbstractChannel<RockPaperScissorsChannelMetadata, RockPaperScissorsChannelConfiguration>
     {
         public RockPaperScissorsChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {

@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using RapidStreamer.Channels.Chat.Models;
 using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Channels.Chat.Models.Messages;
@@ -27,11 +26,15 @@ namespace RapidStreamer.Channels.Chat
         public static IServiceCollection AddChatChannel<TChatContext>
         (
             this IServiceCollection services,
-            Action<IServiceProvider, DbContextOptionsBuilder> optionsAction
-        )
-            where TChatContext : BaseChatContext<TChatContext>
+            Action<ChatChannelConfiguration>? channelConfigurator = null)
+            where TChatContext : BaseChatContext
         {
-            services.AddChannel<ChatChannel>()
+            ChatChannelConfiguration chatChannelConfiguration = new();
+            channelConfigurator?.Invoke(chatChannelConfiguration);
+
+            services
+                .AddSingleton(chatChannelConfiguration)
+                .AddChannel<ChatChannel>()
                 //Groups
                 .AddReceivePipeline<ChatChannel, ChatChannelAddUserToGroupReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelCreateGroupReceiverPipeline>()
@@ -50,7 +53,8 @@ namespace RapidStreamer.Channels.Chat
                 .AddReceivePipeline<ChatChannel, ChatChannelUserSetNameReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelUpdateUserReceiverPipeline>()
                 //Db Services
-                .AddDbContextPool<IChatContext, TChatContext>(optionsAction)
+                .AddScoped<TChatContext>()
+                .AddScoped<IChatContext>(serviceProvider => serviceProvider.GetRequiredService<TChatContext>())
                 .AddScoped<GroupService>()
                 .AddScoped<MessageService>()
                 .AddScoped<UserService>();

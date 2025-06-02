@@ -2,7 +2,7 @@
 
 namespace RapidStreamer.Channels.ResourceMonitoring
 {
-    internal
+    public 
 #if !DEBUG
         sealed
 #endif

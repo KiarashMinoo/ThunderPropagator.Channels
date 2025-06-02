@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using RapidStreamer.Channels.Chat.Models.Groups;
 
 namespace RapidStreamer.Channels.Chat.Models.Messages
 {
@@ -8,31 +8,27 @@ namespace RapidStreamer.Channels.Chat.Models.Messages
 #endif
         class MessageService(IChatContext chatContext)
     {
-        public async Task<Message> SendMessageAsync(Guid senderId, Guid receiverId, string body, CancellationToken cancellationToken = default)
+        public Task<Message> SendMessageAsync(Guid senderId, Guid receiverId, string body, CancellationToken cancellationToken = default)
         {
             var message = Message.Create(senderId, receiverId, body);
 
-            var entry = await chatContext.Messages.AddAsync(message, cancellationToken);
-
-            await chatContext.SaveChangesAsync(cancellationToken);
-
-            return entry.Entity;
+            return chatContext.CreateAsync(message, cancellationToken);
         }
 
         public async Task<IReadOnlyCollection<Message>> SendMessageToGroupAsync(Guid senderId, Guid groupId, string body, CancellationToken cancellationToken = default)
         {
             List<Message> rtn = [];
 
-            var group = await chatContext.Groups.SingleAsync(x => x.Id == groupId, cancellationToken);
+            var group = await chatContext.GetAsync<Group, Guid>(groupId, cancellationToken) ?? throw new GroupNotFoundException();
 
             foreach (var groupUser in group.GroupUsers)
             {
                 var message = Message.Create(senderId, groupUser.UserId, body);
-                var entry = await chatContext.Messages.AddAsync(message, cancellationToken);
-                rtn.Add(entry.Entity);
+                message = await chatContext.CreateAsync(message, cancellationToken);
+                rtn.Add(message);
             }
 
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(group, cancellationToken);
 
             return rtn.AsReadOnly();
         }

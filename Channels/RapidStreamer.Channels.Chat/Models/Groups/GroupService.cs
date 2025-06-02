@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Net;
 
 namespace RapidStreamer.Channels.Chat.Models.Groups
 {
@@ -9,52 +9,48 @@ namespace RapidStreamer.Channels.Chat.Models.Groups
         class GroupService(IChatContext chatContext)
     {
         public Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken = default)
-            => chatContext.Groups.SingleOrDefaultAsync(x => x.Id == groupId, cancellationToken);
+            => chatContext.GetAsync<Group, Guid>(groupId, cancellationToken);
 
-        public async Task<Group> CreateAsync(string name, CancellationToken cancellationToken = default, params Guid[] users)
+        public Task<Group> CreateAsync(string name, CancellationToken cancellationToken = default, params Guid[] users)
         {
             var group = Group.Create(name);
 
             foreach (var user in users)
                 group.AddUser(user);
 
-            var entry = await chatContext.Groups.AddAsync(group, cancellationToken);
-
-            await chatContext.SaveChangesAsync(cancellationToken);
-
-            return entry.Entity;
+            return chatContext.CreateAsync(group, cancellationToken);
         }
 
         public async Task<IReadOnlyCollection<Group>> GetAllAsync(CancellationToken cancellationToken = default)
-            => await chatContext.Groups.AsNoTracking().ToListAsync(cancellationToken);
+            => await chatContext.GetAllAsync<Group>(cancellationToken);
 
         public async Task AddUserToGroupAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default)
         {
-            var group = await chatContext.Groups.SingleAsync(x => x.Id == groupId, cancellationToken);
+            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
             group.AddUser(userId);
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(group, cancellationToken);
         }
 
         public async Task RemoveUserFromGroupAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default)
         {
-            var group = await chatContext.Groups.SingleAsync(x => x.Id == groupId, cancellationToken);
+            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
             group.RemoveUser(userId);
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(group, cancellationToken);
         }
 
         public async Task<Group> RenameGroupAsync(Guid groupId, string name, CancellationToken cancellationToken = default)
         {
-            var group = await chatContext.Groups.SingleAsync(x => x.Id == groupId, cancellationToken);
+            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
             group.SetName(name);
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(group, cancellationToken);
             return group;
         }
 
         public async Task<Group> SetGroupIconAsync(Guid groupId, string icon, CancellationToken cancellationToken = default)
         {
-            var group = await chatContext.Groups.SingleAsync(x => x.Id == groupId, cancellationToken);
+            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
             group.SetGroupIcon(icon);
-            await chatContext.SaveChangesAsync(cancellationToken);
+            await chatContext.UpdateAsync(group, cancellationToken);
             return group;
         }
     }

@@ -13,7 +13,7 @@ namespace RapidStreamer.Channels.Demo.Portfolio
 #if !DEBUG
         sealed
 #endif
-        class PortfolioDemoChannel : AbstractChannel<PortfolioDemoChannelMetadata>
+        class PortfolioDemoChannel : AbstractChannel<PortfolioDemoChannelMetadata, PortfolioDemoChannelConfiguration>
     {
         public const string PortfolioDemo = nameof(PortfolioDemo);
         public const string PortfolioDemoItems = nameof(PortfolioDemoItems);

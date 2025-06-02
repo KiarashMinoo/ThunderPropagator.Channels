@@ -6,8 +6,12 @@ namespace RapidStreamer.Channels.Games.RockPaperScissors
 {
     public static class RockPaperScissorsChannelExtensions
     {
-        public static IServiceCollection AddRockPaperScissorsChannel(this IServiceCollection services)
+        public static IServiceCollection AddRockPaperScissorsChannel(this IServiceCollection services, Action<RockPaperScissorsChannelConfiguration>? channelConfigurator = null)
         {
+            RockPaperScissorsChannelConfiguration rockPaperScissorsChannelConfiguration = new();
+            channelConfigurator?.Invoke(rockPaperScissorsChannelConfiguration);
+
+            services.AddSingleton(rockPaperScissorsChannelConfiguration);
             services.AddChannel<RockPaperScissorsChannel>();
             services.TryAddSingleton<RockPaperScissorsComputer>();
             services.AddReceiveEvent<RockPaperScissorsChannel, RockPaperScissorsChannelReceiveEvent>();

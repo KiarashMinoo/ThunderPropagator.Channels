@@ -9,9 +9,14 @@ namespace RapidStreamer.Channels.Games.TicTacToe
 {
     public static class TicTacToeChannelExtensions
     {
-        public static IServiceCollection AddTicTacToeChannel(this IServiceCollection services)
+        public static IServiceCollection AddTicTacToeChannel(this IServiceCollection services, Action<TicTacToeChannelConfiguration>? channelConfigurator = null)
         {
-            services.AddChannel<TicTacToeChannel>()
+            TicTacToeChannelConfiguration ticTacToeChannelConfiguration = new();
+            channelConfigurator?.Invoke(ticTacToeChannelConfiguration);
+
+            services
+                .AddSingleton(ticTacToeChannelConfiguration)
+                .AddChannel<TicTacToeChannel>()
                 .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelAddGameReceiverPipeline>()
                 .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelGetGamesReceiverPipeline>()
                 .AddReceivePipeline<TicTacToeChannel, TicTacToeChannelMoveReceiverPipeline>()

@@ -1,59 +1,51 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RapidStreamer.Channels.Chat.Models.Groups;
-using RapidStreamer.Channels.Chat.Models.Messages;
-using RapidStreamer.Channels.Chat.Models.Users;
+﻿using System.Linq.Expressions;
 
 namespace RapidStreamer.Channels.Chat.Models
 {
     internal interface IChatContext
     {
-        DbSet<User> Users { get; set; }
-        DbSet<Group> Groups { get; set; }
-        DbSet<Message> Messages { get; set; }
-
-        int SaveChanges();
-        int SaveChanges(bool acceptAllChangesOnSuccess);
-        Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-        Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default);
+        Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class;
+        Task<TEntity?> GetAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
+        Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class;
+        Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellationToken = default) where TEntity : class;
+        Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
+        Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
+        Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
     }
 
-    public abstract class BaseChatContext<TChatContext> : DbContext, IChatContext
-        where TChatContext : BaseChatContext<TChatContext>
+    public abstract class BaseChatContext : IChatContext
     {
-        private static volatile bool IsInitialized;
-        private static readonly object Mutex = new();
+        private static volatile bool _isInitialized;
+#if NET9_0_OR_GREATER
+        private static readonly Lock Lock = new();
+#else
+        private static readonly object Lock = new();
+#endif
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Group> Groups { get; set; }
-        public DbSet<Message> Messages { get; set; }
-
-        protected BaseChatContext(DbContextOptions<TChatContext> options) : base(options)
+        protected BaseChatContext()
         {
-            if (IsInitialized)
+            if (_isInitialized)
                 return;
 
-            lock (Mutex)
+            lock (Lock)
             {
-                if (IsInitialized)
+                if (_isInitialized)
                     return;
 
-                Database.Migrate();
+                Migrate();
                 Seed();
-                IsInitialized = true;
+                _isInitialized = true;
             }
         }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-
-            modelBuilder.HasDefaultSchema("Chat");
-
-            modelBuilder.ApplyConfiguration(new UserEntityTypeConfiguration());
-            modelBuilder.ApplyConfiguration(new GroupEntityTypeConfiguration());
-            modelBuilder.ApplyConfiguration(new MessageEntityTypeConfiguration());
-        }
-
+        protected abstract void Migrate();
         protected abstract void Seed();
+        public abstract Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<TEntity?> GetAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
     }
 }

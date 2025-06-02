@@ -5,9 +5,14 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
 {
     public static class StockListBasicDemoExtensions
     {
-        public static IServiceCollection AddStockListBasicDemoChannel(this IServiceCollection services)
+        public static IServiceCollection AddStockListBasicDemoChannel(this IServiceCollection services, Action<StockListBasicDemoChannelConfiguration>? channelConfigurator = null)
         {
-            services.AddChannel<StockListBasicDemoChannel>()
+            StockListBasicDemoChannelConfiguration stockListBasicDemoChannelConfiguration = new();
+            channelConfigurator?.Invoke(stockListBasicDemoChannelConfiguration);
+
+            services
+                .AddSingleton(stockListBasicDemoChannelConfiguration)
+                .AddChannel<StockListBasicDemoChannel>()
                 .AddChannelFeeder<StockListBasicDemoChannel, StockListBasicDemoChannelFeeder, StockListBasicDemoChannelFeederMessage, StockListBasicDemoChannelFeederConfiguration>();
 
             return services;

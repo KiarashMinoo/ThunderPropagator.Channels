@@ -14,7 +14,7 @@ namespace RapidStreamer.Channels.Games.TicTacToe
 #if !DEBUG
         sealed
 #endif
-        class TicTacToeChannel : AbstractChannel<TicTacToeChannelMetadata>
+        class TicTacToeChannel : AbstractChannel<TicTacToeChannelMetadata, TicTacToeChannelConfiguration>
     {
         private readonly ConcurrentDictionary<string, TicTacToeGame> _games = [];
 

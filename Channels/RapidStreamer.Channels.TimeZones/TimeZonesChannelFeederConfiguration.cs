@@ -5,7 +5,7 @@ namespace RapidStreamer.Channels.TimeZones;
 
 public
 #if !DEBUG
-        sealed
+    sealed
 #endif
     class TimeZonesChannelFeederConfiguration : AbstractFeederConfiguration
 {

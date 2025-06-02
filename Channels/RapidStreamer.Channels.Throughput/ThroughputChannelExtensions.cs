@@ -5,9 +5,15 @@ namespace RapidStreamer.Channels.Throughput
 {
     public static class ThroughputChannelExtensions
     {
-        public static IServiceCollection AddThroughputChannel(this IServiceCollection services)
+        public static IServiceCollection AddThroughputChannel(this IServiceCollection services, Action<ThroughputChannelConfiguration>? channelConfigurator = null)
         {
-            services.AddChannel<ThroughputChannel>().AddChannelFeeder<ThroughputChannel, ThroughputChannelFeeder, ThroughputChannelFeederMessage, ThroughputChannelFeederConfiguration>();
+            ThroughputChannelConfiguration throughputChannelConfiguration = new();
+            channelConfigurator?.Invoke(throughputChannelConfiguration);
+
+            services
+                .AddSingleton(throughputChannelConfiguration)
+                .AddChannel<ThroughputChannel>()
+                .AddChannelFeeder<ThroughputChannel, ThroughputChannelFeeder, ThroughputChannelFeederMessage, ThroughputChannelFeederConfiguration>();
 
             return services;
         }

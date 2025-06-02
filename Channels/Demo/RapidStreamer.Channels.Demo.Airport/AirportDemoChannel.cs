@@ -6,7 +6,7 @@ namespace RapidStreamer.Channels.Demo.Airport
 #if !DEBUG
         sealed
 #endif
-        class AirportDemoChannel : AbstractChannel<AirportDemoChannelMetadata>
+        class AirportDemoChannel : AbstractChannel<AirportDemoChannelMetadata, AirportDemoChannelConfiguration>
     {
         public AirportDemoChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {

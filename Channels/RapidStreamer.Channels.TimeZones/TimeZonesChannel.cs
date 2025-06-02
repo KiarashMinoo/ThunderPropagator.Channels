@@ -8,7 +8,7 @@ namespace RapidStreamer.Channels.TimeZones
 #if !DEBUG
         sealed
 #endif
-        class TimeZonesChannel : AbstractChannel<TimeZonesChannelMetadata>
+        class TimeZonesChannel : AbstractChannel<TimeZonesChannelMetadata, TimeZonesChannelConfiguration>
     {
         public TimeZonesChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {

@@ -6,7 +6,7 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
 #if !DEBUG
         sealed
 #endif
-        class StockListBasicDemoChannel : AbstractChannel<StockListBasicDemoChannelMetadata>
+        class StockListBasicDemoChannel : AbstractChannel<StockListBasicDemoChannelMetadata, StockListBasicDemoChannelConfiguration>
     {
         public StockListBasicDemoChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {

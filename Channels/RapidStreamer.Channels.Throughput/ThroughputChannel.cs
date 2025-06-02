@@ -4,9 +4,9 @@ namespace RapidStreamer.Channels.Throughput;
 
 public
 #if !DEBUG
-        sealed
+    sealed
 #endif
-    class ThroughputChannel : AbstractChannel<ThroughputChannelMetadata>
+    class ThroughputChannel : AbstractChannel<ThroughputChannelMetadata, ThroughputChannelConfiguration>
 {
     public ThroughputChannel(IServiceProvider serviceProvider) : base(serviceProvider)
     {

@@ -8,7 +8,7 @@ namespace RapidStreamer.Channels.Chat
 #if !DEBUG
         sealed
 #endif
-        class ChatChannel(IServiceProvider serviceProvider) : AbstractChannel<ChatChannelMetadata>(serviceProvider)
+        class ChatChannel(IServiceProvider serviceProvider) : AbstractChannel<ChatChannelMetadata, ChatChannelConfiguration>(serviceProvider)
     {
         internal ConcurrentDictionary<string, Guid> LoggedInUsers { get; } = new();
 

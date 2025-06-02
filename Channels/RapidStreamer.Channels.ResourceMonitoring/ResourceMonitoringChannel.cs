@@ -4,9 +4,9 @@ namespace RapidStreamer.Channels.ResourceMonitoring;
 
 public
 #if !DEBUG
-        sealed
+    sealed
 #endif
-    class ResourceMonitoringChannel : AbstractChannel<ResourceMonitoringChannelMetadata>
+    class ResourceMonitoringChannel : AbstractChannel<ResourceMonitoringChannelMetadata, ResourceMonitoringChannelConfiguration>
 {
     public ResourceMonitoringChannel(IServiceProvider serviceProvider) : base(serviceProvider)
     {

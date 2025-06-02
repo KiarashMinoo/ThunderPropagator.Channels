@@ -8,7 +8,6 @@ using RapidStreamer.Application.Channels.Contexts;
 using RapidStreamer.Application.Pipelines.Receivers;
 using RapidStreamer.Application.Pipelines.Receivers.Attributes;
 using RapidStreamer.BuildingBlocks.Application;
-using RapidStreamer.Channels.Chat.Exceptions;
 using RapidStreamer.Channels.Chat.Models.Groups;
 using RapidStreamer.Channels.Chat.Models.Messages;
 using RapidStreamer.Channels.Chat.Models.Users;

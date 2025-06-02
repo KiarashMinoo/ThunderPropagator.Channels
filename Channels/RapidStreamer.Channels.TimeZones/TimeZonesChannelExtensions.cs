@@ -12,13 +12,28 @@ namespace RapidStreamer.Channels.TimeZones
 {
     public static class TimeZonesChannelExtensions
     {
-        public static IServiceCollection AddTimeZonesChannel(this IServiceCollection services, Action<TimeZonesChannelFeederConfiguration> builder)
+        public static IServiceCollection AddTimeZonesChannel(this IServiceCollection services, Action<TimeZonesChannelConfiguration>? channelConfigurator = null)
         {
-            services.AddChannel<TimeZonesChannel>()
+            TimeZonesChannelConfiguration timeZonesChannelConfiguration = new();
+            channelConfigurator?.Invoke(timeZonesChannelConfiguration);
+
+            services
+                .AddSingleton(timeZonesChannelConfiguration)
+                .AddChannel<TimeZonesChannel>()
                 .AddChannelFeeder<TimeZonesChannel, TimeZonesChannelFeeder, TimeZonesChannelFeederMessage, TimeZonesChannelFeederConfiguration>(configuration =>
                 {
-                    builder.Invoke(configuration);
-
+                    configuration.IsEnabled = timeZonesChannelConfiguration.FeederConfiguration.IsEnabled;
+                    configuration.Id = timeZonesChannelConfiguration.FeederConfiguration.Id;
+                    configuration.SerializerType = timeZonesChannelConfiguration.FeederConfiguration.SerializerType;
+                    configuration.EnrichmentScript = timeZonesChannelConfiguration.FeederConfiguration.EnrichmentScript;
+                    configuration.MetadataReferences = timeZonesChannelConfiguration.FeederConfiguration.MetadataReferences;
+                    configuration.Proxy = timeZonesChannelConfiguration.FeederConfiguration.Proxy;
+                    configuration.WeatherApiUrl = timeZonesChannelConfiguration.FeederConfiguration.WeatherApiUrl;
+                    configuration.WeatherApiKey = timeZonesChannelConfiguration.FeederConfiguration.WeatherApiKey;
+                    configuration.RedisCacheConnectionString = timeZonesChannelConfiguration.FeederConfiguration.RedisCacheConnectionString;
+                    configuration.SnapshotConnectionString = timeZonesChannelConfiguration.FeederConfiguration.SnapshotConnectionString;
+                    configuration.SnapshotRecoveryStorage = timeZonesChannelConfiguration.FeederConfiguration.SnapshotRecoveryStorage;
+                    configuration.SnapshotTtlHours = timeZonesChannelConfiguration.FeederConfiguration.SnapshotTtlHours;
 
                     services
                         .AddStackExchangeRedisCache(options =>

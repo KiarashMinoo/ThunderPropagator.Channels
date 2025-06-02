@@ -6,7 +6,7 @@ namespace RapidStreamer.Channels.NetworkMonitoring
 #if !DEBUG
         sealed
 #endif
-        class NetworkMonitoringChannel : AbstractChannel<NetworkMonitoringChannelMetadata>
+        class NetworkMonitoringChannel : AbstractChannel<NetworkMonitoringChannelMetadata, NetworkMonitoringChannelConfiguration>
     {
         public NetworkMonitoringChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
