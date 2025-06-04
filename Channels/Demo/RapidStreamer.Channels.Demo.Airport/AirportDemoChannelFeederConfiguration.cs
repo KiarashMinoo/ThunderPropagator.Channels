@@ -2,8 +2,16 @@
 
 namespace RapidStreamer.Channels.Demo.Airport;
 
-internal
+public
 #if !DEBUG
-        sealed
+    sealed
 #endif
-    class AirportDemoChannelFeederConfiguration : AbstractFeederConfiguration;
+    class AirportDemoChannelFeederConfiguration : AbstractFeederConfiguration
+{
+    public AirportDemoChannelFeederConfiguration()
+    {
+        IsEnabled = true;
+    }
+
+    internal void Bind(AirportDemoChannelFeederConfiguration airportDemoChannelFeederConfiguration) => base.Bind(airportDemoChannelFeederConfiguration);
+}

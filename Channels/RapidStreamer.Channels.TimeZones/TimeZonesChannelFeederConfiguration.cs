@@ -51,5 +51,10 @@ public
         set => Set(value);
     }
 
+    public TimeZonesChannelFeederConfiguration()
+    {
+        IsEnabled = false;
+    }
+
     internal void Bind(TimeZonesChannelFeederConfiguration timeZonesChannelFeederConfiguration) => base.Bind(timeZonesChannelFeederConfiguration);
 }

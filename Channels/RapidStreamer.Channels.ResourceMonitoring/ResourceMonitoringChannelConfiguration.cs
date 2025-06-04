@@ -8,11 +8,11 @@ namespace RapidStreamer.Channels.ResourceMonitoring
 #endif
         class ResourceMonitoringChannelConfiguration : AbstractChannelConfiguration
     {
+        public ResourceMonitoringChannelFeederConfiguration FeederConfiguration { get; set; } = new();
+
         public ResourceMonitoringChannelConfiguration()
         {
             IsEnabled = true;
         }
-
-        public ResourceMonitoringChannelFeederConfiguration FeederConfiguration { get; set; } = new();
     }
 }

@@ -13,7 +13,8 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
             services
                 .AddSingleton(stockListBasicDemoChannelConfiguration)
                 .AddChannel<StockListBasicDemoChannel>()
-                .AddChannelFeeder<StockListBasicDemoChannel, StockListBasicDemoChannelFeeder, StockListBasicDemoChannelFeederMessage, StockListBasicDemoChannelFeederConfiguration>();
+                .AddChannelFeeder<StockListBasicDemoChannel, StockListBasicDemoChannelFeeder, StockListBasicDemoChannelFeederMessage, StockListBasicDemoChannelFeederConfiguration>(configuration =>
+                    configuration.Bind(stockListBasicDemoChannelConfiguration.FeederConfiguration));
 
             return services;
         }

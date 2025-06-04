@@ -8,6 +8,8 @@ namespace RapidStreamer.Channels.Demo.StockListBasic
 #endif
         class StockListBasicDemoChannelConfiguration : AbstractChannelConfiguration
     {
+        public StockListBasicDemoChannelFeederConfiguration FeederConfiguration { get; set; } = new();
+
         public StockListBasicDemoChannelConfiguration()
         {
             IsEnabled = true;

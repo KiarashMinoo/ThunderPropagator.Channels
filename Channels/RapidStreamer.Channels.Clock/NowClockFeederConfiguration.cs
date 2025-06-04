@@ -2,9 +2,17 @@
 
 namespace RapidStreamer.Channels.Clock
 {
-    internal
+    public
 #if !DEBUG
         sealed
 #endif
-        class NowClockFeederConfiguration : AbstractFeederConfiguration;
+        class NowClockFeederConfiguration : AbstractFeederConfiguration
+    {
+        public NowClockFeederConfiguration()
+        {
+            IsEnabled = true;
+        }
+
+        internal void Bind(NowClockFeederConfiguration nowClockFeederConfiguration) => base.Bind(nowClockFeederConfiguration);
+    }
 }

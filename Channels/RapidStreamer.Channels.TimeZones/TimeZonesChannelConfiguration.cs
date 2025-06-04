@@ -9,5 +9,10 @@ namespace RapidStreamer.Channels.TimeZones
         class TimeZonesChannelConfiguration : AbstractChannelConfiguration
     {
         public TimeZonesChannelFeederConfiguration FeederConfiguration { get; set; } = new();
+
+        public TimeZonesChannelConfiguration()
+        {
+            IsEnabled = false;
+        }
     }
 }

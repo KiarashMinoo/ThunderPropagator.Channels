@@ -13,7 +13,8 @@ namespace RapidStreamer.Channels.NetworkMonitoring
             services
                 .AddSingleton(networkMonitoringChannelConfiguration)
                 .AddChannel<NetworkMonitoringChannel>()
-                .AddChannelFeeder<NetworkMonitoringChannel, NetworkMonitoringChannelFeeder, NetworkMonitoringChannelFeederMessage, NetworkMonitoringChannelFeederConfiguration>();
+                .AddChannelFeeder<NetworkMonitoringChannel, NetworkMonitoringChannelFeeder, NetworkMonitoringChannelFeederMessage, NetworkMonitoringChannelFeederConfiguration>(configuration =>
+                    configuration.Bind(networkMonitoringChannelConfiguration.FeederConfiguration));
 
             return services;
         }

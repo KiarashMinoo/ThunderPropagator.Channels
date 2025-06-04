@@ -13,8 +13,8 @@ namespace RapidStreamer.Channels.Clock
             services
                 .AddSingleton(clockChannelConfiguration)
                 .AddChannel<ClockChannel>()
-                .AddChannelFeeder<ClockChannel, NowClockFeeder, ClockChannelFeederMessage, NowClockFeederConfiguration>()
-                .AddChannelFeeder<ClockChannel, UtcNowClockFeeder, ClockChannelFeederMessage, UtcNowClockFeederConfiguration>();
+                .AddChannelFeeder<ClockChannel, NowClockFeeder, ClockChannelFeederMessage, NowClockFeederConfiguration>(configuration => configuration.Bind(clockChannelConfiguration.NowClockFeederConfiguration))
+                .AddChannelFeeder<ClockChannel, UtcNowClockFeeder, ClockChannelFeederMessage, UtcNowClockFeederConfiguration>(configuration => configuration.Bind(clockChannelConfiguration.UtcNowClockFeederConfiguration));
 
             return services;
         }

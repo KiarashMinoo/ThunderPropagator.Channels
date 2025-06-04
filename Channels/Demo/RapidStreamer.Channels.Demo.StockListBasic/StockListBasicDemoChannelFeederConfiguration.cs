@@ -2,8 +2,16 @@
 
 namespace RapidStreamer.Channels.Demo.StockListBasic;
 
-internal
+public
 #if !DEBUG
-        sealed
+    sealed
 #endif
-    class StockListBasicDemoChannelFeederConfiguration : AbstractFeederConfiguration;
+    class StockListBasicDemoChannelFeederConfiguration : AbstractFeederConfiguration
+{
+    public StockListBasicDemoChannelFeederConfiguration()
+    {
+        IsEnabled = true;
+    }
+
+    internal void Bind(StockListBasicDemoChannelFeederConfiguration stockListBasicDemoChannelFeederConfiguration) => base.Bind(stockListBasicDemoChannelFeederConfiguration);
+}

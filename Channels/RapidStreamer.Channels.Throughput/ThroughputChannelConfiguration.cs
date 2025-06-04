@@ -8,6 +8,8 @@ namespace RapidStreamer.Channels.Throughput
 #endif
         class ThroughputChannelConfiguration : AbstractChannelConfiguration
     {
+        public ThroughputChannelFeederConfiguration FeederConfiguration { get; set; } = new();
+
         public ThroughputChannelConfiguration()
         {
             IsEnabled = true;

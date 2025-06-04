@@ -2,9 +2,17 @@
 
 namespace RapidStreamer.Channels.Throughput
 {
-    internal
+    public
 #if !DEBUG
         sealed
 #endif
-        class ThroughputChannelFeederConfiguration : AbstractFeederConfiguration;
+        class ThroughputChannelFeederConfiguration : AbstractFeederConfiguration
+    {
+        public ThroughputChannelFeederConfiguration()
+        {
+            IsEnabled = true;
+        }
+
+        internal void Bind(ThroughputChannelFeederConfiguration throughputChannelFeederConfiguration) => base.Bind(throughputChannelFeederConfiguration);
+    }
 }

@@ -2,9 +2,17 @@
 
 namespace RapidStreamer.Channels.NetworkMonitoring
 {
-    internal
+    public
 #if !DEBUG
         sealed
 #endif
-        class NetworkMonitoringChannelFeederConfiguration : AbstractFeederConfiguration;
+        class NetworkMonitoringChannelFeederConfiguration : AbstractFeederConfiguration
+    {
+        public NetworkMonitoringChannelFeederConfiguration()
+        {
+            IsEnabled = true;
+        }
+
+        internal void Bind(NetworkMonitoringChannelFeederConfiguration networkMonitoringChannelFeederConfiguration) => base.Bind(networkMonitoringChannelFeederConfiguration);
+    }
 }

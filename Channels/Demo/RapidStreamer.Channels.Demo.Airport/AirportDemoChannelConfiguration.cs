@@ -8,6 +8,8 @@ namespace RapidStreamer.Channels.Demo.Airport
 #endif
         class AirportDemoChannelConfiguration : AbstractChannelConfiguration
     {
+        public AirportDemoChannelFeederConfiguration FeederConfiguration { get; set; } = new();
+
         public AirportDemoChannelConfiguration()
         {
             IsEnabled = true;

@@ -13,7 +13,7 @@ namespace RapidStreamer.Channels.Throughput
             services
                 .AddSingleton(throughputChannelConfiguration)
                 .AddChannel<ThroughputChannel>()
-                .AddChannelFeeder<ThroughputChannel, ThroughputChannelFeeder, ThroughputChannelFeederMessage, ThroughputChannelFeederConfiguration>();
+                .AddChannelFeeder<ThroughputChannel, ThroughputChannelFeeder, ThroughputChannelFeederMessage, ThroughputChannelFeederConfiguration>(configuration => configuration.Bind(throughputChannelConfiguration.FeederConfiguration));
 
             return services;
         }

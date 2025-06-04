@@ -13,7 +13,7 @@ namespace RapidStreamer.Channels.Demo.Airport
             services
                 .AddSingleton(airportDemoChannelConfiguration)
                 .AddChannel<AirportDemoChannel>()
-                .AddChannelFeeder<AirportDemoChannel, AirportDemoChannelFeeder, AirportDemoChannelFeederMessage, AirportDemoChannelFeederConfiguration>();
+                .AddChannelFeeder<AirportDemoChannel, AirportDemoChannelFeeder, AirportDemoChannelFeederMessage, AirportDemoChannelFeederConfiguration>(configuration => configuration.Bind(airportDemoChannelConfiguration.FeederConfiguration));
 
             return services;
         }

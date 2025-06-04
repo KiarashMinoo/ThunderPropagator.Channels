@@ -8,6 +8,8 @@ namespace RapidStreamer.Channels.NetworkMonitoring
 #endif
         class NetworkMonitoringChannelConfiguration : AbstractChannelConfiguration
     {
+        public NetworkMonitoringChannelFeederConfiguration FeederConfiguration { get; set; } = new();
+        
         public NetworkMonitoringChannelConfiguration()
         {
             IsEnabled = true;
