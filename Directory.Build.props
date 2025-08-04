@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup Label="Verioning">
-    <PackageVersion>1.0.75-beta.1</PackageVersion>
+    <Version>1.0.75-beta.1</Version>
   </PropertyGroup>
   <PropertyGroup>
     <OutputType>Library</OutputType>
