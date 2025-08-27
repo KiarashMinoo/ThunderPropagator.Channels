@@ -419,77 +419,92 @@ namespace RapidStreamer.Channels.Demo.Airport
             IServiceProvider serviceProvider)
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
-            _flights = GenerateAirports(DateTime.UtcNow.TimeOfDay);
+            _flights = GenerateAirports(2);
         }
 
-        private HashSet<AirportDemoChannelFeederMessage> GenerateAirports(TimeSpan timeSpan)
-            => new Faker<AirportDemoChannelFeederMessage>()
-                .RuleFor(x => x.Key, AirportDemoChannelMetadata.AirportDemo)
-                .RuleFor(x => x.Destination, faker => faker.PickRandom(Airports))
-                .RuleFor(x => x.Departure, faker => new TimeSpan(faker.Random.Int(timeSpan.Hours, 23), faker.Random.Int(timeSpan.Minutes, 59), 0))
-                .RuleFor(x => x.Flight, faker => $"RS-{faker.Random.Int(1000, 9999)}")
-                .RuleFor(x => x.Airline, $"({nameof(RapidStreamer)} Airlines) RSAL")
-                .RuleFor(x => x.Terminal, faker => faker.Random.Int(1, 8))
-                .RuleFor(x => x.Status, Statuses.ScheduledOnTime)
-                .Generate(Random.Shared.Next(32, Airports.Length))
-                .Where(flight => !_flights.Any(x => x.Terminal == flight.Terminal && Math.Abs(flight.Departure.TotalMinutes - x.Departure.TotalMinutes) <= 15))
+        private HashSet<AirportDemoChannelFeederMessage> GenerateAirports(int maxHours = 1, int terminalDeparturesPerHour = 4)
+        {
+            var lastFlight = _flights.MaxBy(flight => flight.Departure);
+            var minDeparture = lastFlight?.Departure ?? DateTime.UtcNow.TimeOfDay;
+            var minuteFlag = 60 / terminalDeparturesPerHour;
+            var terminalGenerationCount = (Random.Shared.Next(32, Airports.Length) / 8) + (maxHours * terminalDeparturesPerHour);
+
+            return Enumerable.Range(1, 8)
+                .SelectMany(terminal => new Faker<AirportDemoChannelFeederMessage>()
+                    .RuleFor(x => x.Key, AirportDemoChannelMetadata.AirportDemo)
+                    .RuleFor(x => x.Destination, f => f.PickRandom(Airports))
+                    .RuleFor(x => x.Airline, $"({nameof(RapidStreamer)} Airlines) RSAL")
+                    .RuleFor(x => x.Flight, f => $"RS-{f.Random.Int(1000, 9999)}")
+                    .RuleFor(x => x.Terminal, terminal)
+                    .RuleFor(x => x.Status, Statuses.ScheduledOnTime)
+                    .RuleFor(x => x.Departure, f =>
+                    {
+                        var min = f.IndexFaker * minuteFlag;
+                        var max = min + minuteFlag;
+                        var minutesToAdd = Random.Shared.Next(min, max);
+                        return minDeparture.Add(TimeSpan.FromMinutes(minutesToAdd));
+                    })
+                    .Generate(terminalGenerationCount)
+                    .ToList())
                 .ToHashSet();
+        }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<AirportDemoChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
 
-            var toRemoveAirports = _flights
-                .Where(airport => airport.Departure < DateTime.UtcNow.AddMinutes(-30).TimeOfDay)
+            var flightsToRemove = _flights
+                .Where(airport => airport.Departure < DateTime.UtcNow.AddHours(-1).TimeOfDay)
                 .ToArray();
 
-            if (toRemoveAirports.Length > 0)
+            if (flightsToRemove.Length > 0)
             {
-                foreach (var airport in toRemoveAirports)
+                foreach (var flightToRemove in flightsToRemove)
                 {
-                    airport.IsDeleted = true;
-                    _flights.Remove(airport);
-                    yield return airport;
+                    flightToRemove.IsDeleted = true;
+                    _flights.Remove(flightToRemove);
+                    yield return flightToRemove;
                 }
 
-                var newFlights = GenerateAirports(DateTime.Now.TimeOfDay);
+                var newFlights = GenerateAirports(1, Random.Shared.Next(3, 6));
                 foreach (var flight in newFlights)
                     _flights.Add(flight);
             }
 
-            var scheduledDelayedCount = 0;
             var faker = new Faker();
-            foreach (var flight in _flights.Where(flight => flight.Status is not (Statuses.LandedOnTime or Statuses.LandedDelayed or Statuses.Cancelled)))
+            var flag = faker.Random.Int(1, 100);
+            var flights = _flights
+                .Where(flight => flight.Status is not (Statuses.LandedOnTime or Statuses.LandedDelayed or Statuses.Cancelled))
+                .Where(flight => (flight.Departure - DateTime.UtcNow.TimeOfDay).TotalHours > 3)
+                .ToArray();
+
+            foreach (var flight in flights)
             {
-                //Statuses.ScheduledDelayed | Statuses.Cancelled
-                if (flight.Departure.TotalHours > 3)
+                switch (flag)
                 {
-                    var flag = faker.Random.Int(1, 100);
-                    if (scheduledDelayedCount < 3 && flag == 23)
-                    {
+                    case 23:
+                        //Statuses.ScheduledDelayed
                         flight.Status = Statuses.ScheduledDelayed;
                         flight.Departure = flight.Departure.Add(TimeSpan.FromMinutes(faker.Random.Int(30, 180)));
-                        scheduledDelayedCount++;
-                        yield return flight;
-                        continue;
-                    }
-
-                    var cancelFlags = Enumerable.Range(1, 10).Select(_ => faker.Random.Bool()).All(x => x);
-                    if (cancelFlags)
-                    {
+                        break;
+                    case 42:
+                        //Statuses.Cancelled
                         flight.Status = Statuses.Cancelled;
-                        yield return flight;
-                        continue;
+                        break;
+                    default:
+                    {
+                        //Statuses.LandedOnTime | Statuses.LandedDelayed 
+                        if (flight.Departure < DateTime.UtcNow.TimeOfDay)
+                        {
+                            flight.Status = flight.Status == Statuses.ScheduledDelayed ? Statuses.LandedDelayed : Statuses.LandedOnTime;
+                        }
+
+                        break;
                     }
                 }
 
-                //Statuses.LandedOnTime | Statuses.LandedDelayed 
-                if (flight.Departure < DateTime.UtcNow.TimeOfDay)
-                {
-                    flight.Status = flight.Status == Statuses.ScheduledDelayed ? Statuses.LandedDelayed : Statuses.LandedOnTime;
-                    yield return flight;
-                }
+                yield return flight;
             }
         }
     }
