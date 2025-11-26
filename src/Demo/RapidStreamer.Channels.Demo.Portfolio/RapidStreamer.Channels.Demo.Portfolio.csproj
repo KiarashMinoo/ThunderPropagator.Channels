@@ -1,48 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
-
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-    </PropertyGroup>
-
-    <PropertyGroup Label="PackageId">
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
-    </PropertyGroup>
-
-    <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'ARM64'" />
-        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'x86'" />
-        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'x64'" />
-        <PackageReference Include="RapidStreamer.Debug" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'AnyCPU'" />
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(Configuration)' == 'Release'">
-        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'ARM64'" />
-        <PackageReference Include="RapidStreamer.x86" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'x86'" />
-        <PackageReference Include="RapidStreamer.x64" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'x64'" />
-        <PackageReference Include="RapidStreamer" Version="1.0.166-beta.4" Condition="'$(Platform)' == 'AnyCPU'" />
+        <PackageReference Include="$(RapidStreamerPackageId)"/>
+        <PackageReference Include="Bogus"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Bogus" Version="35.6.4" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Compile Update="PortfolioDemoChannelFeederMessage.cs">
-        <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
-      </Compile>
-      <Compile Update="PortfolioDemoChannelMetadata.cs">
-        <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
-      </Compile>
-      <Compile Update="PortfolioDemoChannelConfiguration.cs">
-        <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
-      </Compile>
+        <Compile Update="PortfolioDemoChannelFeederMessage.cs">
+            <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="PortfolioDemoChannelMetadata.cs">
+            <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="PortfolioDemoChannelConfiguration.cs">
+            <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 
 </Project>

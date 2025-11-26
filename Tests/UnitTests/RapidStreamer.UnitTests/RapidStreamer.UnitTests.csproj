@@ -14,8 +14,4 @@
         <Using Include="Xunit"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\..\src\Demo\RapidStreamer.Channels.Demo.Airport\RapidStreamer.Channels.Demo.Airport.csproj"/>
-    </ItemGroup>
-
 </Project>

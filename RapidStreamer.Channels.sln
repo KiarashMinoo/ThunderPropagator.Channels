@@ -5,7 +5,7 @@ VisualStudioVersion = 17.8.34316.72
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{1F9B76FE-3A57-4AB5-8657-3EAB232B84AF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RapidStreamer.UnitTests", "Tests\RapidStreamer.UnitTests\RapidStreamer.UnitTests.csproj", "{5A33A95E-21B1-4FB7-8706-22EBB7CC49FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RapidStreamer.UnitTests", "Tests\UnitTests\RapidStreamer.UnitTests\RapidStreamer.UnitTests.csproj", "{5A33A95E-21B1-4FB7-8706-22EBB7CC49FE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{59A90A46-8DF0-4650-980D-ECB31866C39C}"
 EndProject
@@ -26,6 +26,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 		nuget.config = nuget.config
 		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RapidStreamer.Channels.ResourceMonitoring", "src\Channels\RapidStreamer.Channels.ResourceMonitoring\RapidStreamer.Channels.ResourceMonitoring.csproj", "{4451EC85-3A52-4CC8-93CF-CA518F83B719}"
@@ -61,6 +62,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RapidStreamer.Channels.Chat", "src\Channels\RapidStreamer.Channels.Chat\RapidStreamer.Channels.Chat.csproj", "{3439BDE4-BB64-45D8-BA86-E3FCA9915CF7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Channels", "Channels", "{7B75EF2E-BDA8-417E-B3C7-D52293ACFB21}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UnitTests", "UnitTests", "{C4788595-86B5-4D36-BC06-3C0B5EB57876}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -279,7 +282,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{5A33A95E-21B1-4FB7-8706-22EBB7CC49FE} = {1F9B76FE-3A57-4AB5-8657-3EAB232B84AF}
 		{2E093943-8EED-4B40-9220-DF1EA11CBE5D} = {59A90A46-8DF0-4650-980D-ECB31866C39C}
 		{B4E679E2-FDAA-4BBA-8E8F-9250269A36EA} = {2E093943-8EED-4B40-9220-DF1EA11CBE5D}
 		{E6619AC8-39A0-40B8-9504-1970280517F3} = {1ACE9E2E-4250-4D9A-8079-07D839222B67}
@@ -299,6 +301,8 @@ Global
 		{4451EC85-3A52-4CC8-93CF-CA518F83B719} = {7B75EF2E-BDA8-417E-B3C7-D52293ACFB21}
 		{0504F6FA-EF69-419A-B463-FA4413C51724} = {7B75EF2E-BDA8-417E-B3C7-D52293ACFB21}
 		{E07DE456-6395-4B2B-B6CF-7CB66F5EA30C} = {7B75EF2E-BDA8-417E-B3C7-D52293ACFB21}
+		{C4788595-86B5-4D36-BC06-3C0B5EB57876} = {1F9B76FE-3A57-4AB5-8657-3EAB232B84AF}
+		{5A33A95E-21B1-4FB7-8706-22EBB7CC49FE} = {C4788595-86B5-4D36-BC06-3C0B5EB57876}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3D6B7E96-5169-4380-ADCD-B781CDCE795C}
