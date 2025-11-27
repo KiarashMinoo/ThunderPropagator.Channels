@@ -5,7 +5,7 @@
     </PropertyGroup>
     <PropertyGroup Label="RapidStreamerPackages">
         <RapidStreamerVersion>1.0.1-beta.3</RapidStreamerVersion>
-        <RapidStreamerPackageId>RapidStreamer$(RapidStreamerConfigSuffix)$(RapidStreamerPlatformSuffix)</RapidStreamerPackageId>
+        <RapidStreamerPackageId>RapidStreamer$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</RapidStreamerPackageId>
     </PropertyGroup>
     <ItemGroup>
         <PackageVersion Include="$(RapidStreamerPackageId)" Version="$(RapidStreamerVersion)"/>
