@@ -4,7 +4,7 @@
         <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
     </PropertyGroup>
     <PropertyGroup Label="RapidStreamerPackages">
-        <RapidStreamerVersion>1.0.1-beta.3</RapidStreamerVersion>
+        <RapidStreamerVersion>1.0.1-beta.4</RapidStreamerVersion>
         <RapidStreamerPackageId>RapidStreamer$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</RapidStreamerPackageId>
     </PropertyGroup>
     <ItemGroup>
