@@ -1,204 +1,376 @@
 # NetworkMonitoring Channel
 
+[↑ Back to Channels](../README.md) | [→ All Documentation](/docs/README.md)
+
 ## Contents
 
 - [Overview](#overview)
 - [Files](#files)
 - [Types & Members](#types--members)
-- [Configuration](#configuration)
-- [Performance Notes](#performance-notes)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
+- [NetworkMonitoringChannel](#networkmonitoringchannel)
+- [NetworkMonitoringChannelConfiguration](#networkmonitoringchannelconfiguration)
+- [NetworkMonitoringChannelMetadata](#networkmonitoringchannelmetadata)
+- [NetworkMonitoringChannelFeederMessage](#networkmonitoringchannelfeedermessage)
+- [NetworkMonitoringChannelFeeder](#networkmonitoringchannelfeeder)
+- [NetworkMonitoringChannelFeederConfiguration](#networkmonitoringchannelfeederconfiguration)
+- [NetworkMonitoringChannelExtensions](#networkmonitoringchannelextensions)
+- [Diagrams](#diagrams)
+- [ThunderPropagator Dependencies](#thunderpropagator-dependencies)
 - [Examples](#examples)
 - [See Also](#see-also)
 
 ## Overview
 
-The NetworkMonitoring Channel provides real-time network usage statistics by monitoring bytes sent and received across all network interfaces. It tracks delta changes every second, making it suitable for bandwidth monitoring, network usage dashboards, and performance analysis applications.
+The **NetworkMonitoring Channel** provides real-time monitoring of network performance metrics across all network interfaces. This push-only channel tracks bytes received and bytes sent with 1-second sampling intervals, enabling network operations dashboards, bandwidth monitoring, and diagnostics.
+
+The feeder utilizes .NET's `System.Net.NetworkInformation.NetworkInterface` API to aggregate statistics from all active network interfaces, calculating delta values to provide per-second throughput measurements. Ideal for infrastructure monitoring, capacity planning, and network troubleshooting.
 
 ## Files
 
-| File | Primary type(s) | LOC (approx) | Responsibility |
-|------|----------------|--------------|----------------|
-| NetworkMonitoringChannel.cs | NetworkMonitoringChannel | 15 | Core channel implementation for network monitoring |
-| NetworkMonitoringChannelConfiguration.cs | NetworkMonitoringChannelConfiguration | 15 | Channel configuration with feeder settings |
-| NetworkMonitoringChannelExtensions.cs | NetworkMonitoringChannelExtensions | 25 | Service collection extensions for DI registration |
-| NetworkMonitoringChannelFeeder.cs | NetworkMonitoringChannelFeeder | 55 | Network statistics collection feeder |
-| NetworkMonitoringChannelFeederConfiguration.cs | NetworkMonitoringChannelFeederConfiguration | 15 | Configuration for network monitoring feeder |
-| NetworkMonitoringChannelFeederMessage.cs | NetworkMonitoringChannelFeederMessage | 35 | Message payload containing network statistics |
-| NetworkMonitoringChannelMetadata.cs | NetworkMonitoringChannelMetadata | 20 | Channel metadata and program descriptors |
+| File | Primary Type(s) | LOC (approx) | Responsibility |
+|------|-----------------|--------------|----------------|
+| [NetworkMonitoringChannel.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannel.cs) | `NetworkMonitoringChannel` | 15 | Main channel implementation |
+| [NetworkMonitoringChannelConfiguration.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannelConfiguration.cs) | `NetworkMonitoringChannelConfiguration` | ~18 | Channel configuration |
+| [NetworkMonitoringChannelMetadata.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannelMetadata.cs) | `NetworkMonitoringChannelMetadata` | ~20 | Schema descriptors |
+| [NetworkMonitoringChannelFeederMessage.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannelFeederMessage.cs) | `NetworkMonitoringChannelFeederMessage` | 37 | Data contract (Key, DateTime, BytesReceived, BytesSent) |
+| [NetworkMonitoringChannelFeeder.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannelFeeder.cs) | `NetworkMonitoringChannelFeeder` | 60 | Network statistics collection feeder |
+| [NetworkMonitoringChannelFeederConfiguration.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannelFeederConfiguration.cs) | `NetworkMonitoringChannelFeederConfiguration` | ~18 | Feeder configuration |
+| [NetworkMonitoringChannelExtensions.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/NetworkMonitoringChannelExtensions.cs) | `NetworkMonitoringChannelExtensions` | ~22 | DI registration |
+| [AssemblyInfo.cs](../../../src/Channels/ThunderPropagator.Channels.NetworkMonitoring/AssemblyInfo.cs) | - | 3 | Assembly attributes |
+
+[↑ Back to top](#networkmonitoring-channel)
 
 ## Types & Members
 
 | Type | Kind | Summary | Inherits/Implements | Key Members |
-|------|------|---------|-------------------|-------------|
-| NetworkMonitoringChannel | Class | Core network monitoring channel | AbstractChannel | Constructor |
-| NetworkMonitoringChannelConfiguration | Class | Channel configuration with feeder settings | AbstractChannelConfiguration | FeederConfiguration |
-| NetworkMonitoringChannelExtensions | Static Class | Service registration extensions | - | AddNetworkMonitoringChannel |
-| NetworkMonitoringChannelFeeder | Class | Network statistics collection feeder | IterativeFeeder | ReceiveAsync |
-| NetworkMonitoringChannelFeederMessage | Class | Network statistics payload | FeederMessage | Key, DateTime, BytesReceived, BytesSent |
+|------|------|---------|---------------------|-------------|
+| `NetworkMonitoringChannel` | Class (sealed in Release) | Main channel coordinator | `AbstractChannel<NetworkMonitoringChannelMetadata, NetworkMonitoringChannelConfiguration>` | Constructor |
+| `NetworkMonitoringChannelConfiguration` | Class (sealed in Release) | Channel configuration | `AbstractChannelConfiguration` | `NetworkMonitoringChannelFeederConfiguration`, `IsEnabled` |
+| `NetworkMonitoringChannelMetadata` | Class (sealed in Release) | Schema descriptors | `AbstractChannelMetadata<NetworkMonitoringChannel>` | `ChannelProgramsDescriptors` (4 descriptors) |
+| `NetworkMonitoringChannelFeederMessage` | Class (internal, sealed in Release) | Network metrics data contract | `FeederMessage` | `Key`, `DateTime`, `BytesReceived`, `BytesSent` |
+| `NetworkMonitoringChannelFeeder` | Class (internal, sealed in Release) | Network stats collector | `IterativeFeeder<...>` | `ReceiveAsync()`, delta tracking |
+| `NetworkMonitoringChannelFeederConfiguration` | Class (sealed in Release) | Feeder configuration | `AbstractFeederConfiguration` | `IsEnabled`, `Bind()` |
+| `NetworkMonitoringChannelExtensions` | Static Class | DI registration | - | `AddNetworkMonitoringChannel()` |
 
-### NetworkMonitoringChannel
+[↑ Back to top](#networkmonitoring-channel)
 
-- **Kind**: Sealed class (in Release mode)
-- **Namespace**: RapidStreamer.Channels.NetworkMonitoring
-- **Inherits**: AbstractChannel<NetworkMonitoringChannelMetadata, NetworkMonitoringChannelConfiguration>
+## NetworkMonitoringChannel
 
-**Key Methods**:
-- `NetworkMonitoringChannel(IServiceProvider)` — Constructor accepting service provider
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`  
+**Inheritance:** `AbstractChannel<NetworkMonitoringChannelMetadata, NetworkMonitoringChannelConfiguration>`  
+**Modifiers:** `public`, `sealed` (in Release builds only)
 
-**Usage Recipe**:
-```csharp
-services.AddNetworkMonitoringChannel(config => {
-    config.IsEnabled = true;
-    config.FeederConfiguration.IsEnabled = true;
-});
-```
+Simple channel implementation with no custom logic. Delegates entirely to the feeder for network data collection.
 
-[↑ Back to top](#contents)
-
-### NetworkMonitoringChannelFeederMessage
-
-- **Kind**: Internal sealed class (in Release mode)
-- **Namespace**: RapidStreamer.Channels.NetworkMonitoring
-- **Inherits**: FeederMessage
-
-**Key Properties**:
-- `Key : string` — Fixed identifier "NetworkMonitoring"
-- `DateTime : string` — Unix timestamp as string
-- `BytesReceived : long` — Delta bytes received since last measurement
-- `BytesSent : long` — Delta bytes sent since last measurement
-
-**Constructors**:
-- `NetworkMonitoringChannelFeederMessage()` — Default constructor, sets Key to "NetworkMonitoring"
-
-**Usage Recipe**:
-```csharp
-var message = new NetworkMonitoringChannelFeederMessage
-{
-    DateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-    BytesReceived = 1024,
-    BytesSent = 512
-};
-```
-
-[↑ Back to top](#contents)
-
-### NetworkMonitoringChannelFeeder
-
-- **Kind**: Internal sealed class (in Release mode)
-- **Namespace**: RapidStreamer.Channels.NetworkMonitoring
-- **Inherits**: IterativeFeeder<NetworkMonitoringChannel, NetworkMonitoringChannelFeederMessage, NetworkMonitoringChannelFeederConfiguration>
-
-**Key Properties**:
-- `HealthName : string` — "NetworkMonitoringChannelFeeder"
-- `HealthTags : string[]` — Includes "StaticFeeder"
-
-**Private Fields**:
-- `_lastBytesReceived : long` — Tracks previous measurement for delta calculation
-- `_lastBytesSent : long` — Tracks previous measurement for delta calculation
-
-**Key Methods**:
-- `ReceiveAsync(CancellationToken)` — Collects network interface statistics every second
-
-**Performance Notes**: 
-- 1-second polling interval
-- Uses NetworkInterface.GetAllNetworkInterfaces() for system-wide statistics
-- Calculates deltas to track bandwidth usage changes
-
-**Usage Recipe**:
-```csharp
-// Automatically registered when AddNetworkMonitoringChannel is called
-// Streams network deltas every second
-```
-
-[↑ Back to top](#contents)
-
-## Configuration
-
-The network monitoring channel supports basic feeder configuration:
+### Constructor
 
 ```csharp
-public class NetworkMonitoringChannelConfiguration : AbstractChannelConfiguration
-{
-    public NetworkMonitoringChannelFeederConfiguration FeederConfiguration { get; set; } = new();
-}
+public NetworkMonitoringChannel(IServiceProvider serviceProvider)
 ```
 
-The feeder configuration inherits from `AbstractFeederConfiguration` and can be enabled/disabled.
+[↑ Back to top](#networkmonitoring-channel)
 
-## Performance Notes
+## NetworkMonitoringChannelConfiguration
 
-- **Update Frequency**: Statistics collected every 1 second
-- **Resource Usage**: Moderate CPU usage when polling network interfaces
-- **Network Impact**: Read-only operations, no network traffic generated
-- **Memory**: Minimal memory footprint with delta tracking
-- **Platform**: Uses .NET NetworkInterface API (cross-platform)
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`  
+**Inheritance:** `AbstractChannelConfiguration`
 
-## RapidStreamer Dependencies
+Configuration class managing channel and feeder settings.
+
+### Properties
+
+```csharp
+public NetworkMonitoringChannelFeederConfiguration NetworkMonitoringChannelFeederConfiguration { get; set; }
+```
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## NetworkMonitoringChannelMetadata
+
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`  
+**Inheritance:** `AbstractChannelMetadata<NetworkMonitoringChannel>`
+
+Schema descriptors for network monitoring data.
+
+### Properties
+
+```csharp
+public override ChannelProgramsDescriptorCollection ChannelProgramsDescriptors { get; }
+```
+
+Returns 4 descriptors:
+
+| Index | Name | Type | Description |
+|-------|------|------|-------------|
+| 0 | `Key` | `SubscribingKey` | Subscription key (always "NetworkMonitoring") |
+| 1 | `DateTime` | `String` | Unix timestamp (seconds) |
+| 2 | `BytesReceived` | `Number` | Bytes received delta (per second) |
+| 3 | `BytesSent` | `Number` | Bytes sent delta (per second) |
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## NetworkMonitoringChannelFeederMessage
+
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`  
+**Inheritance:** `FeederMessage`  
+**Modifiers:** `internal`, `sealed` (in Release builds only)
+
+Data contract for network performance metrics with per-second throughput deltas.
+
+### Properties
+
+```csharp
+public string Key { get; private set; }
+```
+Always set to `"NetworkMonitoring"`. Used for subscription routing.
+
+```csharp
+public string DateTime { get; set; }
+```
+Unix timestamp in seconds (`DateTimeOffset.UtcNow.ToUnixTimeSeconds()`).
+
+```csharp
+public long BytesReceived { get; set; }
+```
+Bytes received delta since last measurement (per-second throughput).
+
+```csharp
+public long BytesSent { get; set; }
+```
+Bytes sent delta since last measurement (per-second throughput).
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## NetworkMonitoringChannelFeeder
+
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`  
+**Inheritance:** `IterativeFeeder<NetworkMonitoringChannel, NetworkMonitoringChannelFeederMessage, NetworkMonitoringChannelFeederConfiguration>`  
+**Modifiers:** `internal`, `sealed` (in Release builds only)
+
+Feeder collecting network statistics from all network interfaces using `System.Net.NetworkInformation` API. Tracks cumulative values and calculates deltas to provide per-second throughput measurements.
+
+### Fields
+
+```csharp
+private long _lastBytesReceived;
+private long _lastBytesSent;
+```
+
+Stores cumulative values from previous iteration for delta calculation.
+
+### Constructor
+
+```csharp
+public NetworkMonitoringChannelFeeder(...)
+```
+
+Initializes feeder with health monitoring:
+- `HealthName`: `"NetworkMonitoringChannelFeeder"`
+- `HealthTags`: includes `"StaticFeeder"` tag
+
+### Methods
+
+```csharp
+protected override async IAsyncEnumerable<FeederReceivedMessage<NetworkMonitoringChannelFeederMessage>> ReceiveAsync(
+    CancellationToken cancellationToken = default)
+```
+
+Generates network metrics in infinite loop:
+1. Delays 1 second
+2. Queries all network interfaces via `NetworkInterface.GetAllNetworkInterfaces()`
+3. Aggregates `BytesReceived` and `BytesSent` from all interfaces
+4. Calculates deltas from previous values
+5. Updates tracking fields
+6. Yields message with per-second throughput
+7. Repeats until cancellation
+
+**Network Interfaces Queried**: All interfaces returned by `NetworkInterface.GetAllNetworkInterfaces()`, including Ethernet, Wi-Fi, loopback, and virtual adapters.
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## NetworkMonitoringChannelFeederConfiguration
+
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`  
+**Inheritance:** `AbstractFeederConfiguration`
+
+Configuration for network monitoring feeder. Enabled by default.
+
+### Methods
+
+```csharp
+internal void Bind(NetworkMonitoringChannelFeederConfiguration configuration)
+```
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## NetworkMonitoringChannelExtensions
+
+**Namespace:** `ThunderPropagator.Channels.NetworkMonitoring`
+
+DI registration extensions.
+
+### Methods
+
+```csharp
+public static IServiceCollection AddNetworkMonitoringChannel(
+    this IServiceCollection services,
+    Action<NetworkMonitoringChannelConfiguration>? channelConfigurator = null)
+```
+
+Registers channel with feeder.
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## Diagrams
+
+### Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "NetworkMonitoring Channel"
+        Channel[NetworkMonitoringChannel<br/>Main Coordinator]
+        Config[NetworkMonitoringChannelConfiguration<br/>IsEnabled: true]
+        Metadata[NetworkMonitoringChannelMetadata<br/>4 Schema Descriptors]
+        
+        Feeder[NetworkMonitoringChannelFeeder<br/>1-second sampling]
+        Message[NetworkMonitoringChannelFeederMessage<br/>Key, DateTime, BytesReceived, BytesSent]
+        
+        Channel -->|Uses| Config
+        Channel -->|Provides| Metadata
+        Channel -->|Manages| Feeder
+        Feeder -->|Produces| Message
+        
+        subgraph "Data Source"
+            NetAPI[NetworkInterface API<br/>System.Net.NetworkInformation]
+            Interfaces[All Network Interfaces<br/>Ethernet, Wi-Fi, Loopback, etc.]
+        end
+        
+        Feeder -->|Queries every 1s| NetAPI
+        NetAPI -->|Aggregates| Interfaces
+        
+        subgraph "Clients"
+            Dashboard[Network Dashboard]
+            Monitor[Bandwidth Monitor]
+        end
+        
+        Message -->|Push| Dashboard
+        Message -->|Push| Monitor
+    end
+    
+    style Channel fill:#4a9eff,color:#fff
+    style Feeder fill:#28a745,color:#fff
+    style Message fill:#ffc107,color:#000
+```
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Feeder as NetworkMonitoringChannelFeeder
+    participant API as NetworkInterface API
+    participant Channel as NetworkMonitoringChannel
+    participant Client
+    
+    Note over Feeder: Initialization
+    Feeder->>Feeder: _lastBytesReceived = 0<br/>_lastBytesSent = 0
+    
+    Client->>Channel: Subscribe(Key: "NetworkMonitoring")
+    Channel-->>Client: Subscription Confirmed
+    
+    loop Every 1 second
+        Feeder->>Feeder: await Task.Delay(1s)
+        Feeder->>API: NetworkInterface.GetAllNetworkInterfaces()
+        API-->>Feeder: [Ethernet, Wi-Fi, Loopback, ...]
+        
+        Feeder->>Feeder: Sum all BytesReceived
+        Feeder->>Feeder: Sum all BytesSent
+        Feeder->>Feeder: Calculate delta from last values
+        Feeder->>Feeder: Update _lastBytesReceived, _lastBytesSent
+        
+        Feeder->>Channel: NetworkMonitoringChannelFeederMessage<br/>(BytesReceived: 1024000, BytesSent: 512000)
+        Channel->>Client: Push metrics (WebSocket)
+    end
+```
+
+[↑ Back to top](#networkmonitoring-channel)
+
+## ThunderPropagator Dependencies
 
 | Package | Version | Description | Links |
 |---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
+| ThunderPropagator (platform-specific) | 1.0.1-beta.5 | Core framework | [GitHub Packages](https://github.com/orgs/ThunderPropagator/packages) |
+
+[↑ Back to top](#networkmonitoring-channel)
 
 ## Examples
 
-### Basic Network Monitoring Setup
+### Basic Registration
 
 ```csharp
-public void ConfigureServices(IServiceCollection services)
-{
-    services.AddNetworkMonitoringChannel(config => 
-    {
-        config.IsEnabled = true;
-        config.FeederConfiguration.IsEnabled = true;
-    });
-}
-```
+using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Channels.NetworkMonitoring;
 
-### Consuming Network Statistics
+var services = new ServiceCollection();
 
-```csharp
-// Subscribe to receive network usage updates
-await channel.SubscribeAsync("network-monitor", message => 
+services.AddNetworkMonitoringChannel(config =>
 {
-    var bytesReceivedMB = message.BytesReceived / (1024.0 * 1024.0);
-    var bytesSentMB = message.BytesSent / (1024.0 * 1024.0);
-    
-    Console.WriteLine($"Network Delta - Received: {bytesReceivedMB:F2} MB, Sent: {bytesSentMB:F2} MB");
-    Console.WriteLine($"Timestamp: {message.DateTime}");
+    config.IsEnabled = true;
+    config.NetworkMonitoringChannelFeederConfiguration.IsEnabled = true;
 });
 ```
 
-### Bandwidth Monitoring Dashboard
+### Client Subscription
 
 ```csharp
-private readonly List<NetworkUsagePoint> _usageHistory = new();
-
-await channel.SubscribeAsync("bandwidth-dashboard", message => 
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
 {
-    var timestamp = DateTimeOffset.FromUnixTimeSeconds(long.Parse(message.DateTime));
-    var usage = new NetworkUsagePoint
-    {
-        Timestamp = timestamp,
-        BytesReceived = message.BytesReceived,
-        BytesSent = message.BytesSent
-    };
+    ["Key"] = "NetworkMonitoring"
+});
+
+subscription.OnMessage(message =>
+{
+    var metrics = message as NetworkMonitoringChannelFeederMessage;
     
-    _usageHistory.Add(usage);
+    // Convert to human-readable format
+    var receivedMB = metrics.BytesReceived / 1024.0 / 1024.0;
+    var sentMB = metrics.BytesSent / 1024.0 / 1024.0;
     
-    // Keep only last 60 seconds of data
-    var cutoff = DateTimeOffset.UtcNow.AddSeconds(-60);
-    _usageHistory.RemoveAll(x => x.Timestamp < cutoff);
-    
-    // Calculate average bandwidth
-    var avgBandwidth = _usageHistory.Average(x => x.BytesReceived + x.BytesSent);
-    UpdateDashboard(avgBandwidth);
+    Console.WriteLine($"↓ {receivedMB:F2} MB/s  ↑ {sentMB:F2} MB/s");
 });
 ```
+
+### Dashboard Visualization
+
+```csharp
+// Real-time network throughput chart
+var chartData = new List<(DateTime Time, double DownloadMBps, double UploadMBps)>();
+
+subscription.OnMessage(message =>
+{
+    var metrics = message as NetworkMonitoringChannelFeederMessage;
+    var timestamp = DateTimeOffset.FromUnixTimeSeconds(long.Parse(metrics.DateTime)).DateTime;
+    
+    chartData.Add((
+        Time: timestamp,
+        DownloadMBps: metrics.BytesReceived / 1024.0 / 1024.0,
+        UploadMBps: metrics.BytesSent / 1024.0 / 1024.0
+    ));
+    
+    // Keep only last 60 seconds
+    if (chartData.Count > 60)
+        chartData.RemoveAt(0);
+    
+    UpdateChart(chartData);
+});
+```
+
+[↑ Back to top](#networkmonitoring-channel)
 
 ## See Also
 
-- [../ResourceMonitoring/README.md](../ResourceMonitoring/README.md) — System resource monitoring
-- [../Throughput/README.md](../Throughput/README.md) — Application throughput metrics
+- [Channels Overview](../README.md) — All 7 production channels
+- [ResourceMonitoring Channel](../ResourceMonitoring/README.md) — System resource monitoring
+- [Throughput Channel](../Throughput/README.md) — High-volume streaming
+- [Main Documentation](/docs/README.md) — Repository documentation home
 
-[↑ Back to top](#contents)
+[↑ Back to top](#networkmonitoring-channel)

@@ -1,68 +1,146 @@
-# Demo StockListBasic
+# StockListBasic Demo
 
-## Contents
-
-- [Overview](#overview)
-- [Files](#files)
-- [Types & Members](#types--members)
-- [Configuration](#configuration)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
-- [Examples](#examples)
-- [See Also](#see-also)
+[↑ Back to Demo Projects](../README.md) | [→ All Documentation](/docs/README.md)
 
 ## Overview
 
-The StockListBasic Demo Channel provides a simplified stock listing demonstration, offering basic stock market data streaming. It serves as an entry-level example for financial data applications and stock market monitoring systems.
+**Domain**: Market Data Streaming | **Complexity**: ★★★☆☆ Intermediate
 
-## Files
+The **StockListBasic Demo** is a real-time stock market data feed providing price updates, volume tracking, and market statistics. This demo demonstrates high-frequency data streaming, efficient message routing, and market data protocols.
 
-| File | Primary type(s) | LOC (approx) | Responsibility |
-|------|----------------|--------------|----------------|
-| StockListBasicDemoChannel.cs | StockListBasicDemoChannel | 15 | Core channel implementation for basic stock data |
-| StockListBasicDemoChannelConfiguration.cs | StockListBasicDemoChannelConfiguration | 15 | Channel configuration settings |
-| StockListBasicDemoChannelFeeder.cs | StockListBasicDemoChannelFeeder | 40 | Basic stock data generation feeder |
-| StockListBasicDemoChannelFeederConfiguration.cs | StockListBasicDemoChannelFeederConfiguration | 15 | Feeder configuration settings |
-| StockListBasicDemoChannelFeederMessage.cs | StockListBasicDemoChannelFeederMessage | 30 | Stock information message payload |
-| StockListBasicDemoChannelMetadata.cs | StockListBasicDemoChannelMetadata | 20 | Channel metadata and program descriptors |
-| StockListBasicDemoExtensions.cs | StockListBasicDemoExtensions | 25 | Service registration extensions |
+## Key Features
 
-## Types & Members
+- **Real-Time Price Updates**: Tick-by-tick or snapshot-based price feeds
+- **Volume Tracking**: Real-time volume, VWAP calculations
+- **Market Statistics**: High/low, change, percent change
+- **Symbol-Based Routing**: Subscribe to specific symbols or watchlists
+- **Market Hours Handling**: Pre-market, regular, after-hours, closed
+- **Market Summary**: Index updates (S&P 500, NASDAQ, DOW)
+- **Quote Aggregation**: Bid/ask, spread, depth
 
-| Type | Kind | Summary | Inherits/Implements | Key Members |
-|------|------|---------|-------------------|-------------|
-| StockListBasicDemoChannel | Class | Basic stock listing channel | AbstractChannel | Constructor |
+## Architecture
 
-## Configuration
+### Entities
+- **Stock**: Symbol, Name, Exchange, Currency
+- **Quote**: Symbol, Timestamp, Price, Bid, Ask, BidSize, AskSize
+- **Trade**: Symbol, Timestamp, Price, Volume
+- **OHLCV**: Symbol, Date, Open, High, Low, Close, Volume
+- **MarketSummary**: Index, Value, Change, PercentChange
 
-```csharp
-services.AddStockListBasicDemoChannel(config => 
-{
-    config.IsEnabled = true;
-    config.FeederConfiguration.IsEnabled = true;
-});
+### Pipelines (3+)
+- `Stocks/Subscribe` — Subscribe to symbol(s)
+- `Stocks/GetQuote` — Get current quote for symbol
+- `Market/GetSummary` — Get market indices summary
+
+### Feeders
+- **StockTickFeeder**: Real-time tick data from market feed
+- **MarketSummaryFeeder**: Index values (S&P, NASDAQ, etc.)
+- **QuoteSnapshotFeeder**: Periodic quote snapshots (fallback if no tick feed)
+
+## Market Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Channel as StockListChannel
+    participant Feeder as StockTickFeeder
+    participant MarketAPI as External Market API
+    
+    Client->>Channel: Subscribe(Symbols: ["AAPL", "MSFT"])
+    Channel-->>Client: Subscription Confirmed
+    
+    loop Every few milliseconds
+        MarketAPI->>Feeder: WebSocket: Price Update<br/>(AAPL: 150.25)
+        Feeder->>Channel: StockTickMessage
+        Channel->>Client: Push Update<br/>(Symbol: AAPL, Price: 150.25)
+    end
+    
+    Client->>Channel: Request: GetQuote(Symbol: "GOOGL")
+    Channel->>MarketAPI: Query latest quote
+    MarketAPI-->>Channel: Quote data
+    Channel-->>Client: Response: {Bid: 135.50, Ask: 135.52, ...}
 ```
 
-## RapidStreamer Dependencies
-
-| Package | Version | Description | Links |
-|---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-
-## Examples
-
-### Basic Stock Monitoring
+## Usage Example
 
 ```csharp
-await channel.SubscribeAsync("stock-monitor", message => 
+// Register StockListBasic channel
+services.AddStockListBasicChannel(config =>
 {
-    Console.WriteLine($"{message.Symbol}: ${message.Price:F2}");
-    Console.WriteLine($"Change: {message.Change:+0.00;-0.00}");
+    config.MarketDataProvider = "AlphaVantage";  // or IEX, Polygon, etc.
+    config.ApiKey = "your-api-key";
+    config.UpdateFrequency = TimeSpan.FromMilliseconds(500);  // Snapshot mode
 });
+
+// Client: Subscribe to watchlist
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
+{
+    ["Symbols"] = new[] { "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA" }
+});
+
+subscription.OnMessage(message =>
+{
+    var tick = message as StockTickMessage;
+    
+    var changePercent = (tick.Price - tick.PreviousClose) / tick.PreviousClose * 100;
+    var arrow = changePercent >= 0 ? "↑" : "↓";
+    
+    Console.WriteLine($"{tick.Symbol} ${tick.Price:F2} {arrow} {Math.Abs(changePercent):F2}%  Vol: {tick.Volume:N0}");
+});
+
+// Client: Get quote on-demand
+var quoteRequest = new
+{
+    RequestKey = "Stocks/GetQuote",
+    Symbol = "NVDA"
+};
+var quote = await channel.SendRequestAsync(quoteRequest);
+Console.WriteLine($"Bid: ${quote.Bid}  Ask: ${quote.Ask}  Spread: ${quote.Ask - quote.Bid:F2}");
 ```
+
+## Market Data Message
+
+```csharp
+public class StockTickMessage : FeederMessage
+{
+    public string Symbol { get; set; }           // Stock symbol
+    public decimal Price { get; set; }            // Current/last price
+    public long Volume { get; set; }              // Cumulative volume
+    public decimal Change { get; set; }           // Price change from previous close
+    public decimal PercentChange { get; set; }    // Percent change
+    public decimal High { get; set; }             // Day high
+    public decimal Low { get; set; }              // Day low
+    public decimal Open { get; set; }             // Opening price
+    public decimal PreviousClose { get; set; }    // Previous day close
+    public DateTime Timestamp { get; set; }       // Quote timestamp
+}
+```
+
+## Dependencies
+
+- ThunderPropagator 1.0.1-beta.5
+- Market Data API (Alpha Vantage, IEX Cloud, Polygon.io, etc.)
+- Optional: WebSocket-based real-time feed for lower latency
+
+## Performance Considerations
+
+- **High Frequency**: Can handle 1000+ ticks/second
+- **Symbol Routing**: Efficient filtering to subscribed symbols only
+- **Batching**: Optional message batching for reduced overhead
+- **Throttling**: Configurable update frequency per symbol
+
+## Use Cases
+
+- Stock ticker displays
+- Trading terminal applications
+- Market data dashboards
+- Financial news integration
+- Algorithmic trading signal sources
 
 ## See Also
 
-- [../Portfolio/README.md](../Portfolio/README.md) — Advanced portfolio demo
-- [../Airport/README.md](../Airport/README.md) — Airport flight demo
+- [Demo Projects Overview](../README.md)
+- [Portfolio Demo](../Portfolio/README.md) — Portfolio management with market data
+- [Throughput Channel](../../Channels/Throughput/README.md) — High-volume streaming patterns
 
-[↑ Back to top](#contents)
+[↑ Back to top](#stocklistbasic-demo)

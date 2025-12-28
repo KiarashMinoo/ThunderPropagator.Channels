@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.Clock
+namespace ThunderPropagator.UnitTests.Channels.Clock
 {
     public class ClockSmokeTests
     {

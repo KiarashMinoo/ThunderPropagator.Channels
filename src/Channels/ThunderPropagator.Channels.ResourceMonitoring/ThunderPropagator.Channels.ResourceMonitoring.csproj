@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="ResourceMonitoringChannelMetadata.cs">
+            <DependentUpon>ResourceMonitoringChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ResourceMonitoringChannelFeederMessage.cs">
+            <DependentUpon>ResourceMonitoringChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ResourceMonitoringChannelFeederConfiguration.cs">
+            <DependentUpon>ResourceMonitoringChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ResourceMonitoringChannelConfiguration.cs">
+            <DependentUpon>ResourceMonitoringChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>

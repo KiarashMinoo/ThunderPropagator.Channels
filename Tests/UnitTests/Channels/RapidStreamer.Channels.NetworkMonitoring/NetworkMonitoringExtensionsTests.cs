@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.NetworkMonitoring
+namespace ThunderPropagator.UnitTests.Channels.NetworkMonitoring
 {
     public class NetworkMonitoringExtensionsTests
     {

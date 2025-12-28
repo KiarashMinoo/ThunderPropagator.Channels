@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.Chat
+namespace ThunderPropagator.UnitTests.Channels.Chat
 {
     public class ChatSmokeTests
     {

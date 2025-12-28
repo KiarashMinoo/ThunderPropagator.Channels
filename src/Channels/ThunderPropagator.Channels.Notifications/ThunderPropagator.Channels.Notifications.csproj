@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="NotificationPriority.cs">
+            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NotificationType.cs">
+            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NotificationsChannelFeederMessage.cs">
+            <DependentUpon>NotificationsChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NotificationsChannelMetadata.cs">
+            <DependentUpon>NotificationsChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NotificationsFeederConfiguration.cs">
+            <DependentUpon>NotificationsChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>

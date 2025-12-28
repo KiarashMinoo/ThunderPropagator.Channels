@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="Bogus"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="PlayerType.cs">
+            <DependentUpon>RockPaperScissorsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
+        <Compile Update="MoveKind.cs">
+            <DependentUpon>RockPaperScissorsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RockPaperScissorsChannelFeederMessage.cs">
+            <DependentUpon>RockPaperScissorsChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RockPaperScissorsChannelMetadata.cs">
+            <DependentUpon>RockPaperScissorsChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="Player.cs">
+            <DependentUpon>RockPaperScissorsComputer.cs</DependentUpon>
+        </Compile>
+        <Compile Update="RockPaperScissorsChannelConfiguration.cs">
+            <DependentUpon>RockPaperScissorsChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>

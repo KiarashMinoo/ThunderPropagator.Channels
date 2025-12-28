@@ -1,170 +1,283 @@
-# RapidStreamer.Channels Documentation
+# ThunderPropagator.Channels Documentation
+
+Welcome to the comprehensive documentation for **ThunderPropagator.Channels**, a production-ready library providing real-time streaming channels built on the ThunderPropagator framework for blazingly fast, cloud-native data streaming with WebSocket-based pub/sub patterns.
 
 ## Contents
 
 - [Overview](#overview)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [Documentation Sections](#documentation-sections)
+  - [Production Channels](#production-channels)
+  - [Business Demos](#business-demos)
+  - [Interactive Games](#interactive-games)
 - [Architecture](#architecture)
-- [Package Information](#package-information)
-- [Getting Started](#getting-started)
-- [API Reference](#api-reference)
-- [Coverage Audit](#coverage-audit)
+- [Key Concepts](#key-concepts)
+- [Dependencies](#dependencies)
+- [Contributing](#contributing)
 
 ## Overview
 
-RapidStreamer.Channels provides a comprehensive collection of pre-built streaming channels and demo implementations for the RapidStreamer framework. This library offers production-ready channels for common scenarios including real-time communication, system monitoring, time-based operations, and interactive gaming experiences.
+This repository contains **12 complete implementations** demonstrating the ThunderPropagator framework's capabilities:
+
+- **7 Production Channels**: Fully-featured real-time channels for common use cases
+- **3 Business Demos**: Complex domain-driven applications showcasing advanced patterns
+- **2 Interactive Games**: Multiplayer games demonstrating bidirectional communication
+
+All implementations follow strict architectural patterns and include comprehensive documentation, unit tests, and deployment configurations.
+
+## Repository Structure
+
+```
+ThunderPropagator.Channels/
+├── src/
+│   ├── Channels/          # 7 production-ready channels
+│   ├── Demo/              # 3 business demonstration projects
+│   └── Games/             # 2 interactive multiplayer games
+├── Tests/
+│   ├── ArchTests/         # Architecture validation tests
+│   ├── UnitTests/         # Comprehensive unit test suites
+│   └── Demo/              # Demo-specific integration tests
+├── docs/                  # This documentation (auto-generated)
+│   ├── Channels/          # Channel documentation
+│   ├── Demo/              # Demo documentation
+│   └── Games/             # Game documentation
+└── .github/
+    ├── copilot-instructions.md
+    └── prompts/
+```
+
+## Quick Start
+
+### Install a Channel
+
+```bash
+# Install via NuGet (GitHub Packages)
+dotnet add package ThunderPropagator.Channels.Clock
+```
+
+### Register and Configure
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Channels.Clock;
+
+var services = new ServiceCollection();
+
+// Register Clock channel with default configuration
+services.AddClockChannel(config =>
+{
+    config.IsEnabled = true;
+});
+
+var serviceProvider = services.BuildServiceProvider();
+```
+
+### Subscribe to Real-Time Updates
+
+```csharp
+// Client connects and subscribes to local time feed
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
+{
+    ["Key"] = "Now"
+});
+
+subscription.OnMessage(message =>
+{
+    var clockMessage = message as ClockChannelFeederMessage;
+    Console.WriteLine($"Current time: {clockMessage.DateTime}");
+});
+```
+
+## Documentation Sections
+
+### Production Channels
+
+Explore the 7 production-ready channels in [Channels/README.md](./Channels/README.md):
+
+| Channel | Description | Key Features | Documentation |
+|---------|-------------|--------------|---------------|
+| **[Chat](./Channels/Chat/README.md)** | Full-featured chat system | Groups, users, messages, pipelines | [View →](./Channels/Chat/README.md) |
+| **[Clock](./Channels/Clock/README.md)** | Real-time time streaming | Local & UTC feeds, 300ms updates | [View →](./Channels/Clock/README.md) |
+| **[NetworkMonitoring](./Channels/NetworkMonitoring/README.md)** | Network performance metrics | Latency, bandwidth, packet loss | [View →](./Channels/NetworkMonitoring/README.md) |
+| **[Notifications](./Channels/Notifications/README.md)** | User notification system | Priority levels, types, snapshots | [View →](./Channels/Notifications/README.md) |
+| **[ResourceMonitoring](./Channels/ResourceMonitoring/README.md)** | System resource monitoring | CPU, memory, disk metrics | [View →](./Channels/ResourceMonitoring/README.md) |
+| **[Throughput](./Channels/Throughput/README.md)** | High-volume data streaming | Stress testing, performance validation | [View →](./Channels/Throughput/README.md) |
+| **[TimeZones](./Channels/TimeZones/README.md)** | Multi-timezone time display | NodaTime integration, weather API | [View →](./Channels/TimeZones/README.md) |
+
+### Business Demos
+
+See complex domain applications in [Demo/README.md](./Demo/README.md):
+
+| Demo | Description | Domain | Documentation |
+|------|-------------|--------|---------------|
+| **[Airport](./Demo/Airport/README.md)** | Flight tracking system | Aviation operations | [View →](./Demo/Airport/README.md) |
+| **[Portfolio](./Demo/Portfolio/README.md)** | Investment portfolio management | Finance & trading | [View →](./Demo/Portfolio/README.md) |
+| **[StockListBasic](./Demo/StockListBasic/README.md)** | Stock market data feed | Market data streaming | [View →](./Demo/StockListBasic/README.md) |
+
+### Interactive Games
+
+Explore multiplayer games in [Games/README.md](./Games/README.md):
+
+| Game | Description | Players | Documentation |
+|------|-------------|---------|---------------|
+| **[RockPaperScissors](./Games/RockPaperScissors/README.md)** | Classic hand game | 2 players | [View →](./Games/RockPaperScissors/README.md) |
+| **[TicTacToe](./Games/TicTacToe/README.md)** | Strategic board game | 2 players | [View →](./Games/TicTacToe/README.md) |
 
 ## Architecture
 
-The library is organized into three main areas:
+### Channel Pattern
 
-### [Channels](./Channels/README.md) — Production-Ready Streaming Channels
-Core channels for real-world applications:
-- **Communication**: [Chat](./Channels/Chat/README.md), [Notifications](./Channels/Notifications/README.md)
-- **Monitoring**: [NetworkMonitoring](./Channels/NetworkMonitoring/README.md), [ResourceMonitoring](./Channels/ResourceMonitoring/README.md), [Throughput](./Channels/Throughput/README.md)  
-- **Time-based**: [Clock](./Channels/Clock/README.md), [TimeZones](./Channels/TimeZones/README.md)
+All channels follow the **ThunderPropagator Channel Pattern**:
 
-### [Demo](./Demo/README.md) — Business Application Examples
-Practical implementations showcasing real-world usage patterns:
-- **[Airport](./Demo/Airport/README.md)** — Flight information and status tracking
-- **[Portfolio](./Demo/Portfolio/README.md)** — Financial portfolio management with advanced features
-- **[StockListBasic](./Demo/StockListBasic/README.md)** — Simple stock market data streaming
-
-### [Games](./Games/README.md) — Interactive Gaming Implementations
-Advanced multiplayer game channels demonstrating complex state management:
-- **[RockPaperScissors](./Games/RockPaperScissors/README.md)** — Classic game with player matching
-- **[TicTacToe](./Games/TicTacToe/README.md)** — Advanced session management and concurrent gameplay
-
-## Package Information
-
-### Core Dependencies
-All channels depend on the RapidStreamer framework:
-
-| Package | Version | Description | Repository |
-|---------|---------|-------------|------------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-
-### Platform Support
-The framework supports multiple platforms through conditional package references:
-- **AnyCPU**: `RapidStreamer` / `RapidStreamer.Debug`
-- **x64**: `RapidStreamer.x64` / `RapidStreamer.Debug.x64`
-- **x86**: `RapidStreamer.x86` / `RapidStreamer.Debug.x86`
-- **ARM64**: `RapidStreamer.ARM64` / `RapidStreamer.Debug.ARM64`
-
-### External Dependencies
-Some channels use additional libraries:
-- **Bogus** — Used in Portfolio demo for realistic data generation
-- **Weather APIs** — TimeZones channel supports external weather integration
-- **Redis** — TimeZones channel supports Redis caching
-
-## Getting Started
-
-### 1. Install Dependencies
-```xml
-<PackageReference Include="RapidStreamer" Version="1.0.166-beta.2" />
-```
-
-### 2. Configure NuGet Source
-Add the RapidStreamer GitHub Packages feed:
-```bash
-dotnet nuget add source https://nuget.pkg.github.com/KiarashMinoo/index.json -n "GitHub-KiarashMinoo"
-```
-
-### 3. Register Channels
-```csharp
-public void ConfigureServices(IServiceCollection services)
-{
-    // Basic time streaming
-    services.AddClockChannel();
+```mermaid
+graph TB
+    subgraph "Channel Components"
+        Channel[AbstractChannel<br/>Main Coordinator]
+        Config[Configuration<br/>Settings & Toggles]
+        Metadata[Metadata<br/>Schema Descriptors]
+        
+        subgraph "Data Sources"
+            Feeder1[Feeder 1<br/>Data Generator]
+            Feeder2[Feeder 2<br/>External API]
+        end
+        
+        subgraph "Request Handlers"
+            Pipeline1[Pipeline 1<br/>Domain Action]
+            Pipeline2[Pipeline 2<br/>Domain Action]
+        end
+        
+        Message[FeederMessage<br/>Data Contract]
+    end
     
-    // Real-time notifications
-    services.AddNotificationsChannel<MyNotificationConfig>();
+    Channel -->|Configures| Config
+    Channel -->|Defines| Metadata
+    Channel -->|Manages| Feeder1
+    Channel -->|Manages| Feeder2
+    Channel -->|Routes| Pipeline1
+    Channel -->|Routes| Pipeline2
+    Feeder1 -->|Produces| Message
+    Feeder2 -->|Produces| Message
+    Pipeline1 -.->|Updates| Message
+    Pipeline2 -.->|Updates| Message
     
-    // System monitoring
-    services.AddNetworkMonitoringChannel();
-    services.AddResourceMonitoringChannel();
-}
+    subgraph "Clients"
+        ClientA[WebSocket Client A]
+        ClientB[WebSocket Client B]
+    end
+    
+    Message -->|Push| ClientA
+    Message -->|Push| ClientB
+    ClientA -.->|Request| Pipeline1
+    ClientB -.->|Request| Pipeline2
 ```
 
-### 4. Subscribe and Handle Messages
-```csharp
-public class MessageHandler
-{
-    public async Task StartAsync(ClockChannel clockChannel)
-    {
-        await clockChannel.SubscribeAsync("time-subscriber", message => 
-        {
-            Console.WriteLine($"Current time: {message.DateTime}");
-        });
-    }
-}
-```
+### Key Components
 
-## API Reference
+1. **Channel**: Inherits `AbstractChannel<TMetadata, TConfiguration>` - coordinates feeders and pipelines
+2. **Feeders**: Inherit `IterativeFeeder<T>` - generate/collect data asynchronously
+3. **Pipelines**: Inherit `AbstractReceivePipeline<T>` - handle client requests
+4. **Messages**: Inherit `FeederMessage` - data contracts for serialization
+5. **Metadata**: Extends `AbstractChannelMetadata` - schema descriptors
+6. **Configuration**: Extends `AbstractChannelConfiguration` - runtime settings
 
-### Channel Types
-- **AbstractChannel<TMetadata, TConfiguration>** — Base class for all channels
-- **FeederMessage** — Base class for all message types  
-- **AbstractChannelConfiguration** — Base class for channel configurations
-- **AbstractChannelMetadata** — Base class for channel metadata
+## Key Concepts
 
-### Common Patterns
-- **Service Registration**: Extension methods for `IServiceCollection`
-- **Message Subscription**: Async subscription with message handlers
-- **Configuration**: Fluent configuration patterns
-- **Health Monitoring**: Built-in health checks and diagnostics
+### Feeders (Data Sources)
 
-### Message Contracts
-All channels follow consistent message patterns:
-- Property-based messaging with GetValueOrDefault/SetValue
-- Timestamp support with DateTimeOffset
-- Nullable reference types for optional fields
-- JSON serialization support
+Feeders generate or collect data for channels:
 
-## Coverage Audit
+- **Iterative Feeders**: Infinite loops emitting data at intervals (Clock, ResourceMonitoring)
+- **Event-Driven Feeders**: React to external events (NetworkMonitoring)
+- **API Feeders**: Pull data from external APIs (TimeZones weather)
 
-### Documentation Status
-✅ **Complete Documentation**
-- **Channels**: 7/7 channels documented with rich API details
-  - Chat, Clock, NetworkMonitoring, Notifications, ResourceMonitoring, Throughput, TimeZones
-- **Demo**: 3/3 demos documented with usage examples
-  - Airport, Portfolio, StockListBasic  
-- **Games**: 2/2 games documented with advanced patterns
-  - RockPaperScissors, TicTacToe
+### Pipelines (Request Handlers)
 
-### Documentation Quality
-✅ **Rich Content Standards Met**
-- All READMEs include comprehensive API details from source analysis
-- Type tables with inheritance, implementation details, and key members
-- Usage recipes and realistic examples for each component
-- Performance notes and architectural guidance
-- Cross-references and navigation links
-- RapidStreamer dependency information with GitHub Packages links
+Pipelines handle bidirectional client-server communication:
 
-### Source Coverage
-✅ **Complete Source Analysis**
-- Public API extraction from all .cs files
-- Internal types documented where relevant for completeness
-- Configuration classes and extension methods covered
-- Enumeration values and their semantics documented
-- Message contracts and data structures detailed
+- **Request/Response Pattern**: Client sends request, server responds
+- **Domain Organization**: Grouped by domain (Users, Groups, Messages)
+- **Request Key Routing**: Format: `"{Domain}/{Action}"` (e.g., `"Users/Login"`)
 
-### Cross-References
-✅ **Navigation Structure**
-- Hierarchical README structure with parent-child linking
-- See Also sections connecting related channels
-- Anchor-based deep linking within documents
-- Table of contents with jump links
+### Snapshots
 
-### Package Dependencies
-✅ **Dependency Tracking**
-- RapidStreamer core framework versions tracked
-- Platform-specific package variations documented
-- External dependencies (Bogus, Redis, Weather APIs) noted
-- GitHub Packages feed configuration provided
+Channels can persist message snapshots for:
 
-**Total Documentation Files**: 20 READMEs  
-**Lines of Documentation**: ~4,000 lines  
-**API Types Covered**: 50+ classes, enums, and interfaces  
-**Code Examples**: 60+ usage examples and recipes
+- **State Recovery**: New subscribers receive recent state
+- **Historical Data**: Query past messages
+- **Caching**: Reduce redundant computations
 
-[↑ Back to top](#contents)
+### Subscription Model
+
+Clients subscribe with parameters:
+
+- **Subscribing Keys**: Filter data streams (e.g., `Key: "Now"` vs `"UtcNow"`)
+- **Dynamic Routing**: Messages routed based on subscription parameters
+- **Multi-Subscription**: One client can have multiple subscriptions
+
+## Dependencies
+
+### Core Framework
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| ThunderPropagator | 1.0.1-beta.5 | Core framework (platform-specific packages) |
+
+### External Libraries
+
+| Package | Version | Usage |
+|---------|---------|-------|
+| Microsoft.Extensions.* | 8.x/9.x/10.x | DI, caching, HTTP, diagnostics |
+| NodaTime | 3.2.2 | TimeZones channel (timezone handling) |
+| Bogus | 35.6.5 | Test data generation |
+| xUnit | 2.9.3 | Unit testing framework |
+| NSubstitute | 5.3.0 | Mocking framework |
+
+### Multi-Targeting
+
+All projects target .NET 8, 9, and 10 with platform-specific builds:
+- AnyCPU, x86, x64, ARM64
+
+Packages follow naming convention:
+- Debug: `{ProjectName}.Debug.{Platform}`
+- Release: `{ProjectName}.{Platform}` (AnyCPU omits suffix)
+
+## Contributing
+
+This repository follows strict architectural rules defined in [.github/copilot-instructions.md](../.github/copilot-instructions.md):
+
+### Channel Structure Requirements
+
+Every channel must include:
+
+1. `{Name}Channel.cs` - Main channel class
+2. `{Name}ChannelConfiguration.cs` - Configuration
+3. `{Name}ChannelMetadata.cs` - Schema descriptors
+4. `{Name}ChannelFeederMessage.cs` - Data contract
+5. `{Name}ChannelExtensions.cs` - DI registration
+
+### Code Conventions
+
+- **Conditional Sealing**: Classes are non-sealed in DEBUG for testability
+- **XML Documentation**: Required for all public APIs
+- **Nullable Reference Types**: Enabled globally
+- **Telemetry**: Activity tracing and metrics in all feeders/pipelines
+
+### Documentation Standards
+
+This documentation is auto-generated following rules in `.github/prompts/repo-docs.md.prompt.md`:
+
+- Deep recursion for all non-excluded folders
+- Mandatory Mermaid diagrams (sequence, class, component)
+- Comprehensive type/member tables
+- Realistic code examples (no test code)
+- Cross-document linking with relative paths
+
+---
+
+**Version**: 1.0.1-beta.7  
+**Framework**: ThunderPropagator 1.0.1-beta.5  
+**Targets**: .NET 8.0, 9.0, 10.0  
+**License**: See repository root for licensing information
+
+For technical details, see individual channel/demo/game documentation linked above.

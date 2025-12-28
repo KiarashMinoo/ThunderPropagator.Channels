@@ -1,8 +1,8 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using Xunit;
-using RapidStreamer.Channels.TimeZones.WeatherApi;
+using ThunderPropagator.Channels.TimeZones.WeatherApi;
 
-namespace RapidStreamer.UnitTests.TimeZones.WeatherApi
+namespace ThunderPropagator.UnitTests.TimeZones.WeatherApi
 {
     public class CachedWeatherHandlerTests
     {

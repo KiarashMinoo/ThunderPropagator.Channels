@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Demo.Airport
+namespace ThunderPropagator.UnitTests.Demo.Airport
 {
     public class AirportSmokeTests
     {

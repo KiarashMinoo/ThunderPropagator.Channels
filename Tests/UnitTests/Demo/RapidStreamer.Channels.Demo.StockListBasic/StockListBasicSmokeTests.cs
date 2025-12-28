@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Demo.StockListBasic
+namespace ThunderPropagator.UnitTests.Demo.StockListBasic
 {
     public class StockListBasicSmokeTests
     {

@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="ThroughputChannelMetadata.cs">
+            <DependentUpon>ThroughputChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ThroughputChannelFeederMessage.cs">
+            <DependentUpon>ThroughputChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ThroughputChannelFeederConfiguration.cs">
+            <DependentUpon>ThroughputChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="ThroughputChannelConfiguration.cs">
+            <DependentUpon>ThroughputChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>

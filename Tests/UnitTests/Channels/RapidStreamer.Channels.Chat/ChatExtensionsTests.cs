@@ -1,8 +1,8 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using RapidStreamer.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models;
 
-namespace RapidStreamer.UnitTests.Channels.Chat
+namespace ThunderPropagator.UnitTests.Channels.Chat
 {
     public class ChatExtensionsTests
     {

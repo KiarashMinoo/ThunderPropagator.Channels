@@ -1,110 +1,129 @@
-# Demo Portfolio
+# Portfolio Demo
 
-## Contents
-
-- [Overview](#overview)
-- [Files](#files)
-- [Types & Members](#types--members)
-- [Configuration](#configuration)
-- [Performance Notes](#performance-notes)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
-- [Examples](#examples)
-- [See Also](#see-also)
+[↑ Back to Demo Projects](../README.md) | [→ All Documentation](/docs/README.md)
 
 ## Overview
 
-The Portfolio Demo Channel provides a comprehensive financial portfolio simulation using the Bogus library for realistic data generation. It simulates stock portfolios with real-time price updates, quantity tracking, and portfolio management features including automatic data generation and snapshot management.
+**Domain**: Finance & Trading | **Complexity**: ★★★★☆ Advanced
 
-## Files
+The **Portfolio Demo** is an investment portfolio management system with real-time position tracking, profit/loss calculations, market data integration, and risk analytics. This demo demonstrates financial calculations, multi-currency support, and high-frequency data updates.
 
-| File | Primary type(s) | LOC (approx) | Responsibility |
-|------|----------------|--------------|----------------|
-| PortfolioDemoChannel.cs | PortfolioDemoChannel | 115 | Advanced channel with simulation logic and snapshot handling |
-| PortfolioDemoChannelConfiguration.cs | PortfolioDemoChannelConfiguration | 15 | Channel configuration settings |
-| PortfolioDemoChannelFeederMessage.cs | PortfolioDemoChannelFeederMessage | 40 | Portfolio item message payload |
-| PortfolioDemoChannelMetadata.cs | PortfolioDemoChannelMetadata | 20 | Channel metadata and program descriptors |
-| PortfolioDemoExtensions.cs | PortfolioDemoExtensions | 25 | Service registration extensions |
-| Pipelines/ | Various | - | Portfolio management pipelines |
+## Key Features
 
-## Types & Members
+- **Real-Time Valuation**: Live portfolio value updates
+- **Position Tracking**: Holdings across stocks, bonds, crypto, etc.
+- **P&L Calculations**: Realized & unrealized gains/losses
+- **Market Data Integration**: Real-time pricing from external APIs
+- **Multi-Currency Support**: FX conversion, base currency normalization
+- **Historical Performance**: Time-series tracking, returns calculation
+- **Risk Metrics**: Beta, Sharpe ratio, max drawdown
+- **Asset Allocation**: Diversification analysis
 
-| Type | Kind | Summary | Inherits/Implements | Key Members |
-|------|------|---------|-------------------|-------------|
-| PortfolioDemoChannel | Class | Advanced portfolio simulation channel | AbstractChannel | GeneratePrice, OnSubscriptionAdded, Simulate |
+## Architecture
 
-### PortfolioDemoChannel
+### Entities
+- **Portfolio**: Id, Name, BaseCurrency, TotalValue, Cash
+- **Position**: Id, PortfolioId, Symbol, Quantity, CostBasis, CurrentPrice, MarketValue
+- **Asset**: Symbol, Name, AssetType, Exchange, Currency
+- **Transaction**: Id, PortfolioId, Type, Symbol, Quantity, Price, Fees, Date
+- **PriceHistory**: Symbol, Date, Open, High, Low, Close, Volume
 
-**Constants**:
-- `PortfolioDemo : string` — "PortfolioDemo"
-- `PortfolioDemoItems : string` — "PortfolioDemoItems"
+### Pipelines (8+)
+- `Portfolios/Create` — Create new portfolio
+- `Portfolios/GetSummary` — Portfolio overview with P&L
+- `Positions/GetAll` — List all positions
+- `Positions/GetDetails` — Single position details
+- `Transactions/Buy` — Execute buy transaction
+- `Transactions/Sell` — Execute sell transaction
+- `Transactions/GetHistory` — Transaction log
+- `Analytics/GetPerformance` — Returns, risk metrics
 
-**Key Methods**:
-- `GeneratePrice() : decimal` — Static method generating random prices (1-100)
-- `OnSubscriptionAdded(Subscription)` — Handles new subscriptions with duplicate key validation
-- `Simulate()` — Background thread for portfolio simulation
+### Feeders
+- **MarketDataFeeder**: Real-time price updates for held assets
+- **PortfolioValuationFeeder**: Periodic portfolio revaluation
+- **FxRateFeeder**: Currency exchange rates
 
-**Key Features**:
-- **Bogus Integration**: Uses Faker for realistic data generation
-- **Duplicate Prevention**: Throws DuplicatedKeyException for existing keys
-- **Background Simulation**: Separate thread for continuous updates
-- **Snapshot Integration**: Searches and manages portfolio snapshots
+## Financial Calculations
 
-## Configuration
+### Unrealized P&L
+```csharp
+UnrealizedPnL = (CurrentPrice - CostBasis) * Quantity
+UnrealizedPnLPercent = (CurrentPrice - CostBasis) / CostBasis * 100
+```
+
+### Realized P&L
+```csharp
+RealizedPnL = (SellPrice - CostBasis) * QuantitySold - Fees
+```
+
+### Portfolio Return
+```csharp
+Return = (CurrentValue - InitialInvestment + Withdrawals - Deposits) / InitialInvestment * 100
+```
+
+## Usage Example
 
 ```csharp
-services.AddPortfolioDemoChannel(config => 
+// Register Portfolio channel
+services.AddPortfolioChannel(config =>
 {
-    config.IsEnabled = true;
+    config.MarketDataApiKey = "your-api-key";
+    config.BaseCurrency = "USD";
 });
-```
 
-## Performance Notes
-
-- **Background Processing**: Uses dedicated thread for simulation
-- **Bogus Library**: Leverages Faker for realistic test data
-- **Snapshot Management**: Efficient duplicate detection and portfolio state management
-- **Exception Handling**: Built-in duplicate key protection
-
-## RapidStreamer Dependencies
-
-| Package | Version | Description | Links |
-|---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-| Bogus | Latest | Fake data generation | [NuGet](https://www.nuget.org/packages/Bogus/) |
-
-## Examples
-
-### Portfolio Tracking
-
-```csharp
-await channel.SubscribeAsync("portfolio-tracker", message => 
+// Client: Create portfolio
+var createRequest = new
 {
-    var totalValue = message.Price * message.Quantity;
-    Console.WriteLine($"{message.Stock}: {message.Quantity} shares @ ${message.Price:F2} = ${totalValue:F2}");
+    RequestKey = "Portfolios/Create",
+    Name = "My Investment Portfolio",
+    BaseCurrency = "USD",
+    InitialCash = 100000
+};
+var portfolio = await channel.SendRequestAsync(createRequest);
+
+// Client: Subscribe to portfolio updates
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
+{
+    ["PortfolioId"] = portfolio.Id
 });
+
+subscription.OnMessage(message =>
+{
+    var update = message as PortfolioUpdateMessage;
+    Console.WriteLine($"Portfolio Value: ${update.TotalValue:N2}");
+    Console.WriteLine($"Total P&L: ${update.TotalPnL:N2} ({update.TotalPnLPercent:F2}%)");
+});
+
+// Client: Execute buy transaction
+var buyRequest = new
+{
+    RequestKey = "Transactions/Buy",
+    PortfolioId = portfolio.Id,
+    Symbol = "AAPL",
+    Quantity = 10,
+    LimitPrice = 150.00
+};
+await channel.SendRequestAsync(buyRequest);
 ```
 
-### Portfolio Subscription with Key
+## Dependencies
 
-```csharp
-try 
-{
-    await channel.SubscribeAsync("user-portfolio-123", message => 
-    {
-        // Handle portfolio updates for specific user
-        UpdatePortfolioDisplay(message);
-    });
-}
-catch (DuplicatedKeyException ex)
-{
-    // Handle duplicate subscription attempt
-    Console.WriteLine($"Portfolio {ex.Key} already exists");
-}
-```
+- ThunderPropagator 1.0.1-beta.5
+- Market Data API (Alpha Vantage, IEX Cloud, etc.)
+- FX Rate API (optional for multi-currency)
+
+## Use Cases
+
+- Trading platforms
+- Wealth management dashboards
+- Robo-advisor applications
+- Investment tracking apps
+- Financial analytics tools
 
 ## See Also
 
-- [../Airport/README.md](../Airport/README.md) — Airport flight demo
-- [../StockListBasic/README.md](../StockListBasic/README.md) — Basic stock listing demo
+- [Demo Projects Overview](../README.md)
+- [StockListBasic Demo](../StockListBasic/README.md) — Market data streaming
+- [Throughput Channel](../../Channels/Throughput/README.md) — Performance monitoring
 
-[↑ Back to top](#contents)
+[↑ Back to top](#portfolio-demo)

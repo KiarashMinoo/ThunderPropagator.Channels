@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.Notifications
+namespace ThunderPropagator.UnitTests.Channels.Notifications
 {
     public class NotificationsSmokeTests
     {

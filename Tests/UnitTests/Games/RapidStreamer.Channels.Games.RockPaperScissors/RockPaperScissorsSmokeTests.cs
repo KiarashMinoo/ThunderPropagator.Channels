@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Games.RockPaperScissors
+namespace ThunderPropagator.UnitTests.Games.RockPaperScissors
 {
     public class RockPaperScissorsSmokeTests
     {

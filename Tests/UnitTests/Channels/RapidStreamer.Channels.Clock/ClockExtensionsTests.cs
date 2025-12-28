@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.Clock
+namespace ThunderPropagator.UnitTests.Channels.Clock
 {
     public class ClockExtensionsTests
     {

@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.ArchTests
+namespace ThunderPropagator.ArchTests
 {
     public class ArchitectureTests
     {

@@ -1,372 +1,285 @@
-# RapidStreamer.Channels# RapidStreamer.Channels
+# ThunderPropagator.Channels
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4)](https://dotnet.microsoft.com/)
+[![Platforms](https://img.shields.io/badge/Platforms-AnyCPU%20%7C%20x86%20%7C%20x64%20%7C%20ARM64-lightgrey)](https://github.com/KiarashMinoo/ThunderPropagator.Channels)
 
+**Redefining real-time data streaming**: effortless, blazingly fast, and cloud-native for maximum impact.
 
-**RapidStreamer** is a cutting-edge software solution designed to redefine real-time data streaming. Our mission is to provide **effortless, blazingly fast, and cloud-native streaming capabilities** for maximum impact. This repository contains production-ready channels, demo implementations, and interactive gaming examples that empower developers to build scalable, high-performance streaming applications with ease.**RapidStreamer** is a cutting-edge software solution designed to redefine real-time data streaming. Our mission is to provide **effortless, blazingly fast, and cloud-native streaming capabilities** for maximum impact. This repository contains production-ready channels, demo implementations, and interactive gaming examples that empower developers to build scalable, high-performance streaming applications with ease.
+## Overview
 
+**ThunderPropagator.Channels** (Project ARC) is a comprehensive library delivering **12 production-ready real-time streaming implementations** built on the ThunderPropagator framework. This repository showcases blazingly fast, cloud-native WebSocket-based pub/sub patterns across diverse domains—from simple clock feeds to complex multiplayer games.
 
+### What's Included
 
-The library includes **7 production channels**, **3 business demos**, and **2 interactive games**, all supporting **.NET 9** and **.NET 8** across multiple platforms including **ARM64**, **x64**, **x86**, and **AnyCPU**. Packages are available from **GitHub Packages**: `https://nuget.pkg.github.com/KiarashMinoo/index.json`.The library includes **7 production channels**, **3 business demos**, and **2 interactive games**, all supporting **.NET 9** and **.NET 8** across multiple platforms including **ARM64**, **x64**, **x86**, and **AnyCPU**. Packages are available from **GitHub Packages**: `https://nuget.pkg.github.com/KiarashMinoo/index.json`.
+- **7 Production Channels**: Fully-featured real-time channels (Chat, Clock, NetworkMonitoring, Notifications, ResourceMonitoring, Throughput, TimeZones)
+- **3 Business Demos**: Complex domain-driven applications (Airport, Portfolio, StockListBasic)
+- **2 Interactive Games**: Multiplayer games with bidirectional communication (RockPaperScissors, TicTacToe)
+- **Comprehensive Documentation**: Auto-generated, deep-dive technical docs with Mermaid diagrams
+- **Multi-Framework**: Targets .NET 8, 9, and 10
+- **Multi-Platform**: Supports AnyCPU, x86, x64, ARM64
 
+## Quick Start
 
+### Prerequisites
 
-## Table of Contents## Table of Contents
+- .NET SDK 9.0+ (see [global.json](global.json))
+- GitHub Personal Access Token (for ThunderPropagator package access)
 
+### Configure NuGet Source
 
-
-- [Overview](#overview)- [Overview](#overview)
-
-- [Documentation](#documentation)- [Documentation](#documentation)
-
-- [Features](#features)- [Features](#features)
-
-- [Package Information](#package-information)- [Package Information](#package-information)
-
-- [Installation](#installation)- [Installation](#installation)
-
-- [Quick Start](#quick-start)- [Quick Start](#quick-start)
-
-- [License](#license)- [License](#license)
-
-
-
-## Overview## Overview
-
-
-
-RapidStreamer.Channels provides a comprehensive collection of pre-built streaming channels and implementations for the RapidStreamer framework, designed to revolutionize real-time data streaming by providing:RapidStreamer.Channels provides a comprehensive collection of pre-built streaming channels and implementations for the RapidStreamer framework, designed to revolutionize real-time data streaming by providing:
-
-
-
-- **Effortless Integration**: Simple and intuitive APIs for seamless integration into your applications- **Effortless Integration**: Simple and intuitive APIs for seamless integration into your applications
-
-- **Blazingly Fast Performance**: Optimized for low-latency, high-throughput streaming- **Blazingly Fast Performance**: Optimized for low-latency, high-throughput streaming
-
-- **Cloud-Native Architecture**: Built for modern cloud environments, enabling scalability and resilience- **Cloud-Native Architecture**: Built for modern cloud environments, enabling scalability and resilience
-
-- **Cross-Platform Support**: Compatible with ARM64, x64, x86, and AnyCPU platforms- **Cross-Platform Support**: Compatible with ARM64, x64, x86, and AnyCPU platforms
-
-
-
-Whether you're building real-time analytics, live event processing, IoT data pipelines, or interactive applications, RapidStreamer.Channels empowers you to deliver maximum impact with minimal effort.Whether you're building real-time analytics, live event processing, IoT data pipelines, or interactive applications, RapidStreamer.Channels empowers you to deliver maximum impact with minimal effort.
-
-
-
-## Documentation## Documentation
-
-
-
-📖 **[Complete Documentation](./docs/README.md)** — Comprehensive API reference, usage examples, and architectural guidance📖 **[Complete Documentation](./docs/README.md)** — Comprehensive API reference, usage examples, and architectural guidance
-
-
-
-### Quick Links### Quick Links
-
-- **[Production Channels](./docs/Channels/README.md)** — 7 ready-to-use channels for real-world applications- **[Production Channels](./docs/Channels/README.md)** — 7 ready-to-use channels for real-world applications
-
-- **[Demo Implementations](./docs/Demo/README.md)** — 3 business scenario examples with realistic data- **[Demo Implementations](./docs/Demo/README.md)** — 3 business scenario examples with realistic data
-
-- **[Interactive Games](./docs/Games/README.md)** — 2 multiplayer game implementations with advanced patterns- **[Interactive Games](./docs/Games/README.md)** — 2 multiplayer game implementations with advanced patterns
-
-
-
-## Features## Features
-
-
-
-### Production-Ready Channels### Production-Ready Channels
-
-- **Communication**: Real-time [Chat](./docs/Channels/Chat/README.md) and [Notifications](./docs/Channels/Notifications/README.md)- **Communication**: Real-time [Chat](./docs/Channels/Chat/README.md) and [Notifications](./docs/Channels/Notifications/README.md)
-
-- **Monitoring**: [Network](./docs/Channels/NetworkMonitoring/README.md), [Resource](./docs/Channels/ResourceMonitoring/README.md), and [Throughput](./docs/Channels/Throughput/README.md) monitoring- **Monitoring**: [Network](./docs/Channels/NetworkMonitoring/README.md), [Resource](./docs/Channels/ResourceMonitoring/README.md), and [Throughput](./docs/Channels/Throughput/README.md) monitoring
-
-- **Time-based**: [Clock](./docs/Channels/Clock/README.md) streaming and [TimeZones](./docs/Channels/TimeZones/README.md) with weather integration- **Time-based**: [Clock](./docs/Channels/Clock/README.md) streaming and [TimeZones](./docs/Channels/TimeZones/README.md) with weather integration
-
-
-
-### Demo Implementations  ### Demo Implementations  
-
-- **[Airport](./docs/Demo/Airport/README.md)** — Flight tracking and status management- **[Airport](./docs/Demo/Airport/README.md)** — Flight tracking and status management
-
-- **[Portfolio](./docs/Demo/Portfolio/README.md)** — Financial portfolio management with Bogus data generation- **[Portfolio](./docs/Demo/Portfolio/README.md)** — Financial portfolio management with Bogus data generation
-
-- **[StockListBasic](./docs/Demo/StockListBasic/README.md)** — Simple stock market data streaming- **[StockListBasic](./docs/Demo/StockListBasic/README.md)** — Simple stock market data streaming
-
-
-
-### Interactive Gaming### Interactive Gaming
-
-- **[RockPaperScissors](./docs/Games/RockPaperScissors/README.md)** — Classic game with player matching- **[RockPaperScissors](./docs/Games/RockPaperScissors/README.md)** — Classic game with player matching
-
-- **[TicTacToe](./docs/Games/TicTacToe/README.md)** — Advanced session management and concurrent gameplay- **[TicTacToe](./docs/Games/TicTacToe/README.md)** — Advanced session management and concurrent gameplay
-
-
-
-### Technical Features### Technical Features
-
-- **Cross-Platform Support**: Works seamlessly on ARM64, x64, x86, and AnyCPU platforms- **Cross-Platform Support**: Works seamlessly on ARM64, x64, x86, and AnyCPU platforms
-
-- **.NET Compatibility**: Fully compatible with .NET 9 and .NET 8- **.NET Compatibility**: Fully compatible with .NET 9 and .NET 8
-
-- **Debug and Release Configurations**: Pre-configured for both debug and release builds- **Debug and Release Configurations**: Pre-configured for both debug and release builds
-
-- **High Performance**: Optimized for low-latency, high-throughput streaming- **High Performance**: Optimized for low-latency, high-throughput streaming
-
-- **Cloud-Native**: Designed for modern cloud environments with built-in scalability and resilience- **Cloud-Native**: Designed for modern cloud environments with built-in scalability and resilience
-
-
-
-## Package Information## Package Information
-
-
-
-### RapidStreamer Dependencies### RapidStreamer Dependencies
-
-
-
-All channels depend on the core RapidStreamer framework:All channels depend on the core RapidStreamer framework:
-
-
-
-| Package | Version | Description | Repository || Package | Version | Description | Repository |
-
-|---------|---------|-------------|------------||---------|---------|-------------|------------|
-
-| RapidStreamer | 1.0.166-beta.4 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) || RapidStreamer | 1.0.166-beta.4 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-
-
-
-### Platform-Specific Packages### Platform-Specific Packages
-
-The framework supports multiple platforms through conditional package references:The framework supports multiple platforms through conditional package references:
-
-- **AnyCPU**: `RapidStreamer` / `RapidStreamer.Debug`- **AnyCPU**: `RapidStreamer` / `RapidStreamer.Debug`
-
-- **x64**: `RapidStreamer.x64` / `RapidStreamer.Debug.x64`- **x64**: `RapidStreamer.x64` / `RapidStreamer.Debug.x64`
-
-- **x86**: `RapidStreamer.x86` / `RapidStreamer.Debug.x86`- **x86**: `RapidStreamer.x86` / `RapidStreamer.Debug.x86`
-
-- **ARM64**: `RapidStreamer.ARM64` / `RapidStreamer.Debug.ARM64`- **ARM64**: `RapidStreamer.ARM64` / `RapidStreamer.Debug.ARM64`
-
-
-
-## Installation## Installation
-
-
-
-### Step 1: Add GitHub Packages NuGet Source### Step 1: Add GitHub Packages NuGet Source
-
-
-
-The RapidStreamer packages are hosted on GitHub Packages. Add the source using one of these methods:The RapidStreamer packages are hosted on GitHub Packages. Add the source using one of these methods:
-
-
-
-#### Using the Command Line:#### Using the Command Line:
-
-```bash```bash
-
-dotnet nuget add source https://nuget.pkg.github.com/KiarashMinoo/index.json -n "GitHub-KiarashMinoo"dotnet nuget add source https://nuget.pkg.github.com/KiarashMinoo/index.json -n "GitHub-KiarashMinoo"
-
-``````
-
-
-
-#### Using Visual Studio:#### Using Visual Studio:
-
-1. Open Visual Studio1. Open Visual Studio
-
-2. Go to **Tools** > **NuGet Package Manager** > **Package Manager Settings**2. Go to **Tools** > **NuGet Package Manager** > **Package Manager Settings**
-
-3. Under **Package Sources**, click the **+** button to add a new source3. Under **Package Sources**, click the **+** button to add a new source
-
-4. Enter the following details:4. Enter the following details:
-
-   - **Name**: `GitHub-KiarashMinoo`   - **Name**: `GitHub-KiarashMinoo`
-
-   - **Source**: `https://nuget.pkg.github.com/KiarashMinoo/index.json`   - **Source**: `https://nuget.pkg.github.com/KiarashMinoo/index.json`
-
-5. Click **Update** and then **OK**5. Click **Update** and then **OK**
-
-
-
-#### Using nuget.config:#### Using the Command Line:
-
-Create or update your `nuget.config` file in the project/solution root:Add the NuGet source using the following command:
-
-```xml```bash
-
-<?xml version="1.0" encoding="utf-8"?>dotnet nuget add source --name RapidStreamer --source https://nuget.rapidstreamer.com/v3/index.json
-
-<configuration>```
-
-    <packageSources>
-
-        <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />#### Create or Update `nuget.config`
-
-        <add key="github" value="https://nuget.pkg.github.com/KiarashMinoo/index.json" />If you don’t already have a `nuget.config` file in your project or solution directory, create one. If you do, update it to include the custom repository.
-
-    </packageSources>
-
-    <packageSourceMapping>Here’s an example of what the `nuget.config` file should look like:
-
-        <packageSource key="github">```xml
-
-            <package pattern="RapidStreamer.*" /><?xml version="1.0" encoding="utf-8"?>
-
-        </packageSource><configuration>
-
-        <packageSource key="nuget.org">    <packageSources>
-
-            <package pattern="*" />        <!-- Add the official NuGet.org source -->
-
-        </packageSource>        <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-
-    </packageSourceMapping>        <!-- Add the custom RapidStreamer NuGet repository -->
-
-</configuration>        <add key="RapidStreamer" value="https://nuget.rapidstreamer.com/v3/index.json" />
-
-```    </packageSources>
-
-</configuration>
-
-### Step 2: Install RapidStreamer Core Framework```
-
-
-
-First, install the core RapidStreamer framework:Place the `nuget.config` file in the root of your solution or project directory. This ensures that all projects in the solution can access the custom NuGet repository.
+ThunderPropagator packages are hosted on **GitHub Packages**. Add the source:
 
 ```bash
+# Set your GitHub token as environment variable
+$env:GH_TOKEN = "your_github_token"
 
-dotnet add package RapidStreamer --version 1.0.166-beta.4### Step 2: Verify the Configuration
-
+# Add GitHub Packages source
+dotnet nuget add source "https://nuget.pkg.github.com/KiarashMinoo/index.json" \
+    --name github \
+    --username YOUR_GITHUB_USERNAME \
+    --password $env:GH_TOKEN \
+    --store-password-in-clear-text
 ```
 
-To verify that the custom repository is correctly configured, you can use the following command in the terminal:
+Alternatively, use the included [nuget.config](nuget.config):
 
-### Step 3: Build and Restore```bash
-
-```bashdotnet nuget list source
-
-dotnet restore```
-
-dotnet build -c ReleaseThis will list all configured NuGet sources. You should see something like this in the output:
-
-``````text
-
-Registered Sources:
-
-## Quick Start  1.  nuget.org [Enabled]
-
-      https://api.nuget.org/v3/index.json
-
-### 1. Basic Clock Channel  2.  RapidStreamer [Enabled]
-
-```csharp      https://nuget.rapidstreamer.com/v3/index.json
-
-using Microsoft.Extensions.DependencyInjection;```
-
-using RapidStreamer.Channels.Clock;
-
-### Step 3: Install the NuGet Packages
-
-var services = new ServiceCollection();You can now install the packages using the following commands:
-
-services.AddClockChannel(config => 
-
-{For `RapidStreamer.Channels.Games.RockPaperScissors`:
-
-    config.IsEnabled = true;```bash
-
-});dotnet add package RapidStreamer.Channels.Games.RockPaperScissors
-
+```xml
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="github" value="https://nuget.pkg.github.com/KiarashMinoo/index.json" />
+  </packageSources>
+  <packageSourceCredentials>
+    <github>
+      <add key="Username" value="KiarashMinoo" />
+      <add key="ClearTextPassword" value="%GH_TOKEN%" />
+    </github>
+  </packageSourceCredentials>
+</configuration>
 ```
+
+### Install & Build
+
+```bash
+# Clone repository
+git clone https://github.com/KiarashMinoo/ThunderPropagator.Channels.git
+cd ThunderPropagator.Channels
+
+# Restore packages
+dotnet restore
+
+# Build solution (Release mode)
+dotnet build -c Release --no-incremental
+
+# Run tests
+dotnet test -c Release
+```
+
+### Use a Channel
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Channels.Clock;
+
+// Register Clock channel
+var services = new ServiceCollection();
+services.AddClockChannel(config =>
+{
+    config.IsEnabled = true;
+});
 
 var serviceProvider = services.BuildServiceProvider();
+var channel = serviceProvider.GetRequiredService<ClockChannel>();
 
-var clockChannel = serviceProvider.GetRequiredService<ClockChannel>();For `RapidStreamer.Channels.Games.TicTacToe`:
+// Subscribe to real-time updates
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
+{
+    ["Key"] = "Now"
+});
 
-```bash
-
-await clockChannel.SubscribeAsync("time-subscriber", message => dotnet add package RapidStreamer.Channels.Games.TicTacToe
-
-{```
-
-    Console.WriteLine($"Current time: {message.DateTime}");
-
-});For `RapidStreamer.Channels.Clock`:
-
-``````bash
-
-dotnet add package RapidStreamer.Channels.Clock
-
-### 2. Real-time Notifications```
-
-```csharp
-
-using RapidStreamer.Channels.Notifications;For `RapidStreamer.Channels.NetworkMonitoring`:
-
-```bash
-
-services.AddNotificationsChannel<MyNotificationConfig>(config => dotnet add package RapidStreamer.Channels.NetworkMonitoring
-
-{```
-
-    config.IsEnabled = true;
-
-});For `RapidStreamer.Channels.Notifications`:
-
-```bash
-
-await notificationsChannel.SubscribeAsync("user123", message => dotnet add package RapidStreamer.Channels.Notifications
-
-{```
-
-    Console.WriteLine($"Notification: {message.Subject} - {message.Body}");
-
-});For `RapidStreamer.Channels.ResourceMonitoring`:
-
-``````bash
-
-dotnet add package RapidStreamer.Channels.ResourceMonitoring
-
-### 3. System Monitoring```
-
-```csharp
-
-using RapidStreamer.Channels.NetworkMonitoring;For `RapidStreamer.Channels.Throughput`:
-
-using RapidStreamer.Channels.ResourceMonitoring;```bash
-
-dotnet add package RapidStreamer.Channels.Throughput
-
-services.AddNetworkMonitoringChannel();```
-
-services.AddResourceMonitoringChannel(config => 
-
-{For `RapidStreamer.Channels.TimeZones`:
-
-    config.FeederConfiguration.MemoryUsedPercentageThreshold = 85;```bash
-
-});dotnet add package RapidStreamer.Channels.TimeZones
-
+subscription.OnMessage(message =>
+{
+    var clockMessage = message as ClockChannelFeederMessage;
+    Console.WriteLine($"Current time: {clockMessage.DateTime}");
+});
 ```
 
-await networkChannel.SubscribeAsync("monitor", message => 
+## Documentation
 
-{Alternatively, you can install the packages via the NuGet Package Manager in Visual Studio.
+This repository publishes comprehensive generated documentation under [`/docs`](docs/README.md). The catalog below links to areas and key subfolders with metrics for types, files, and diagrams.
 
-    Console.WriteLine($"Network usage: {message.BytesReceived} bytes received");
+### Documentation Catalog
 
-});## License
+- **[Channels](docs/Channels/README.md)** `Types:9` `Files:10` `Diagrams:✓`
+  - [Chat](docs/Channels/Chat/README.md) `Types:5` `Files:5` `Diagrams:✓`
+  - [Clock](docs/Channels/Clock/README.md) `Types:9` `Files:10` `Diagrams:✓`
+  - [NetworkMonitoring](docs/Channels/NetworkMonitoring/README.md) `Types:7` `Files:8` `Diagrams:✓`
+  - [Notifications](docs/Channels/Notifications/README.md) `Types:7` `Files:8` `Diagrams:✓`
+  - [ResourceMonitoring](docs/Channels/ResourceMonitoring/README.md) `Types:7` `Files:8` `Diagrams:✓`
+  - [Throughput](docs/Channels/Throughput/README.md) `Types:7` `Files:8` `Diagrams:✓`
+  - [TimeZones](docs/Channels/TimeZones/README.md) `Types:8` `Files:11` `Diagrams:✓`
 
-```This project is licensed under the **MIT License**.
+- **[Demo](docs/Demo/README.md)** `Types:0` `Files:0` `Diagrams:✓`
+  - [Airport](docs/Demo/Airport/README.md) `Types:4` `Files:0` `Diagrams:✓`
+  - [Portfolio](docs/Demo/Portfolio/README.md) `Types:5` `Files:0` `Diagrams:✓`
+  - [StockListBasic](docs/Demo/StockListBasic/README.md) `Types:5` `Files:0` `Diagrams:✓`
 
+- **[Games](docs/Games/README.md)** `Types:0` `Files:0` `Diagrams:✓`
+  - [RockPaperScissors](docs/Games/RockPaperScissors/README.md) `Types:3` `Files:0` `Diagrams:✓`
+  - [TicTacToe](docs/Games/TicTacToe/README.md) `Types:3` `Files:0` `Diagrams:✓`
 
+**Last generated:** December 28, 2025
 
-For comprehensive examples and API documentation, see the **[full documentation](./docs/README.md)**.© 2024 RapidStreamer. All rights reserved.
+## Architecture
+
+ThunderPropagator.Channels follows strict architectural patterns enforced through [ArchTests](Tests/ArchTests/ArchitectureTests.cs):
+
+### Channel Structure (Mandatory Components)
+
+Every channel implementation includes:
+
+1. **{Name}Channel.cs** — Inherits `AbstractChannel<TMetadata, TConfiguration>`
+2. **{Name}ChannelConfiguration.cs** — Extends `AbstractChannelConfiguration`
+3. **{Name}ChannelFeederMessage.cs** — Inherits `FeederMessage` (data contract)
+4. **{Name}ChannelMetadata.cs** — Extends `AbstractChannelMetadata`
+5. **{Name}ChannelExtensions.cs** — DI registration via `IServiceCollection` extensions
+
+### Patterns
+
+- **Feeder Pattern**: Data sources generating/collecting data (see [NowClockFeeder](src/Channels/ThunderPropagator.Channels.Clock/NowClockFeeder.cs))
+- **Pipeline Pattern**: Bidirectional request/response handlers (see [Chat Pipelines](src/Channels/ThunderPropagator.Channels.Chat/Pipelines/))
+- **DI Registration**: Fluent configuration via extension methods
+
+## Build System & Versioning
+
+- **Version**: `1.0.1-beta.7` ([Directory.Build.props](Directory.Build.props))
+- **Frameworks**: .NET 8, 9, 10 (controlled in [Directory.Build.props](Directory.Build.props))
+- **Platforms**: AnyCPU, x86, x64, ARM64
+- **Central Package Management**: [Directory.Packages.props](Directory.Packages.props)
+- **Package Naming**: Includes configuration and platform suffixes
+  - Debug: `{ProjectName}.Debug.{Platform}`
+  - Release: `{ProjectName}.{Platform}` (AnyCPU omits platform suffix)
+
+### Building
+
+```powershell
+# Build all platforms for Release
+dotnet build ThunderPropagator.Channels.sln -c Release -p:Platform=AnyCPU
+dotnet build ThunderPropagator.Channels.sln -c Release -p:Platform=x64
+dotnet build ThunderPropagator.Channels.sln -c Release -p:Platform=ARM64
+```
+
+### Testing
+
+```bash
+# Run all tests
+dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+### Package Publishing
+
+```powershell
+# Pack all platforms
+dotnet pack -c Release -p:Platform=x64
+dotnet pack -c Release -p:Platform=ARM64
+
+# Publish to GitHub Packages
+dotnet nuget push "bin/Release/*.nupkg" --source github --api-key $env:GITHUB_TOKEN
+```
+
+## Project Organization
+
+```
+src/
+├── Channels/          # 7 production channels
+│   ├── ThunderPropagator.Channels.Chat/
+│   ├── ThunderPropagator.Channels.Clock/
+│   ├── ThunderPropagator.Channels.NetworkMonitoring/
+│   ├── ThunderPropagator.Channels.Notifications/
+│   ├── ThunderPropagator.Channels.ResourceMonitoring/
+│   ├── ThunderPropagator.Channels.Throughput/
+│   └── ThunderPropagator.Channels.TimeZones/
+├── Demo/              # 3 business demos
+│   ├── ThunderPropagator.Channels.Demo.Airport/
+│   ├── ThunderPropagator.Channels.Demo.Portfolio/
+│   └── ThunderPropagator.Channels.Demo.StockListBasic/
+└── Games/             # 2 interactive games
+    ├── ThunderPropagator.Channels.Games.RockPaperScissors/
+    └── ThunderPropagator.Channels.Games.TicTacToe/
+
+Tests/
+├── ArchTests/         # Architecture validation tests
+├── UnitTests/         # Comprehensive unit test suites
+│   ├── Channels/
+│   ├── Demo/
+│   └── Games/
+└── Demo/              # Demo-specific tests
+
+docs/                  # Auto-generated documentation
+├── README.md          # Documentation landing page
+├── Channels/          # Channel documentation with Mermaid diagrams
+├── Demo/              # Demo documentation
+└── Games/             # Game documentation
+```
+
+## Dependencies
+
+### Core Framework
+
+- **[ThunderPropagator](https://nuget.pkg.github.com/KiarashMinoo/index.json)** `1.0.1-beta.5+`
+  - Core real-time streaming framework
+  - WebSocket-based pub/sub infrastructure
+  - Channel abstractions and patterns
+
+### Testing & Utilities
+
+- **Testing**: xUnit, NSubstitute (mocking), coverlet (coverage)
+- **Utilities**: Bogus (fake data), NodaTime (timezones), JetBrains.Annotations
+- **Infrastructure**: Microsoft.Extensions.* (DI, caching, HTTP), Polly (resilience)
+
+See [Directory.Packages.props](Directory.Packages.props) for complete dependency list with framework-specific versions.
+
+## Code Conventions
+
+- **Nullable Reference Types**: Enabled globally
+- **Implicit Usings**: Enabled
+- **XML Documentation**: Required (generated for NuGet packages)
+- **Conditional Compilation**: Classes are non-sealed in DEBUG for testability
+- **Telemetry**: All pipelines/feeders include Activity tracing and metrics
+- **Health Monitoring**: Feeders expose health endpoints
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+
+1. All architecture tests pass (`dotnet test Tests/ArchTests`)
+2. XML documentation is provided for public APIs
+3. Follow existing channel/feeder/pipeline patterns
+4. Add unit tests for new functionality
+5. Update documentation (`docs/` folder)
 
 ## License
-This project is licensed under the **MIT License**.
 
-© 2024 RapidStreamer. All rights reserved.
+This project is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) for details.
+
+## Authors
+
+**ThunderPropagator Corporation** (Project ARC)
+
+Copyright ©2024 ThunderPropagator Corporation
+
+## Links
+
+- **Website**: [https://www.thunderpropagator.com](https://www.thunderpropagator.com)
+- **Repository**: [https://github.com/KiarashMinoo/ThunderPropagator.Channels](https://github.com/KiarashMinoo/ThunderPropagator.Channels)
+- **NuGet Packages**: [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json)
+- **Documentation**: [`/docs`](docs/README.md)
+- **Development Guide**: [`.github/copilot-instructions.md`](.github/copilot-instructions.md)
+
+---
+
+**Blazingly fast. Cloud-native. Maximum impact.** 🚀

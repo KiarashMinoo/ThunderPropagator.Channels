@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.ResourceMonitoring
+namespace ThunderPropagator.UnitTests.Channels.ResourceMonitoring
 {
     public class ResourceMonitoringSmokeTests
     {

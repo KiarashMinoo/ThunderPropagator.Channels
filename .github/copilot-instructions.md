@@ -1,12 +1,12 @@
-# RapidStreamer.Channels Development Guide
+﻿# ThunderPropagator.Channels Development Guide
 
 ## Project Overview
-**RapidStreamer.Channels** is a .NET library providing production-ready real-time streaming channels (7 channels, 3 demos, 2 games). Built on the RapidStreamer framework for blazingly fast, cloud-native data streaming with WebSocket-based pub/sub patterns.
+**ThunderPropagator.Channels** is a .NET library providing production-ready real-time streaming channels (7 channels, 3 demos, 2 games). Built on the ThunderPropagator framework for blazingly fast, cloud-native data streaming with WebSocket-based pub/sub patterns.
 
 ## Architecture & Core Patterns
 
 ### Channel Structure (Mandatory Components)
-Every channel implementation follows this exact structure in `src/Channels/RapidStreamer.Channels.{Name}/`:
+Every channel implementation follows this exact structure in `src/Channels/ThunderPropagator.Channels.{Name}/`:
 
 1. **{Name}Channel.cs** — Inherits `AbstractChannel<TMetadata, TConfiguration>`
    - Mark `sealed` in Release builds only: `#if !DEBUG sealed #endif`
@@ -17,7 +17,7 @@ Every channel implementation follows this exact structure in `src/Channels/Rapid
 5. **{Name}ChannelExtensions.cs** — DI registration via `IServiceCollection` extensions
 
 ### Feeder Pattern (Data Sources)
-Feeders generate/collect data for channels. Example: [NowClockFeeder.cs](../src/Channels/RapidStreamer.Channels.Clock/NowClockFeeder.cs)
+Feeders generate/collect data for channels. Example: [NowClockFeeder.cs](../src/Channels/ThunderPropagator.Channels.Clock/NowClockFeeder.cs)
 
 - Inherit `IterativeFeeder<TChannel, TMessage, TConfig>`
 - Implement `ReceiveAsync` returning `IAsyncEnumerable<FeederReceivedMessage<T>>`
@@ -25,7 +25,7 @@ Feeders generate/collect data for channels. Example: [NowClockFeeder.cs](../src/
 - Configuration classes extend `AbstractFeederConfiguration`
 
 ### Pipeline Pattern (Request Handlers)
-Bidirectional request/response handlers organized in domain folders. Example: [Chat/Pipelines/Users/Login/](../src/Channels/RapidStreamer.Channels.Chat/Pipelines/Users/Login/)
+Bidirectional request/response handlers organized in domain folders. Example: [Chat/Pipelines/Users/Login/](../src/Channels/ThunderPropagator.Channels.Chat/Pipelines/Users/Login/)
 
 - Inherit `AbstractReceivePipeline<TChannel>`
 - Use attributes: `[ReceivePipelineRequestSchema]`, `[ReceivePipelineResponseSchema]`
@@ -56,11 +56,11 @@ public static IServiceCollection Add{Name}Channel(this IServiceCollection servic
 - **Platforms**: AnyCPU, x86, x64, ARM64
 - **Central Package Management**: Version-controlled via [Directory.Packages.props](../Directory.Packages.props)
   - Framework-specific versions: `Condition="'$(TargetFramework)' == 'net9.0'"`
-  - RapidStreamer dependency uses dynamic PackageId: `$(RapidStreamerPackageId)`
+  - ThunderPropagator dependency uses dynamic PackageId: `$(ThunderPropagatorPackageId)`
 
 ### Package Naming Convention
 Packages include configuration and platform suffixes:
-- **Debug**: `{ProjectName}.Debug.{Platform}` (e.g., `RapidStreamer.Channels.Clock.Debug.x64`)
+- **Debug**: `{ProjectName}.Debug.{Platform}` (e.g., `ThunderPropagator.Channels.Clock.Debug.x64`)
 - **Release**: `{ProjectName}.{Platform}` (AnyCPU omits platform suffix)
 - Controlled by: `PackageIdConfigurationSuffix` and `PackageIdPlatformSuffix` in Directory.Build.props
 
@@ -68,13 +68,13 @@ Packages include configuration and platform suffixes:
 Version: `1.0.1-beta.7` ([Directory.Build.props](../Directory.Build.props#L3))
 - Update manually in Directory.Build.props
 - Version flows to all projects automatically
-- RapidStreamer dependency version: Separate in Directory.Packages.props (`RapidStreamerVersion`)
+- ThunderPropagator dependency version: Separate in Directory.Packages.props (`ThunderPropagatorVersion`)
 
 ## Development Workflows
 
 ### Building
 ```powershell
-dotnet build RapidStreamer.Channels.sln -c Release -p:Platform=AnyCPU
+dotnet build ThunderPropagator.Channels.sln -c Release -p:Platform=AnyCPU
 ```
 
 ### Testing
@@ -139,7 +139,7 @@ docs/                  # Comprehensive documentation for each channel/demo/game
 ```
 
 ## External Dependencies
-- **Core**: RapidStreamer framework (GitHub Packages)
+- **Core**: ThunderPropagator framework (GitHub Packages)
 - **Testing**: xUnit, NSubstitute, coverlet
 - **Utilities**: Bogus (fake data), NodaTime (timezones), JetBrains.Annotations
 - **Infrastructure**: Microsoft.Extensions.* (DI, caching, HTTP), Polly (resilience)

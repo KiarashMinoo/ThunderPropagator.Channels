@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.Throughput
+namespace ThunderPropagator.UnitTests.Channels.Throughput
 {
     public class ThroughputSmokeTests
     {

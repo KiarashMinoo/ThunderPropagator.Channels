@@ -1,143 +1,198 @@
-# Games RockPaperScissors
+# RockPaperScissors Game
 
-## Contents
-
-- [Overview](#overview)
-- [Files](#files)
-- [Types & Members](#types--members)
-- [Game Logic](#game-logic)
-- [Configuration](#configuration)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
-- [Examples](#examples)
-- [See Also](#see-also)
+[↑ Back to Games](../README.md) | [→ All Documentation](/docs/README.md)
 
 ## Overview
 
-The RockPaperScissors Game Channel provides a complete implementation of the classic Rock-Paper-Scissors game with real-time multiplayer capabilities. It supports both human and computer players, automatic matchmaking, and game state management through RapidStreamer's messaging system.
+**Genre**: Classic Hand Game | **Players**: 2 | **Complexity**: ★★★☆☆ Intermediate
 
-## Files
+The **RockPaperScissors Game** is a real-time multiplayer implementation of the timeless hand game with matchmaking, simultaneous move submission, win/loss/tie detection, and match history tracking.
 
-| File | Primary type(s) | LOC (approx) | Responsibility |
-|------|----------------|--------------|----------------|
-| RockPaperScissorsChannel.cs | RockPaperScissorsChannel | 30 | Core game channel with player matching |
-| RockPaperScissorsChannelConfiguration.cs | RockPaperScissorsChannelConfiguration | 15 | Channel configuration settings |
-| RockPaperScissorsChannelExtensions.cs | RockPaperScissorsChannelExtensions | 25 | Service registration extensions |
-| RockPaperScissorsChannelFeederMessage.cs | RockPaperScissorsChannelFeederMessage | 40 | Game event message payload |
-| RockPaperScissorsChannelMetadata.cs | RockPaperScissorsChannelMetadata | 20 | Channel metadata and program descriptors |
-| RockPaperScissorsChannelReceiveEvent.cs | RockPaperScissorsChannelReceiveEvent | 30 | Game event handling |
-| RockPaperScissorsComputer.cs | RockPaperScissorsComputer | 25 | Computer player AI logic |
-| MoveKind.cs | MoveKind | 8 | Game move enumeration |
-| Player.cs | Player | 30 | Player representation and state |
-| PlayerType.cs | PlayerType | 8 | Player type enumeration |
+## Game Rules
 
-## Types & Members
+- Rock beats Scissors
+- Scissors beats Paper
+- Paper beats Rock
+- Same move = Tie
 
-| Type | Kind | Summary | Inherits/Implements | Key Members |
-|------|------|---------|-------------------|-------------|
-| RockPaperScissorsChannel | Class | Core game management channel | AbstractChannel | PeekRandomPlayer, SendAsync |
-| MoveKind | Enum | Game move types | - | Rock, Paper, Scissor |
-| Player | Class | Player state and information | - | Subscription, Name, PlayerType, Move |
-| PlayerType | Enum | Player types | - | Human, Computer |
+## Key Features
 
-### RockPaperScissorsChannel
+- **Matchmaking System**: Automatic pairing of waiting players
+- **Simultaneous Moves**: Hidden submission until both players ready
+- **Instant Results**: Immediate winner determination
+- **Match Statistics**: Win/loss/tie tracking per player
+- **Rematch Support**: Quick play-again functionality
+- **Lobby System**: Waiting room for unmatched players
 
-**Key Methods**:
-- `PeekRandomPlayer() : Subscription?` — Selects a random player from active subscriptions
-- `SendAsync(Subscription, IReadOnlyDictionary<string, object?>, CancellationToken)` — Sends game messages to specific players
+## Game States
 
-**Game Features**:
-- Random player matching for multiplayer games
-- Support for both human and computer players
-- Real-time game event broadcasting
+```mermaid
+stateDiagram-v2
+    [*] --> Lobby: Player joins
+    Lobby --> Matchmaking: Looking for opponent
+    Matchmaking --> Matched: Opponent found
+    Matched --> WaitingForMoves: Game started
+    WaitingForMoves --> Revealing: Both moves submitted
+    Revealing --> RoundComplete: Winner determined
+    RoundComplete --> WaitingForMoves: Play again
+    RoundComplete --> Lobby: Exit to lobby
+    Lobby --> [*]: Player disconnects
+```
 
-### MoveKind
+## Architecture
 
-**Values**:
-- `Rock = 1` — Rock move (beats Scissor, loses to Paper)
-- `Paper = 2` — Paper move (beats Rock, loses to Scissor)  
-- `Scissor = 3` — Scissor move (beats Paper, loses to Rock)
+### Entities
+- **Player**: Id, Name, Wins, Losses, Ties, CurrentMove
+- **Match**: Id, Player1Id, Player2Id, Status, Rounds
+- **Round**: Id, MatchId, Player1Move, Player2Move, Winner, Timestamp
 
-### Player
+### Pipelines
+- `Game/JoinMatchmaking` — Enter matchmaking queue
+- `Game/SubmitMove` — Submit Rock/Paper/Scissors
+- `Game/RequestRematch` — Play again with same opponent
+- `Game/LeaveMatch` — Exit current game
 
-**Key Properties**:
-- `Subscription : Subscription?` — Player's channel subscription
-- `Name : string` — Player display name
-- `PlayerType : PlayerType` — Human or Computer player
-- `Move : MoveKind` — Player's selected move
+### Feeders
+- **MatchmakingFeeder**: Pairs waiting players, broadcasts match start
+- **RoundResultFeeder**: Emits results after both moves submitted
 
-**Constructors**:
-- `Player(Subscription)` — Creates player from subscription data
-- `Player(string, PlayerType, MoveKind)` — Creates player with explicit values
+## Gameplay Flow
 
-## Game Logic
+```mermaid
+sequenceDiagram
+    participant P1 as Player 1
+    participant Channel as RPSChannel
+    participant MM as MatchmakingFeeder
+    participant P2 as Player 2
+    
+    P1->>Channel: JoinMatchmaking
+    Channel->>MM: Add P1 to queue
+    MM-->>P1: Waiting...
+    
+    P2->>Channel: JoinMatchmaking
+    Channel->>MM: Add P2 to queue
+    MM->>MM: Pair P1 + P2
+    MM->>Channel: Match created
+    Channel->>P1: Match Found! vs Player2
+    Channel->>P2: Match Found! vs Player1
+    
+    Note over P1,P2: Round 1
+    P1->>Channel: SubmitMove(Rock)
+    P2->>Channel: SubmitMove(Scissors)
+    Channel->>Channel: Both moves in, reveal
+    Channel->>P1: You Win! (Rock beats Scissors)
+    Channel->>P2: You Lose! (Scissors loses to Rock)
+    
+    P1->>Channel: RequestRematch
+    P2->>Channel: RequestRematch
+    Note over P1,P2: Round 2 starts...
+```
 
-### Move Resolution
-The classic Rock-Paper-Scissors rules apply:
-- **Rock** beats **Scissor**
-- **Paper** beats **Rock**
-- **Scissor** beats **Paper**
-- Same moves result in a tie
-
-### Player Matching
-- Random selection from active subscriptions
-- Support for human vs human, human vs computer, and computer vs computer matches
-- Real-time matchmaking as players join
-
-### Game Flow
-1. Players subscribe with their move selection
-2. Channel matches players randomly
-3. Game logic determines winner
-4. Results broadcast to all participants
-
-## Configuration
+## Win Detection Logic
 
 ```csharp
-services.AddRockPaperScissorsChannel(config => 
+public enum Move { Rock, Paper, Scissors }
+
+public RoundOutcome DetermineWinner(Move player1Move, Move player2Move)
+{
+    if (player1Move == player2Move)
+        return RoundOutcome.Tie;
+    
+    return (player1Move, player2Move) switch
+    {
+        (Move.Rock, Move.Scissors) => RoundOutcome.Player1Wins,
+        (Move.Scissors, Move.Paper) => RoundOutcome.Player1Wins,
+        (Move.Paper, Move.Rock) => RoundOutcome.Player1Wins,
+        _ => RoundOutcome.Player2Wins
+    };
+}
+```
+
+## Usage Example
+
+```csharp
+// Register RockPaperScissors channel
+services.AddRockPaperScissorsChannel(config =>
 {
     config.IsEnabled = true;
+    config.MatchmakingTimeout = TimeSpan.FromMinutes(1);
 });
-```
 
-## RapidStreamer Dependencies
-
-| Package | Version | Description | Links |
-|---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-
-## Examples
-
-### Playing Rock-Paper-Scissors
-
-```csharp
-// Subscribe as a human player
-await channel.SubscribeAsync("player1", new Dictionary<string, string>
+// Client: Join matchmaking
+var joinRequest = new
 {
-    [nameof(RockPaperScissorsChannelFeederMessage.PlayerName)] = "Alice",
-    [nameof(RockPaperScissorsChannelFeederMessage.Move)] = MoveKind.Rock.ToString()
-});
+    RequestKey = "Game/JoinMatchmaking",
+    PlayerName = "PlayerOne"
+};
+var response = await channel.SendRequestAsync(joinRequest);
 
-// Handle game results
-await channel.SubscribeAsync("game-observer", message => 
+// Client: Subscribe to game events
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
 {
-    Console.WriteLine($"Game Result: {message.Player1Name} ({message.Player1Move}) vs {message.Player2Name} ({message.Player2Move})");
-    Console.WriteLine($"Winner: {message.Winner}");
+    ["PlayerId"] = response.PlayerId
 });
+
+subscription.OnMessage(message =>
+{
+    var gameEvent = message as GameEventMessage;
+    
+    switch (gameEvent.EventType)
+    {
+        case "MatchFound":
+            Console.WriteLine($"Opponent: {gameEvent.OpponentName}");
+            break;
+        case "WaitingForMove":
+            // Prompt user to select Rock/Paper/Scissors
+            break;
+        case "RoundResult":
+            Console.WriteLine($"Result: {gameEvent.Outcome}");
+            Console.WriteLine($"You: {gameEvent.YourMove}, Opponent: {gameEvent.OpponentMove}");
+            break;
+    }
+});
+
+// Client: Submit move
+var moveRequest = new
+{
+    RequestKey = "Game/SubmitMove",
+    MatchId = response.MatchId,
+    Move = "Rock"  // or "Paper", "Scissors"
+};
+await channel.SendRequestAsync(moveRequest);
 ```
 
-### Computer Player Integration
+## Messages
 
+### GameEventMessage
 ```csharp
-var computerPlayer = new Player("Computer", PlayerType.Computer, MoveKind.Paper);
-var humanPlayer = new Player("Human", PlayerType.Human, MoveKind.Rock);
-
-// Game resolution logic
-var winner = ResolveGame(humanPlayer, computerPlayer);
-Console.WriteLine($"Winner: {winner.Name}");
+public class GameEventMessage : FeederMessage
+{
+    public string EventType { get; set; }        // MatchFound, WaitingForMove, RoundResult
+    public string MatchId { get; set; }
+    public string OpponentName { get; set; }
+    public string YourMove { get; set; }
+    public string OpponentMove { get; set; }
+    public string Outcome { get; set; }          // Win, Lose, Tie
+    public int YourScore { get; set; }
+    public int OpponentScore { get; set; }
+}
 ```
+
+## Dependencies
+
+- ThunderPropagator 1.0.1-beta.5
+
+## Use Cases
+
+- Multiplayer game mechanics demonstration
+- Real-time matchmaking patterns
+- Simultaneous turn-based gameplay
+- Competitive gaming features
 
 ## See Also
 
-- [../TicTacToe/README.md](../TicTacToe/README.md) — Tic-tac-toe game implementation
-- [../../Demo/README.md](../../Demo/README.md) — Demo applications
+- [Games Overview](../README.md)
+- [TicTacToe Game](../TicTacToe/README.md) — Sequential turn-based gameplay
+- [Chat Channel](../../Channels/Chat/README.md) — Complex stateful channel patterns
 
-[↑ Back to top](#contents)
+[↑ Back to top](#rockpaperscissors-game)

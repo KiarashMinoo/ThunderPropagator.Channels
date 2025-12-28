@@ -1,82 +1,119 @@
-# Demo Airport
+# Airport Demo
 
-## Contents
-
-- [Overview](#overview)
-- [Files](#files)
-- [Types & Members](#types--members)
-- [Configuration](#configuration)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
-- [Examples](#examples)
-- [See Also](#see-also)
+[↑ Back to Demo Projects](../README.md) | [→ All Documentation](/docs/README.md)
 
 ## Overview
 
-The Airport Demo Channel provides a realistic simulation of airport flight information, including flight statuses, schedules, delays, and cancellations. It demonstrates real-time data streaming for flight tracking applications and airport information displays.
+**Domain**: Aviation Operations | **Complexity**: ★★★★★ Expert
 
-## Files
+The **Airport Demo** is a comprehensive flight tracking and airport operations management system providing real-time flight status updates, gate assignments, departure/arrival boards, and operational metrics. This demo showcases the most complex ThunderPropagator patterns with time-based operations, multi-entity coordination, and external API integration.
 
-| File | Primary type(s) | LOC (approx) | Responsibility |
-|------|----------------|--------------|----------------|
-| AirportDemoChannel.cs | AirportDemoChannel | 15 | Core channel implementation for airport data |
-| AirportDemoChannelConfiguration.cs | AirportDemoChannelConfiguration | 15 | Channel configuration settings |
-| AirportDemoChannelFeeder.cs | AirportDemoChannelFeeder | 60 | Flight data generation and simulation |
-| AirportDemoChannelFeederConfiguration.cs | AirportDemoChannelFeederConfiguration | 15 | Feeder configuration settings |
-| AirportDemoChannelFeederMessage.cs | AirportDemoChannelFeederMessage | 40 | Flight information message payload |
-| AirportDemoChannelMetadata.cs | AirportDemoChannelMetadata | 20 | Channel metadata and program descriptors |
-| AirportDemoExtensions.cs | AirportDemoExtensions | 25 | Service registration extensions |
-| Statuses.cs | Statuses | 15 | Flight status enumeration |
+## Key Features
 
-## Types & Members
+- **Real-Time Flight Tracking**: Status updates (scheduled, boarding, departed, arrived, cancelled, delayed)
+- **Gate Management**: Dynamic gate assignments, conflict detection
+- **Departure/Arrival Boards**: Filtered feeds by airport, airline, status
+- **Flight Search**: Complex queries with filtering
+- **Timezone-Aware**: Handles departure/arrival times across timezones
+- **Weather Integration**: Airport conditions via external API
+- **Operational Metrics**: On-time performance, delay statistics
 
-| Type | Kind | Summary | Inherits/Implements | Key Members |
-|------|------|---------|-------------------|-------------|
-| AirportDemoChannel | Class | Core airport simulation channel | AbstractChannel | Constructor |
-| Statuses | Enum | Flight status enumeration | - | ScheduledOnTime, ScheduledDelayed, EnRouteOnTime, LandedOnTime, Cancelled |
+## Architecture
 
-### Statuses
+### Entities
+- **Flight**: FlightNumber, Airline, Origin, Destination, Status, Gate, ScheduledTime, ActualTime
+- **Gate**: GateNumber, Terminal, Status, AssignedFlight
+- **Airport**: Code, Name, Timezone, Weather
+- **Airline**: Code, Name, Logo
 
-**Values**:
-- `ScheduledOnTime = 0` — Flight scheduled and on time
-- `ScheduledDelayed = 1` — Flight scheduled but delayed
-- `EnRouteOnTime = 2` — Flight en route and on time
-- `EnRouteDelayed = 3` — Flight en route but delayed
-- `LandedOnTime = 4` — Flight landed on time
-- `LandedDelayed = 5` — Flight landed with delay
-- `Cancelled = 6` — Flight cancelled
-- `Deleted = 7` — Flight record deleted
+### Pipelines (10+)
+- `Flights/Search` — Query flights by criteria
+- `Flights/GetStatus` — Get specific flight details
+- `Flights/UpdateStatus` — Admin: Update flight status
+- `Gates/Assign` — Admin: Assign flight to gate
+- `Gates/GetAvailable` — Query available gates
+- `Boards/GetDepartures` — Departure board feed
+- `Boards/GetArrivals` — Arrival board feed
+- `Airlines/GetAll` — List all airlines
 
-## Configuration
+### Feeders
+- **FlightStatusFeeder**: Polls external flight API for real-time updates
+- **WeatherFeeder**: Airport weather conditions
+- **MetricsFeeder**: Operational statistics (delays, cancellations)
 
-```csharp
-services.AddAirportDemoChannel(config => 
-{
-    config.IsEnabled = true;
-    config.FeederConfiguration.IsEnabled = true;
-});
+## State Machine: Flight Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> Scheduled
+    Scheduled --> Boarding: Boarding started
+    Scheduled --> Delayed: Delay announced
+    Scheduled --> Cancelled: Flight cancelled
+    
+    Delayed --> Boarding: Delay resolved
+    Delayed --> Cancelled: Cancelled after delay
+    
+    Boarding --> Departed: Takeoff
+    Boarding --> Delayed: Departure delayed
+    
+    Departed --> Arrived: Landing
+    Arrived --> [*]
+    Cancelled --> [*]
 ```
 
-## RapidStreamer Dependencies
-
-| Package | Version | Description | Links |
-|---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-
-## Examples
-
-### Flight Status Monitoring
+## Usage Example
 
 ```csharp
-await channel.SubscribeAsync("flight-monitor", message => 
+// Register Airport channel
+services.AddAirportChannel(config =>
 {
-    Console.WriteLine($"Flight {message.FlightNumber}: {message.Status}");
-    Console.WriteLine($"Departure: {message.DepartureTime}, Arrival: {message.ArrivalTime}");
+    config.FlightApiKey = "your-api-key";
+    config.WeatherApiKey = "your-weather-key";
 });
+
+// Client: Subscribe to departure board
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
+{
+    ["Airport"] = "JFK",
+    ["Board"] = "Departures"
+});
+
+subscription.OnMessage(message =>
+{
+    var flight = message as FlightMessage;
+    Console.WriteLine($"{flight.FlightNumber} to {flight.Destination} - Gate {flight.Gate} - {flight.Status}");
+});
+
+// Client: Search flights
+var searchRequest = new
+{
+    RequestKey = "Flights/Search",
+    Origin = "JFK",
+    Destination = "LAX",
+    Date = DateTime.Today
+};
+var flights = await channel.SendRequestAsync(searchRequest);
 ```
+
+## Dependencies
+
+- ThunderPropagator 1.0.1-beta.5
+- NodaTime 3.2.2 (timezone handling)
+- External Flight API (configurable)
+- Weather API (optional)
+
+## Use Cases
+
+- Airport information display systems
+- Flight tracking mobile apps
+- Airline operations dashboards
+- Travel booking platforms
+- Aviation analytics
 
 ## See Also
 
-- [../Portfolio/README.md](../Portfolio/README.md) — Financial portfolio demo
-- [../StockListBasic/README.md](../StockListBasic/README.md) — Basic stock listing demo
+- [Demo Projects Overview](../README.md)
+- [TimeZones Channel](../../Channels/TimeZones/README.md) — Timezone handling patterns
+- [Notifications Channel](../../Channels/Notifications/README.md) — Real-time alerts
 
-[↑ Back to top](#contents)
+[↑ Back to top](#airport-demo)

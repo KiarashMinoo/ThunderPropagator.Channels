@@ -1,155 +1,282 @@
-# Games TicTacToe
+# TicTacToe Game
 
-## Contents
-
-- [Overview](#overview)
-- [Files](#files)
-- [Types & Members](#types--members)
-- [Game Logic](#game-logic)
-- [Configuration](#configuration)
-- [Performance Notes](#performance-notes)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
-- [Examples](#examples)
-- [See Also](#see-also)
+[↑ Back to Games](../README.md) | [→ All Documentation](/docs/README.md)
 
 ## Overview
 
-The TicTacToe Game Channel provides a complete implementation of the classic Tic-tac-toe game with advanced features including session management, concurrent game support, player management, and real-time game state synchronization. It demonstrates complex state management and multiplayer gaming patterns using RapidStreamer.
+**Genre**: Strategic Board Game | **Players**: 2 | **Complexity**: ★★★★☆ Advanced
 
-## Files
+The **TicTacToe Game** is a real-time multiplayer implementation of the classic 3x3 board game with turn management, win detection, real-time board synchronization, and spectator support.
 
-| File | Primary type(s) | LOC (approx) | Responsibility |
-|------|----------------|--------------|----------------|
-| TicTacToeChannel.cs | TicTacToeChannel | 143 | Advanced channel with session and game management |
-| TicTacToeChannelConfiguration.cs | TicTacToeChannelConfiguration | 15 | Channel configuration settings |
-| TicTacToeChannelExtensions.cs | TicTacToeChannelExtensions | 25 | Service registration extensions |
-| TicTacToeChannelFeederMessage.cs | TicTacToeChannelFeederMessage | 45 | Game state message payload |
-| TicTacToeChannelMetadata.cs | TicTacToeChannelMetadata | 25 | Channel metadata and program descriptors |
-| TicTacToeChannelSubscribeRequest.cs | TicTacToeChannelSubscribeRequest | 20 | Custom subscription request handling |
-| Game/ | Various | 200+ | Game logic, players, and state management |
-| Pipelines/ | Various | 100+ | Game event processing pipelines |
+## Game Rules
 
-## Types & Members
+- 3x3 grid, players alternate placing X and O
+- Win: 3 in a row (horizontal, vertical, or diagonal)
+- Draw: Board full with no winner
+- X always moves first
 
-| Type | Kind | Summary | Inherits/Implements | Key Members |
-|------|------|---------|-------------------|-------------|
-| TicTacToeChannel | Class | Advanced game management channel | AbstractChannel | Subscribe, _games |
-| TicTacToeChannelSubscribeRequest | Class | Custom subscription handling | - | SubscribingKeys, SubscribingFields |
+## Key Features
 
-### TicTacToeChannel
+- **Real-Time Board Sync**: Instant updates to both players
+- **Turn Enforcement**: Server validates turn ownership
+- **Win Detection**: 8 winning conditions checked
+- **Move Validation**: Prevents occupied cell placement
+- **Room System**: Create/join game rooms with IDs
+- **Spectator Mode**: Watch games in progress
+- **Game History**: Move log, replay capability
 
-**Attributes**:
-- `[Unsubscribable]` — Special handling for unsubscription
+## Game States
 
-**Key Properties**:
-- `_games : ConcurrentDictionary<string, TicTacToeGame>` — Thread-safe game session storage
+```mermaid
+stateDiagram-v2
+    [*] --> WaitingForPlayers: Room created
+    WaitingForPlayers --> InProgress: Both players joined
+    InProgress --> XWins: X gets 3 in row
+    InProgress --> OWins: O gets 3 in row
+    InProgress --> Draw: Board full, no winner
+    InProgress --> Abandoned: Player disconnects
+    
+    XWins --> [*]
+    OWins --> [*]
+    Draw --> [*]
+    Abandoned --> [*]
+```
 
-**Key Methods**:
-- `Subscribe(IConnectionInfo, string, string, string) : Subscription` — Custom subscription with session and player management
+## Architecture
 
-**Advanced Features**:
-- **Session Management**: Multiple concurrent game sessions
-- **Thread Safety**: ConcurrentDictionary for game state
-- **Custom Subscription**: Specialized subscription handling
-- **Game State Sync**: Real-time board state updates
+### Entities
+- **Game**: Id, RoomCode, PlayerXId, PlayerOId, Board, CurrentTurn, Status, Winner
+- **Move**: Id, GameId, PlayerId, Position, Symbol, Timestamp
+- **Player**: Id, Name, GamesPlayed, Wins, Losses, Draws
 
-### TicTacToeChannelSubscribeRequest
+### Pipelines
+- `Game/CreateRoom` — Create new game room
+- `Game/JoinRoom` — Join existing room by code
+- `Game/MakeMove` — Place X or O at position
+- `Game/GetBoard` — Get current board state
+- `Game/Forfeit` — Resign from game
 
-**Key Properties**:
-- `SubscribingKeys : Dictionary<string, IReadOnlyDictionary<string, string>>` — Session and player key mapping
-- `SubscribingFields : HashSet<string>` — Game state fields (Row, Column, Sign)
-- `SubscriptionMode : SubscriptionMode` — Full subscription mode
+### Feeders
+- **GameUpdateFeeder**: Broadcasts board state after each move
+- **GameResultFeeder**: Emits win/draw/forfeit results
 
-## Game Logic
+## Board Representation
 
-### Game Board
-- 3x3 grid with row/column coordinates
-- X and O player signs
-- Win condition detection (rows, columns, diagonals)
-- Draw condition handling
+```
+Positions:  Board Array:
+0 | 1 | 2   [X, O, X,
+---------    _, X, O,
+3 | 4 | 5    O, _, _]
+---------
+6 | 7 | 8
+```
 
-### Session Management
-- Unique session IDs for concurrent games
-- Player name registration per session
-- Game state persistence across moves
-- Thread-safe game operations
-
-### Move Validation
-- Turn-based gameplay enforcement
-- Valid position checking
-- Game completion detection
-- Invalid move handling
-
-## Configuration
+## Win Detection Algorithm
 
 ```csharp
-services.AddTicTacToeChannel(config => 
+private static readonly int[][] WinningLines = new[]
+{
+    new[] {0, 1, 2},  // Top row
+    new[] {3, 4, 5},  // Middle row
+    new[] {6, 7, 8},  // Bottom row
+    new[] {0, 3, 6},  // Left column
+    new[] {1, 4, 7},  // Middle column
+    new[] {2, 5, 8},  // Right column
+    new[] {0, 4, 8},  // Diagonal \
+    new[] {2, 4, 6}   // Diagonal /
+};
+
+public bool CheckWin(char[] board, char symbol)
+{
+    foreach (var line in WinningLines)
+    {
+        if (board[line[0]] == symbol &&
+            board[line[1]] == symbol &&
+            board[line[2]] == symbol)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+public bool CheckDraw(char[] board)
+{
+    return !board.Contains('_') && !CheckWin(board, 'X') && !CheckWin(board, 'O');
+}
+```
+
+## Gameplay Flow
+
+```mermaid
+sequenceDiagram
+    participant PX as Player X
+    participant Channel as TicTacToeChannel
+    participant PO as Player O
+    
+    PX->>Channel: CreateRoom
+    Channel-->>PX: RoomCode: "ABCD"
+    PX->>Channel: Subscribe(RoomCode)
+    
+    PO->>Channel: JoinRoom("ABCD")
+    Channel->>PX: Player O joined!
+    Channel->>PO: Joined as Player O
+    PO->>Channel: Subscribe(RoomCode)
+    
+    Note over PX,PO: Game starts, X's turn
+    
+    PX->>Channel: MakeMove(Position: 4)
+    Channel->>Channel: Validate: X's turn? ✓<br/>Position empty? ✓
+    Channel->>Channel: Update board[4] = X
+    Channel->>PX: Move accepted
+    Channel->>PO: Opponent moved: X at position 4
+    
+    Note over PX,PO: O's turn
+    
+    PO->>Channel: MakeMove(Position: 0)
+    Channel->>Channel: Validate: O's turn? ✓<br/>Position empty? ✓
+    Channel->>Channel: Update board[0] = O
+    Channel->>PO: Move accepted
+    Channel->>PX: Opponent moved: O at position 0
+    
+    Note over PX,PO: ...continues...
+    
+    PX->>Channel: MakeMove(Position: 2)
+    Channel->>Channel: Check win conditions
+    Channel->>Channel: X wins! (positions 2, 4, 6)
+    Channel->>PX: You Win!
+    Channel->>PO: You Lose!
+```
+
+## Usage Example
+
+```csharp
+// Register TicTacToe channel
+services.AddTicTacToeChannel(config =>
 {
     config.IsEnabled = true;
+    config.TurnTimeoutSeconds = 30;  // Optional move timer
 });
-```
 
-## Performance Notes
-
-- **Concurrent Games**: ConcurrentDictionary enables multiple simultaneous games
-- **Memory Management**: Games cleaned up after completion
-- **Thread Safety**: All game operations are thread-safe
-- **Real-time Updates**: Immediate board state synchronization
-
-## RapidStreamer Dependencies
-
-| Package | Version | Description | Links |
-|---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-
-## Examples
-
-### Starting a Tic-tac-toe Game
-
-```csharp
-// Subscribe to a game session
-var subscription = await channel.SubscribeAsync(connectionInfo, "request1", "session123", "PlayerX");
-
-// Handle game updates
-subscription.OnMessage(message => 
+// Player X: Create room
+var createRequest = new
 {
-    Console.WriteLine($"Move: Player {message.Sign} at ({message.Row}, {message.Column})");
-    UpdateGameBoard(message.Row, message.Column, message.Sign);
+    RequestKey = "Game/CreateRoom",
+    PlayerName = "PlayerX"
+};
+var createResponse = await channel.SendRequestAsync(createRequest);
+var roomCode = createResponse.RoomCode;
+
+// Player O: Join room
+var joinRequest = new
+{
+    RequestKey = "Game/JoinRoom",
+    RoomCode = roomCode,
+    PlayerName = "PlayerO"
+};
+var joinResponse = await channel.SendRequestAsync(joinRequest);
+
+// Both players: Subscribe to game updates
+var subscription = await channel.SubscribeAsync(new Dictionary<string, object>
+{
+    ["GameId"] = createResponse.GameId
 });
-```
 
-### Game State Monitoring
-
-```csharp
-await channel.SubscribeAsync("game-monitor", message => 
+subscription.OnMessage(message =>
 {
-    if (message.GameCompleted)
+    var gameUpdate = message as GameUpdateMessage;
+    
+    switch (gameUpdate.EventType)
     {
-        Console.WriteLine($"Game {message.SessionId} completed!");
-        Console.WriteLine($"Winner: {message.Winner ?? "Draw"}");
-    }
-    else
-    {
-        Console.WriteLine($"Current turn: {message.CurrentPlayer}");
-        DisplayBoard(message.BoardState);
+        case "BoardUpdate":
+            DisplayBoard(gameUpdate.Board);
+            Console.WriteLine($"Current Turn: {gameUpdate.CurrentTurn}");
+            break;
+        case "GameOver":
+            Console.WriteLine($"Game Over! {gameUpdate.Winner} wins!");
+            break;
+        case "Draw":
+            Console.WriteLine("Game ended in a draw!");
+            break;
     }
 });
+
+// Make move
+var moveRequest = new
+{
+    RequestKey = "Game/MakeMove",
+    GameId = createResponse.GameId,
+    Position = 4  // Center of board
+};
+var moveResponse = await channel.SendRequestAsync(moveRequest);
+
+if (!moveResponse.Success)
+{
+    Console.WriteLine($"Invalid move: {moveResponse.Error}");
+}
 ```
 
-### Multi-Session Support
+## Move Validation
 
 ```csharp
-// Multiple concurrent games
-var game1 = await channel.SubscribeAsync(connectionInfo, "req1", "session1", "Alice");
-var game2 = await channel.SubscribeAsync(connectionInfo, "req2", "session2", "Bob");
-
-// Each game maintains independent state
-// Games run concurrently without interference
+public class MoveValidator
+{
+    public ValidationResult ValidateMove(Game game, Guid playerId, int position)
+    {
+        // Check: Is it this player's turn?
+        if (game.CurrentTurn != GetPlayerSymbol(game, playerId))
+            return ValidationResult.Fail("Not your turn");
+        
+        // Check: Is position valid? (0-8)
+        if (position < 0 || position > 8)
+            return ValidationResult.Fail("Invalid position");
+        
+        // Check: Is position empty?
+        if (game.Board[position] != '_')
+            return ValidationResult.Fail("Position already occupied");
+        
+        // Check: Is game still in progress?
+        if (game.Status != GameStatus.InProgress)
+            return ValidationResult.Fail("Game has ended");
+        
+        return ValidationResult.Success();
+    }
+}
 ```
+
+## Messages
+
+### GameUpdateMessage
+```csharp
+public class GameUpdateMessage : FeederMessage
+{
+    public string EventType { get; set; }        // BoardUpdate, GameOver, Draw
+    public string GameId { get; set; }
+    public char[] Board { get; set; }             // 9-element array
+    public char CurrentTurn { get; set; }         // X or O
+    public string Winner { get; set; }            // X, O, or null
+    public int[] WinningLine { get; set; }        // Positions forming win
+    public int LastMovePosition { get; set; }
+    public string LastMovePlayer { get; set; }
+}
+```
+
+## Dependencies
+
+- ThunderPropagator 1.0.1-beta.5
+
+## Use Cases
+
+- Turn-based game mechanics
+- Board game implementations
+- State synchronization patterns
+- Move validation demonstration
+- Game room management
 
 ## See Also
 
-- [../RockPaperScissors/README.md](../RockPaperScissors/README.md) — Rock-paper-scissors game implementation
-- [../../Demo/README.md](../../Demo/README.md) — Demo applications
+- [Games Overview](../README.md)
+- [RockPaperScissors Game](../RockPaperScissors/README.md) — Simultaneous turn gameplay
+- [Chat Channel](../../Channels/Chat/README.md) — Complex stateful operations
 
-[↑ Back to top](#contents)
+[↑ Back to top](#tictactoe-game)

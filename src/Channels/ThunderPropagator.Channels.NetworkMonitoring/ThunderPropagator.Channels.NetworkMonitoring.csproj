@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="NetworkMonitoringChannelFeederConfiguration.cs">
+            <DependentUpon>NetworkMonitoringChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NetworkMonitoringChannelFeederMessage.cs">
+            <DependentUpon>NetworkMonitoringChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NetworkMonitoringChannelMetadata.cs">
+            <DependentUpon>NetworkMonitoringChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NetworkMonitoringChannelConfiguration.cs">
+            <DependentUpon>NetworkMonitoringChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>

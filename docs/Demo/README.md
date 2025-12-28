@@ -1,139 +1,229 @@
-# Demo
+# Business Demonstration Projects
+
+[↑ Back to Documentation Home](/docs/README.md)
 
 ## Contents
 
 - [Overview](#overview)
-- [Demo Projects](#demo-projects)
+- [Available Demos](#available-demos)
+- [Demo Comparison](#demo-comparison)
 - [Common Patterns](#common-patterns)
-- [RapidStreamer Dependencies](#rapidstreamer-dependencies)
 - [Getting Started](#getting-started)
 - [See Also](#see-also)
 
 ## Overview
 
-The Demo collection showcases practical implementations of RapidStreamer channels for common business scenarios. Each demo provides a complete, working example with realistic data generation, demonstrating best practices for channel development and real-world application patterns.
+The **Demo** directory contains **3 production-quality business demonstration applications** showcasing ThunderPropagator's capabilities in real-world domain contexts. Each demo implements complex business logic, domain-driven design patterns, and advanced channel features including bidirectional communication, stateful operations, and external API integration.
 
-## Demo Projects
+These demos serve as:
+- **Reference Implementations**: Production-ready code demonstrating best practices
+- **Learning Resources**: Complete examples of complex ThunderPropagator applications
+- **Proof of Concepts**: Domain-specific use cases (aviation, finance, market data)
 
-### [Airport](./Airport/README.md)
-Flight information system demonstrating:
-- Real-time flight status updates
-- Flight schedule management
-- Status enumeration (on-time, delayed, cancelled)
-- Airport information display patterns
+All demos follow the standard channel architecture with full test coverage and comprehensive documentation.
 
-### [Portfolio](./Portfolio/README.md)
-Financial portfolio management showcasing:
-- Advanced channel implementation with Bogus data generation
-- Background simulation threads
-- Snapshot management and duplicate key prevention
-- Portfolio tracking and real-time updates
-- Exception handling patterns
+## Available Demos
 
-### [StockListBasic](./StockListBasic/README.md)
-Simple stock market data demonstrating:
-- Basic stock listing and price updates
-- Entry-level financial data streaming
-- Simplified channel implementation patterns
+### [Airport Demo](./Airport/README.md)
+
+**Domain**: Aviation Operations | **Complexity**: ★★★★★ Expert
+
+Flight tracking and airport operations management system with real-time flight status updates, gate assignments, and departure/arrival boards. Demonstrates complex state management, time-based operations, and multi-entity coordination.
+
+**Key Features**:
+- Real-time flight status tracking (scheduled, boarding, departed, arrived, cancelled)
+- Gate assignment management
+- Departure and arrival board feeds
+- Flight search and filtering
+- Airport operational metrics
+- Timezone-aware scheduling
+
+**Use Cases**: Airport information systems, flight tracking apps, aviation operations dashboards
+
+**[→ Full Documentation](./Airport/README.md)**
+
+### [Portfolio Demo](./Portfolio/README.md)
+
+**Domain**: Finance & Trading | **Complexity**: ★★★★☆ Advanced
+
+Investment portfolio management system with real-time position tracking, profit/loss calculations, and market data integration. Demonstrates financial calculations, multi-currency support, and high-frequency updates.
+
+**Key Features**:
+- Real-time portfolio valuation
+- Position tracking across multiple assets
+- Profit/loss calculations (realized & unrealized)
+- Market data integration
+- Historical performance tracking
+- Risk metrics and analytics
+
+**Use Cases**: Trading platforms, investment management, wealth management dashboards, robo-advisors
+
+**[→ Full Documentation](./Portfolio/README.md)**
+
+### [StockListBasic Demo](./StockListBasic/README.md)
+
+**Domain**: Market Data Streaming | **Complexity**: ★★★☆☆ Intermediate
+
+Basic stock market data feed providing real-time price updates, volume tracking, and market statistics. Demonstrates high-frequency data streaming, efficient message routing, and market data protocols.
+
+**Key Features**:
+- Real-time stock price updates
+- Volume and trade statistics
+- Market open/close handling
+- Symbol-based subscription routing
+- Tick-by-tick data streaming
+- Market summary aggregations
+
+**Use Cases**: Stock tickers, market data terminals, trading dashboards, financial news applications
+
+**[→ Full Documentation](./StockListBasic/README.md)**
+
+## Demo Comparison
+
+| Demo | Domain | Entities | Pipelines | External APIs | Complexity | Primary Pattern |
+|------|--------|----------|-----------|---------------|------------|-----------------|
+| [Airport](./Airport/README.md) | Aviation | Flights, Gates, Airlines | 10+ | Flight data, Weather | ★★★★★ | Complex stateful operations |
+| [Portfolio](./Portfolio/README.md) | Finance | Positions, Assets, Accounts | 8+ | Market data, Pricing | ★★★★☆ | Real-time calculations |
+| [StockListBasic](./StockListBasic/README.md) | Market Data | Stocks, Trades | 3+ | Market feed | ★★★☆☆ | High-frequency streaming |
 
 ## Common Patterns
 
-### Demo Channel Structure
-All demo channels follow consistent patterns:
+### Domain-Driven Design
 
-```csharp
-public class DemoChannel : AbstractChannel<DemoChannelMetadata, DemoChannelConfiguration>
-{
-    public DemoChannel(IServiceProvider serviceProvider) : base(serviceProvider)
-    {
-        // Demo-specific initialization
-    }
-}
-```
+All demos follow DDD principles:
+- **Aggregates**: Core business entities (Flight, Position, Stock)
+- **Value Objects**: Immutable domain concepts (Money, FlightNumber, Symbol)
+- **Domain Services**: Business logic encapsulation (FlightService, PortfolioService)
+- **Repositories**: Data access abstraction
 
-### Service Registration
-```csharp
-services.AddAirportDemoChannel(config => 
-{
-    config.IsEnabled = true;
-    config.FeederConfiguration.IsEnabled = true;
-});
-```
+### Bidirectional Communication
 
-### Data Generation
-Many demos use the Bogus library for realistic test data:
-```csharp
-var faker = new Faker<DemoMessage>()
-    .RuleFor(x => x.Name, f => f.Company.CompanyName())
-    .RuleFor(x => x.Price, f => f.Random.Decimal(1M, 100M));
-```
+Demos support both push and pull:
+- **Push**: Real-time updates via feeders (price changes, flight status)
+- **Pull**: Client-initiated requests via pipelines (search flights, query positions)
 
-### Background Simulation
-```csharp
-public DemoChannel(IServiceProvider serviceProvider) : base(serviceProvider)
-{
-    _cancellationToken = serviceProvider
-        .GetRequiredService<IHostApplicationLifetime>()
-        .ApplicationStopping;
-        
-    new Thread(SimulateData).Start();
-}
-```
+### State Management
 
-## RapidStreamer Dependencies
+Complex stateful operations:
+- **In-Memory State**: Channel-level caches (active flights, open positions)
+- **Persistence**: Optional database integration for durability
+- **State Transitions**: Managed lifecycle (flight status FSM, order states)
 
-| Package | Version | Description | Links |
-|---------|---------|-------------|-------|
-| RapidStreamer | 1.0.166-beta.2 | Core streaming framework | [GitHub Packages](https://nuget.pkg.github.com/KiarashMinoo/index.json) |
-| Bogus | Latest | Fake data generation (Portfolio demo) | [NuGet](https://www.nuget.org/packages/Bogus/) |
+### External API Integration
+
+- **Market Data Providers**: Real-time pricing, historical data
+- **Flight APIs**: Flight status, schedules, airport information
+- **Weather Services**: Airport conditions, forecasts
+- **Resilience**: Polly policies for retries, circuit breakers, timeouts
 
 ## Getting Started
 
 ### 1. Choose a Demo
-Select a demo that matches your use case:
-- **Learning**: Start with StockListBasic for simple patterns
-- **Financial Apps**: Use Portfolio for advanced financial scenarios
-- **Transportation**: Use Airport for scheduling and status systems
 
-### 2. Install and Register
-```csharp
-public void ConfigureServices(IServiceCollection services)
-{
-    // Add your chosen demo channel
-    services.AddPortfolioDemoChannel(config => 
-    {
-        config.IsEnabled = true;
-    });
-}
+Select based on your domain interest or learning goal:
+- **Complex State Management** → Airport
+- **Financial Calculations** → Portfolio
+- **High-Frequency Streaming** → StockListBasic
+
+### 2. Install Dependencies
+
+```bash
+# Each demo is a standalone package
+dotnet add package ThunderPropagator.Channels.Demo.Airport
+# or
+dotnet add package ThunderPropagator.Channels.Demo.Portfolio
+# or
+dotnet add package ThunderPropagator.Channels.Demo.StockListBasic
 ```
 
-### 3. Subscribe and Handle Messages
+### 3. Register in DI Container
+
 ```csharp
-public class DemoService
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+
+// Example: Airport Demo
+services.AddAirportChannel(config =>
 {
-    public async Task StartAsync(PortfolioDemoChannel channel)
-    {
-        await channel.SubscribeAsync("demo-subscriber", message => 
-        {
-            // Handle demo messages
-            ProcessDemoData(message);
-        });
-    }
-}
+    config.IsEnabled = true;
+    // Configure feeders, pipelines, etc.
+});
 ```
 
-### 4. Extend for Your Needs
-Use demos as starting points for custom implementations:
-```csharp
-public class MyCustomChannel : AbstractChannel<MyMetadata, MyConfiguration>
-{
-    // Extend demo patterns for your specific requirements
-}
+### 4. Explore Documentation
+
+Each demo includes:
+- Architecture overview with diagrams
+- Entity models and relationships
+- Pipeline documentation (request/response schemas)
+- Feeder configuration options
+- Realistic usage examples
+- Test examples
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Demo Applications"
+        Airport[Airport Demo<br/>Aviation Operations<br/>★★★★★ Expert]
+        Portfolio[Portfolio Demo<br/>Finance & Trading<br/>★★★★☆ Advanced]
+        StockList[StockListBasic Demo<br/>Market Data<br/>★★★☆☆ Intermediate]
+    end
+    
+    subgraph "ThunderPropagator Framework"
+        Core[Core Channel Infrastructure]
+        Feeders[Feeder System]
+        Pipelines[Pipeline System]
+        Telemetry[Telemetry & Health]
+    end
+    
+    Airport -->|Built on| Core
+    Portfolio -->|Built on| Core
+    StockList -->|Built on| Core
+    
+    Airport -->|Uses| Feeders
+    Airport -->|Uses| Pipelines
+    Airport -->|Uses| Telemetry
+    
+    Portfolio -->|Uses| Feeders
+    Portfolio -->|Uses| Pipelines
+    
+    StockList -->|Uses| Feeders
+    StockList -->|Uses| Pipelines
+    
+    subgraph "External Systems"
+        FlightAPI[Flight Data APIs]
+        MarketAPI[Market Data Providers]
+        WeatherAPI[Weather Services]
+    end
+    
+    Airport -->|Integrates| FlightAPI
+    Airport -->|Integrates| WeatherAPI
+    Portfolio -->|Integrates| MarketAPI
+    StockList -->|Integrates| MarketAPI
+    
+    subgraph "Client Applications"
+        AirportUI[Airport Dashboards]
+        TradingUI[Trading Platforms]
+        TickerUI[Stock Tickers]
+    end
+    
+    Airport -->|Powers| AirportUI
+    Portfolio -->|Powers| TradingUI
+    StockList -->|Powers| TickerUI
+    
+    style Airport fill:#dc3545,color:#fff
+    style Portfolio fill:#fd7e14,color:#fff
+    style StockList fill:#ffc107,color:#000
+    style Core fill:#4a9eff,color:#fff
 ```
 
 ## See Also
 
-- [../Channels/README.md](../Channels/README.md) — Production-ready channels
-- [../Games/README.md](../Games/README.md) — Game-specific implementations
+- [Main Documentation](/docs/README.md) — Documentation home
+- [Channels](../Channels/README.md) — 7 production channels
+- [Games](../Games/README.md) — 2 interactive games
+- [Development Guide](../../.github/copilot-instructions.md) — Contributing guidelines
 
-[↑ Back to top](#contents)
+[↑ Back to top](#business-demonstration-projects)

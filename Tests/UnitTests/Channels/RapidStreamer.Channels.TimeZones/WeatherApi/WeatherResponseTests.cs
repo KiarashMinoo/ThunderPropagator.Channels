@@ -1,7 +1,7 @@
-using Xunit;
-using RapidStreamer.Channels.TimeZones.WeatherApi.Models;
+﻿using Xunit;
+using ThunderPropagator.Channels.TimeZones.WeatherApi.Models;
 
-namespace RapidStreamer.UnitTests.TimeZones.WeatherApi
+namespace ThunderPropagator.UnitTests.TimeZones.WeatherApi
 {
     public class WeatherResponseTests
     {

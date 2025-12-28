@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="NodaTime"/>
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis"/>
+        <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="TimeZonesChannelMetadata.cs">
+            <DependentUpon>TimeZonesChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="TimeZonesChannelFeederConfiguration.cs">
+            <DependentUpon>TimeZonesChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="TimeZonesChannelFeederMessage.cs">
+            <DependentUpon>TimeZonesChannelFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="TimeZonesChannelConfiguration.cs">
+            <DependentUpon>TimeZonesChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>

@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.Throughput
+namespace ThunderPropagator.UnitTests.Channels.Throughput
 {
     public class ThroughputExtensionsTests
     {

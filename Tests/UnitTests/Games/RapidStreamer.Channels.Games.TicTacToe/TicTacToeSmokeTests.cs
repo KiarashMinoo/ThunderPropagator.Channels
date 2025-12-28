@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Games.TicTacToe
+namespace ThunderPropagator.UnitTests.Games.TicTacToe
 {
     public class TicTacToeSmokeTests
     {

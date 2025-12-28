@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Demo.Portfolio
+namespace ThunderPropagator.UnitTests.Demo.Portfolio
 {
     public class PortfolioSmokeTests
     {

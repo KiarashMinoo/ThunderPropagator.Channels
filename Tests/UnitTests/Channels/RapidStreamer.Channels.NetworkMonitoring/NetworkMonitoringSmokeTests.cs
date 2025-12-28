@@ -1,6 +1,6 @@
-using Xunit;
+﻿using Xunit;
 
-namespace RapidStreamer.UnitTests.Channels.NetworkMonitoring
+namespace ThunderPropagator.UnitTests.Channels.NetworkMonitoring
 {
     public class NetworkMonitoringSmokeTests
     {

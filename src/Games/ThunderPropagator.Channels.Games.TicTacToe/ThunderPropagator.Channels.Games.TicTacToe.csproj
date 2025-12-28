@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="Bogus"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="TicTacToeChannelFeederMessage.cs">
+            <DependentUpon>TicTacToeChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="TicTacToeChannelMetadata.cs">
+            <DependentUpon>TicTacToeChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="TicTacToeChannelConfiguration.cs">
+            <DependentUpon>TicTacToeChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>
