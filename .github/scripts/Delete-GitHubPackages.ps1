@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     # Optional: will be inferred from git config / remote if omitted
     [string]$GitHubUserName,
@@ -8,7 +8,7 @@ param(
 
     # Package name filter (supports wildcards: *, ?)
     # Use '*' to clean ALL user packages
-    [string]$PackageNameFilter = 'RapidStreamer.Channels*',
+    [string]$PackageNameFilter = 'ThunderPropagator.BuildingBlocks*',
     [string[]]$PackageTypes = @('nuget'),
     [int]$PageSize = 1000,
     [switch]$SinglePass,
