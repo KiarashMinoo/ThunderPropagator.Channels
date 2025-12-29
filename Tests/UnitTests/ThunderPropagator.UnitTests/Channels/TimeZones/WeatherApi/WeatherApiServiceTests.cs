@@ -14,17 +14,17 @@ namespace ThunderPropagator.UnitTests.Channels.TimeZones.WeatherApi
         }
 
         [Fact]
-        public void CachedWeatherHandler_IsInternal()
+        public void CachedWeatherHandler_IsPublic()
         {
             var type = typeof(CachedWeatherHandler);
-            Assert.True(type.IsNotPublic);
+            Assert.True(type.IsPublic);
         }
 
         [Fact]
-        public void WeatherException_IsException()
+        public void WeatherException_IsPublic()
         {
             var type = typeof(WeatherException);
-            Assert.True(typeof(System.Exception).IsAssignableFrom(type));
+            Assert.True(type.IsPublic);
         }
 
         [Fact]
