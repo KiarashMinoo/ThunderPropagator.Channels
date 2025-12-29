@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Bogus"/>
+        <PackageReference Include="JetBrains.Annotations"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="NSubstitute"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio"/>
+        <PackageReference Include="coverlet.collector"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.TimeZones\ThunderPropagator.Channels.TimeZones.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.Chat\ThunderPropagator.Channels.Chat.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.Clock\ThunderPropagator.Channels.Clock.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.NetworkMonitoring\ThunderPropagator.Channels.NetworkMonitoring.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.Notifications\ThunderPropagator.Channels.Notifications.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.ResourceMonitoring\ThunderPropagator.Channels.ResourceMonitoring.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.Throughput\ThunderPropagator.Channels.Throughput.csproj" />
+        <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Channels.Demo.Airport\ThunderPropagator.Channels.Demo.Airport.csproj" />
+        <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Channels.Demo.Portfolio\ThunderPropagator.Channels.Demo.Portfolio.csproj" />
+        <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Channels.Demo.StockListBasic\ThunderPropagator.Channels.Demo.StockListBasic.csproj" />
+        <ProjectReference Include="..\..\..\src\Games\ThunderPropagator.Channels.Games.RockPaperScissors\ThunderPropagator.Channels.Games.RockPaperScissors.csproj" />
+        <ProjectReference Include="..\..\..\src\Games\ThunderPropagator.Channels.Games.TicTacToe\ThunderPropagator.Channels.Games.TicTacToe.csproj" />
+    </ItemGroup>
+
+</Project>
+
