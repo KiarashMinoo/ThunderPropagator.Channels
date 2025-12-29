@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Channels.Clock
         }
 
         [Fact]
-        public void ClockChannelFeederMessage_IsPublic()
+        public void ClockChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Clock.ClockChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

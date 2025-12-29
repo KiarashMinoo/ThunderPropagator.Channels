@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Channels.TimeZones
         }
 
         [Fact]
-        public void TimeZonesChannelFeederMessage_IsPublic()
+        public void TimeZonesChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.TimeZones.TimeZonesChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

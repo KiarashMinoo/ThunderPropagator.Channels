@@ -20,10 +20,10 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         }
 
         [Fact]
-        public void NotificationsChannelFeederMessage_IsPublic()
+        public void NotificationsChannelFeederMessage_IsInternal()
         {
             var type = typeof(NotificationsChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

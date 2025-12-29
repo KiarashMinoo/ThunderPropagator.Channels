@@ -27,10 +27,10 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
         }
 
         [Fact]
-        public void ChatChannelFeederMessage_IsPublic()
+        public void ChatChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Chat.ChatChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

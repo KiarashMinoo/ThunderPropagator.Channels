@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Channels.ResourceMonitoring
         }
 
         [Fact]
-        public void ResourceMonitoringChannelFeederMessage_IsPublic()
+        public void ResourceMonitoringChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.ResourceMonitoring.ResourceMonitoringChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

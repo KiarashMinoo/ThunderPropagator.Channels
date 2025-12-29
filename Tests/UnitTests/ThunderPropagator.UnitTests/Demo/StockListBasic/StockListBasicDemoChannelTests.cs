@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Demo.StockListBasic
         }
 
         [Fact]
-        public void StockListBasicDemoChannelFeederMessage_IsPublic()
+        public void StockListBasicDemoChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Demo.StockListBasic.StockListBasicDemoChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

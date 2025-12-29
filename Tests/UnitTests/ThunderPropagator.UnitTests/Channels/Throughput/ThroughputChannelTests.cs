@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Channels.Throughput
         }
 
         [Fact]
-        public void ThroughputChannelFeederMessage_IsPublic()
+        public void ThroughputChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Throughput.ThroughputChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

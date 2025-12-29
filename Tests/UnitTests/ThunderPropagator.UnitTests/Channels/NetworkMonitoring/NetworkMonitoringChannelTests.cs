@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Channels.NetworkMonitoring
         }
 
         [Fact]
-        public void NetworkMonitoringChannelFeederMessage_IsPublic()
+        public void NetworkMonitoringChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.NetworkMonitoring.NetworkMonitoringChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

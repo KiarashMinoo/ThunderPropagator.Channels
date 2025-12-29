@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Demo.Airport
         }
 
         [Fact]
-        public void AirportDemoChannelFeederMessage_IsPublic()
+        public void AirportDemoChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Demo.Airport.AirportDemoChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]

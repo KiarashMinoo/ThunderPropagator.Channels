@@ -26,10 +26,10 @@ namespace ThunderPropagator.UnitTests.Games.RockPaperScissors
         }
 
         [Fact]
-        public void RockPaperScissorsChannelFeederMessage_IsPublic()
+        public void RockPaperScissorsChannelFeederMessage_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.RockPaperScissorsChannelFeederMessage);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]
@@ -47,10 +47,10 @@ namespace ThunderPropagator.UnitTests.Games.RockPaperScissors
         }
 
         [Fact]
-        public void Player_IsPublic()
+        public void Player_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.Player);
-            Assert.True(type.IsPublic);
+            Assert.True(type.IsNotPublic);
         }
 
         [Fact]
