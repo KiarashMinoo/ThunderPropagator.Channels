@@ -2,4 +2,4 @@
 using System.Runtime.Versioning;
 
 [assembly: RequiresPreviewFeatures]
-[assembly: InternalsVisibleTo("RapidStreamer.Channels.Demo.Airport.UnitTests")]
+[assembly: InternalsVisibleTo("ThunderPropagator.Channels.Demo.Airport.UnitTests")]
