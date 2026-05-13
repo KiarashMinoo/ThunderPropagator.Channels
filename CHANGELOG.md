@@ -1,0 +1,64 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### 🚀 Features
+
+- Implement TicTacToe channel with add, get, move, and start game functionalities `(d884579)`
+- Implement Chat channel with user, group, and message support `(30ede1e)`
+- Add additional Chat pipelines for groups and messages `(5b78188)`
+- Add additional user pipelines for Chat channel `(f92b7a2)`
+- Add system resource monitoring channel `(d3ad989)`
+- Add demo channels (Airport, Portfolio, StockListBasic) and game channels (RockPaperScissors) `(5846cfd)`
+- Add feeder configurations as nested properties on channel configurations `(1572ec0)`
+- Make TimeZones channel configurable `(ea7169c)`
+- Add ARM64 platform configuration to solution `(70971cc)`
+- Add .NET 9 multi-targeting support with framework-specific package references `(d22581f)`
+- Add `ConnectionStringHelper.EnrichConnectionString` for connection strings `(9a0f379)`
+
+### 🐛 Bug Fixes
+
+- Fix Portfolio demo channel problem `(512653c)`
+- Fix TicTacToe channel pipelines `(74ff8e6)`
+- Set default values for feeder message fields `(2c1b775)`
+- Fix feeder message property bugs `(e73316c)`
+- Add missing dependency injection registrations `(2679c66)`
+- Fix Version property resolution in project files `(98396db)`
+- Fix solution build configurations `(0027fda)`
+- Fix package builder targeting on x86 and x64 platforms `(0a8c8fe)`
+- Fix RepositoryUrl in project properties `(590e2e7)`
+
+### ♻️ Refactoring
+
+- Refactor project files and dependencies across multiple channels `(c696550)`
+- Replace PackageVersion with Version in project files for central package management `(54bbe13)`
+
+### 🧪 Tests
+
+- Add ArchTests project for architecture validation `(34fb41b)`
+- Add unit tests for models and enums across all channels `(e0a4f50)`
+- Update tests to assert internal visibility for feeder messages and pipelines `(d1ac98a)`
+- Add `InternalsVisibleTo` attribute to AssemblyInfo.cs files for unit test access `(2578e85)`
+
+### ⚙️ CI / Tooling
+
+- Add CI workflows for beta and release processes including version bumping, packing, and publishing `(4c78d87)`
+- Add GitHub Actions workflow for cleaning up old GitHub Packages `(670bc1f)`
+- Simplify package references in ArchTests project file `(2ac7727)`
+- Mark unit test projects as non-packable `(114449e)`
+
+### 📝 Documentation
+
+- Add comprehensive documentation with Mermaid diagrams for all channels `(fa42124)`
+- Update README.md `(5e9b332)`
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| RapidStreamer (renamed to ThunderPropagator) | 1.0.1-beta.3 | ThunderPropagator 1.0.1-beta.15 |
+
+Recurring NuGet dependency upgrades across the project lifecycle `(803244a)` `(bf63625)` `(fe31358)` `(9d97d33)` `(f61e466)` `(2068e7b)` `(73b5323)` `(059209s)` `(839c083)` `(b53cddf)` `(5f30767)` `(c338856)` `(ebc4ec1)` `(d2fcc96)` `(ebb48ac)` `(5dae1ad)` `(d08cca4)` `(ca288ec)` `(0bf2a99)` `(5eb8771)` `(82daaf3)` `(9edb29c)` `(c8896c0)` `(4b6e722)` `(8dbc70d)` `(e3ee936)` `(8e7e9d5)` `(de7797d)` `(9375ea9)` `(7f3e0e0)` `(553774c)` `(49f6275)` `(1a23d15)` `(c819720)` `(a1f643e)` `(6940f10)` `(83716fd)` `(f14ec85)` `(9d97d33)` `(f497790)` `(83b8f58)` `(4bbed35)` `(c2255a4)`
