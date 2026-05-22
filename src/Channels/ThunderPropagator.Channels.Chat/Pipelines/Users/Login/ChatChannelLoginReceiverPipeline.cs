@@ -1,9 +1,8 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
 using System.Security.Authentication;
-using CaseConverter;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
@@ -32,7 +31,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Login
             CancellationToken cancellationToken = default)
         {
             var activityName = $"{channelInfo.ChannelName}_{GetType().GetTypeInfo().Name}_{nameof(Invoke)}";
-            _counter ??= Telemetry.CreateCounter<long>(activityName.ToSnakeCase());
+            _counter ??= Telemetry.CreateCounter<long>($"thunderpropagator.{activityName.ToLowerInvariant().Replace('_', '.')}");
 
             using var activity = Telemetry.StartActivity(activityName, ActivityKind.Consumer)?
                 .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType)
