@@ -13,11 +13,17 @@ updates:
       - "security"
     open-pull-requests-limit: 10
     groups:
-      microsoft-extensions:
+      redis-and-resilience:
         patterns:
-          - "Microsoft.Extensions.*"
-          - "Microsoft.AspNetCore.*"
-          - "Asp.Versioning.*"
+          - "Microsoft.Extensions.Caching.StackExchangeRedis"
+          - "Microsoft.Extensions.Http.Polly"
+      testing:
+        patterns:
+          - "xunit*"
+          - "NSubstitute"
+          - "coverlet.*"
+          - "NetArchTest.Rules"
+          - "Bogus"
           - "Microsoft.NET.Test.Sdk"
 
   # Keep GitHub Actions pinned and up-to-date.

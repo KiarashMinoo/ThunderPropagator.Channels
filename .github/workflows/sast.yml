@@ -4,8 +4,9 @@ on:
   push:
     branches: [develop]
   schedule:
-    - cron: '0 0 * * *'   # 12:00 AM UTC daily
-    - cron: '0 12 * * *'  # 12:00 PM UTC daily
+    # Weekly is plenty — SAST already runs on every push to develop, this is
+    # just a safety net for stale branches / newly-disclosed CVEs.
+    - cron: '0 3 * * 4'   # Thursday 03:00 UTC
   workflow_dispatch:
     inputs:
       enable-codeql:
@@ -39,7 +40,7 @@ jobs:
         8.0.x
         9.0.x
         10.0.x
-      solution-path: 'ThunderPropagator.BuildingBlocks.slnx'
+      solution-path: 'ThunderPropagator.Channels.slnx'
       enable-codeql: ${{ github.event_name == 'workflow_dispatch' && inputs.enable-codeql || true }}
       enable-devskim: ${{ github.event_name == 'workflow_dispatch' && inputs.enable-devskim || true }}
       enable-secret-scan: ${{ github.event_name == 'workflow_dispatch' && inputs.enable-secret-scan || true }}
