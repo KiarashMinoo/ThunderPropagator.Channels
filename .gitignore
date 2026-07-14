@@ -1,14 +1,15 @@
-# ============================================================
-# OS & Editor Artifacts
-# ============================================================
+# -----------------------------------------------------------------------------
+# Operating system files
+# -----------------------------------------------------------------------------
 .DS_Store
-*.swp
-*.*~
-*.pyc
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# ============================================================
-# IDE & Editor Directories
-# ============================================================
+# -----------------------------------------------------------------------------
+# Editor and IDE files
+# -----------------------------------------------------------------------------
 
 # Visual Studio
 .vs/
@@ -16,55 +17,107 @@
 *.user
 *.userosscache
 *.sln.docstates
+*.rsuser
+
+# Rider and ReSharper
+.idea/
+*.sln.DotSettings.user
+_ReSharper*/
+*.[Rr]e[Ss]harper
 
 # Visual Studio Code
 .vscode/
 
-# JetBrains Rider
-.idea/
-
 # JetBrains Fleet
 .fleet/
 
-# Code Rush
+# CodeRush
 .cr/
 
-# ============================================================
-# Tool & Agent Config
-# ============================================================
-.claude
+# Vim and other editors
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# .NET build output
+# -----------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+[Oo]ut/
+[Bb]uild/
+bld/
+x86/
+x64/
+artifacts/
+TestResults/
+
+# Build logs
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# -----------------------------------------------------------------------------
+# .NET package and restore artifacts
+# -----------------------------------------------------------------------------
+*.nupkg
+*.snupkg
+*.symbols.nupkg
+nupkg/
+packages/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+
+# -----------------------------------------------------------------------------
+# Test, coverage, and analysis output
+# -----------------------------------------------------------------------------
+coverage/
+coverage.*/
+*.coverage
+*.coveragexml
+*.trx
+*.vsp
+*.vspx
+*.sap
+BenchmarkDotNet.Artifacts/
+*.crunchsolution.cache
+*.crunchproject.local.xml
+
+# -----------------------------------------------------------------------------
+# Runtime data, logs, and local volumes
+# -----------------------------------------------------------------------------
+[Ll]ogs/
+[Vv]olumes/
+data/
+mongo_data/
+mongo_data_web/
+redis_data/
+*.log
+
+# -----------------------------------------------------------------------------
+# Tooling, automation, and local workspace state
+# -----------------------------------------------------------------------------
+.claude/
 .shared-props/
 .obsidian/
 graphify-out/
 .graphify*
 
-# ============================================================
-# Build Output
-# ============================================================
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-[Bb]uild/
-[Bb]in/
-[Oo]bj/
-[Oo]ut/
-bld/
-x64/
-x86/
-artifacts/
-nupkg/
-project.lock.json
-msbuild.log
-msbuild.err
-msbuild.wrn
+# Python caches used by local scripts or tools
+__pycache__/
+*.py[cod]
+*$py.class
 
-# ============================================================
-# Runtime Data & Volumes
-# ============================================================
-[Vv]olumes/
-data/
-logs/
-mongo_data/
-mongo_data_web/
-redis_data/
+# -----------------------------------------------------------------------------
+# Environment and secrets
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.local
