@@ -2,6 +2,7 @@
 
     <ItemGroup>
         <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="NodaTime"/>
         <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis"/>
         <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
