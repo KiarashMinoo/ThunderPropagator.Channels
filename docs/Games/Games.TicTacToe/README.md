@@ -1,4 +1,4 @@
-# TimeZones
+# Games.TicTacToe
 
 ## Contents
 
@@ -14,46 +14,46 @@
 
 ## Overview
 
-The **TimeZones** area groups 1 documented type, including `TimeZonesChannelExtensions`. It provides the contracts and implementation used by this part of ThunderPropagator.Channels.
+The **Games.TicTacToe** area groups 1 documented type, including `TicTacToeChannelExtensions`. It provides the contracts and implementation used by this part of ThunderPropagator.Channels.
 
 ## Files
 
 | File | Primary type(s)/symbol(s) | LOC (approx.) | Responsibility |
 |---|---|---:|---|
 | `AssemblyInfo.cs` | — | 5 | Contains the assembly info implementation or configuration. |
-| `ThunderPropagator.Channels.TimeZones.csproj` | — | 29 | Defines project build targets, dependencies, and package metadata. |
-| `TimeZonesChannel.cs` | `TimeZonesChannel` | 23 | Defines TimeZonesChannel and its related behavior. |
-| `TimeZonesChannelConfiguration.cs` | `TimeZonesChannelConfiguration` | 18 | Defines TimeZonesChannelConfiguration and its related behavior. |
-| `TimeZonesChannelExtensions.cs` | `TimeZonesChannelExtensions` | 56 | Defines TimeZonesChannelExtensions and its related behavior. |
-| `TimeZonesChannelFeeder.cs` | `TimeZonesChannelFeeder` | 69 | Defines TimeZonesChannelFeeder and its related behavior. |
-| `TimeZonesChannelFeederConfiguration.cs` | `TimeZonesChannelFeederConfiguration` | 60 | Defines TimeZonesChannelFeederConfiguration and its related behavior. |
-| `TimeZonesChannelFeederMessage.cs` | `TimeZonesChannelFeederMessage` | 80 | Defines TimeZonesChannelFeederMessage and its related behavior. |
-| `TimeZonesChannelMetadata.cs` | `TimeZonesChannelMetadata` | 49 | Defines TimeZonesChannelMetadata and its related behavior. |
+| `ThunderPropagator.Channels.Games.TicTacToe.csproj` | — | 20 | Defines project build targets, dependencies, and package metadata. |
+| `TicTacToeChannel.cs` | `TicTacToeChannel` | 143 | Defines TicTacToeChannel and its related behavior. |
+| `TicTacToeChannelConfiguration.cs` | `TicTacToeChannelConfiguration` | 16 | Defines TicTacToeChannelConfiguration and its related behavior. |
+| `TicTacToeChannelExtensions.cs` | `TicTacToeChannelExtensions` | 28 | Defines TicTacToeChannelExtensions and its related behavior. |
+| `TicTacToeChannelFeederMessage.cs` | `TicTacToeChannelFeederMessage` | 42 | Defines TicTacToeChannelFeederMessage and its related behavior. |
+| `TicTacToeChannelMetadata.cs` | `TicTacToeChannelMetadata` | 26 | Defines TicTacToeChannelMetadata and its related behavior. |
+| `TicTacToeChannelSubscribeRequest.cs` | `TicTacToeChannelSubscribeRequest` | 16 | Defines TicTacToeChannelSubscribeRequest and its related behavior. |
 
 ### Direct child areas
 
-- [WeatherApi](./WeatherApi/README.md) `Types:1` `Files:2`
+- [Game](./Game/README.md) `Types:2` `Files:2`
+- [Pipelines](./Pipelines/README.md) `Types:0` `Files:0`
 
 ## Types and Members
 
 | Type | Kind | Summary | Inherits/Implements | Key Members |
 |---|---|---|---|---|
-| [`TimeZonesChannelExtensions`](#timezoneschannelextensions) | class | Represents the TimeZonesChannelExtensions class. | — | `AddTimeZonesChannel(…)` |
+| [`TicTacToeChannelExtensions`](#tictactoechannelextensions) | class | Represents the TicTacToeChannelExtensions class. | — | `AddTicTacToeChannel(…)` |
 
-### TimeZonesChannelExtensions
+### TicTacToeChannelExtensions
 
 - **Kind:** class
-- **Namespace:** `ThunderPropagator.Channels.TimeZones`
+- **Namespace:** `ThunderPropagator.Channels.Games.TicTacToe`
 - **Inherits/implements:** None declared
 - **Attributes:** None detected
-- **Key members:** `AddTimeZonesChannel(…)`
-- **Summary:** Represents the TimeZonesChannelExtensions class.
+- **Key members:** `AddTicTacToeChannel(…)`
+- **Summary:** Represents the TicTacToeChannelExtensions class.
 - **Thread safety:** Follow the lifetime and concurrency guarantees of the owning component; no additional guarantee is inferred.
 
 **Usage recipe**
 
 ```csharp
-// Resolve TimeZonesChannelExtensions from the configured service container or construct it with its declared dependencies.
+// Resolve TicTacToeChannelExtensions from the configured service container or construct it with its declared dependencies.
 ```
 
 [↑ Back to top](#contents)
@@ -82,24 +82,20 @@ This area contains performance-sensitive constructs such as pooled buffers, span
 
 ```mermaid
 graph TD
-  Current["TimeZones"]
-  Current --> C0["WeatherApi"]
+  Current["Games.TicTacToe"]
+  Current --> C0["Game"]
+  Current --> C1["Pipelines"]
 ```
 
-The diagram shows the direct components documented by the **TimeZones** area.
+The diagram shows the direct components documented by the **Games.TicTacToe** area.
 
 ## Examples
 
-Start with `TimeZonesChannelExtensions` as the primary entry point for this folder, then follow its linked contracts and collaborators.
+Start with `TicTacToeChannelExtensions` as the primary entry point for this folder, then follow its linked contracts and collaborators.
 
 ## See Also
 
 - [Parent area](../README.md)
-- [Chat](../Chat/README.md)
-- [Clock](../Clock/README.md)
-- [NetworkMonitoring](../NetworkMonitoring/README.md)
-- [Notifications](../Notifications/README.md)
-- [ResourceMonitoring](../ResourceMonitoring/README.md)
-- [Throughput](../Throughput/README.md)
+- [Games.RockPaperScissors](../Games.RockPaperScissors/README.md)
 
 [↑ Back to top](#contents)

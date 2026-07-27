@@ -1,4 +1,4 @@
-# Demo
+# Groups
 
 ## Contents
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-The **Demo** area organizes 3 direct sub-areas. Each child is documented separately so responsibilities and APIs remain easy to navigate.
+The **Groups** area organizes 8 direct sub-areas. Each child is documented separately so responsibilities and APIs remain easy to navigate.
 
 ## Files
 
@@ -19,9 +19,14 @@ The **Demo** area organizes 3 direct sub-areas. Each child is documented separat
 
 ### Direct child areas
 
-- [Demo.Airport](./Demo.Airport/README.md) `Types:2` `Files:10`
-- [Demo.Portfolio](./Demo.Portfolio/README.md) `Types:1` `Files:7`
-- [Demo.StockListBasic](./Demo.StockListBasic/README.md) `Types:1` `Files:9`
+- [AddUser](./AddUser/README.md) `Types:2` `Files:2`
+- [Create](./Create/README.md) `Types:3` `Files:3`
+- [GetAll](./GetAll/README.md) `Types:2` `Files:2`
+- [Join](./Join/README.md) `Types:2` `Files:2`
+- [RemoveUser](./RemoveUser/README.md) `Types:2` `Files:2`
+- [Rename](./Rename/README.md) `Types:3` `Files:3`
+- [SetIcon](./SetIcon/README.md) `Types:3` `Files:3`
+- [UserLeave](./UserLeave/README.md) `Types:2` `Files:2`
 
 ## Package Dependencies
 
@@ -39,13 +44,18 @@ The **Demo** area organizes 3 direct sub-areas. Each child is documented separat
 
 ```mermaid
 graph TD
-  Current["Demo"]
-  Current --> C0["Demo.Airport"]
-  Current --> C1["Demo.Portfolio"]
-  Current --> C2["Demo.StockListBasic"]
+  Current["Groups"]
+  Current --> C0["AddUser"]
+  Current --> C1["Create"]
+  Current --> C2["GetAll"]
+  Current --> C3["Join"]
+  Current --> C4["RemoveUser"]
+  Current --> C5["Rename"]
+  Current --> C6["SetIcon"]
+  Current --> C7["UserLeave"]
 ```
 
-The diagram shows the direct components documented by the **Demo** area.
+The diagram shows the direct components documented by the **Groups** area.
 
 ## Examples
 
@@ -53,8 +63,8 @@ Choose the child area that matches the required capability; parent documentation
 
 ## See Also
 
-- [Documentation home](../README.md)
-- [Channels](../Channels/README.md)
-- [Games](../Games/README.md)
+- [Parent area](../README.md)
+- [Messages](../Messages/README.md)
+- [Users](../Users/README.md)
 
 [↑ Back to top](#contents)

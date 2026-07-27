@@ -1,4 +1,4 @@
-# Demo
+# Pipelines
 
 ## Contents
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-The **Demo** area organizes 3 direct sub-areas. Each child is documented separately so responsibilities and APIs remain easy to navigate.
+The **Pipelines** area organizes 3 direct sub-areas. Each child is documented separately so responsibilities and APIs remain easy to navigate.
 
 ## Files
 
@@ -19,9 +19,9 @@ The **Demo** area organizes 3 direct sub-areas. Each child is documented separat
 
 ### Direct child areas
 
-- [Demo.Airport](./Demo.Airport/README.md) `Types:2` `Files:10`
-- [Demo.Portfolio](./Demo.Portfolio/README.md) `Types:1` `Files:7`
-- [Demo.StockListBasic](./Demo.StockListBasic/README.md) `Types:1` `Files:9`
+- [Groups](./Groups/README.md) `Types:0` `Files:0`
+- [Messages](./Messages/README.md) `Types:0` `Files:0`
+- [Users](./Users/README.md) `Types:0` `Files:0`
 
 ## Package Dependencies
 
@@ -39,13 +39,13 @@ The **Demo** area organizes 3 direct sub-areas. Each child is documented separat
 
 ```mermaid
 graph TD
-  Current["Demo"]
-  Current --> C0["Demo.Airport"]
-  Current --> C1["Demo.Portfolio"]
-  Current --> C2["Demo.StockListBasic"]
+  Current["Pipelines"]
+  Current --> C0["Groups"]
+  Current --> C1["Messages"]
+  Current --> C2["Users"]
 ```
 
-The diagram shows the direct components documented by the **Demo** area.
+The diagram shows the direct components documented by the **Pipelines** area.
 
 ## Examples
 
@@ -53,8 +53,7 @@ Choose the child area that matches the required capability; parent documentation
 
 ## See Also
 
-- [Documentation home](../README.md)
-- [Channels](../Channels/README.md)
-- [Games](../Games/README.md)
+- [Parent area](../README.md)
+- [Models](../Models/README.md)
 
 [↑ Back to top](#contents)

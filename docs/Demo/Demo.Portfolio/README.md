@@ -1,4 +1,4 @@
-# TimeZones
+# Demo.Portfolio
 
 ## Contents
 
@@ -14,46 +14,44 @@
 
 ## Overview
 
-The **TimeZones** area groups 1 documented type, including `TimeZonesChannelExtensions`. It provides the contracts and implementation used by this part of ThunderPropagator.Channels.
+The **Demo.Portfolio** area groups 1 documented type, including `PortfolioDemoExtensions`. It provides the contracts and implementation used by this part of ThunderPropagator.Channels.
 
 ## Files
 
 | File | Primary type(s)/symbol(s) | LOC (approx.) | Responsibility |
 |---|---|---:|---|
 | `AssemblyInfo.cs` | — | 5 | Contains the assembly info implementation or configuration. |
-| `ThunderPropagator.Channels.TimeZones.csproj` | — | 29 | Defines project build targets, dependencies, and package metadata. |
-| `TimeZonesChannel.cs` | `TimeZonesChannel` | 23 | Defines TimeZonesChannel and its related behavior. |
-| `TimeZonesChannelConfiguration.cs` | `TimeZonesChannelConfiguration` | 18 | Defines TimeZonesChannelConfiguration and its related behavior. |
-| `TimeZonesChannelExtensions.cs` | `TimeZonesChannelExtensions` | 56 | Defines TimeZonesChannelExtensions and its related behavior. |
-| `TimeZonesChannelFeeder.cs` | `TimeZonesChannelFeeder` | 69 | Defines TimeZonesChannelFeeder and its related behavior. |
-| `TimeZonesChannelFeederConfiguration.cs` | `TimeZonesChannelFeederConfiguration` | 60 | Defines TimeZonesChannelFeederConfiguration and its related behavior. |
-| `TimeZonesChannelFeederMessage.cs` | `TimeZonesChannelFeederMessage` | 80 | Defines TimeZonesChannelFeederMessage and its related behavior. |
-| `TimeZonesChannelMetadata.cs` | `TimeZonesChannelMetadata` | 49 | Defines TimeZonesChannelMetadata and its related behavior. |
+| `PortfolioDemoChannel.cs` | `PortfolioDemoChannel` | 115 | Defines PortfolioDemoChannel and its related behavior. |
+| `PortfolioDemoChannelConfiguration.cs` | `PortfolioDemoChannelConfiguration` | 16 | Defines PortfolioDemoChannelConfiguration and its related behavior. |
+| `PortfolioDemoChannelFeederMessage.cs` | `PortfolioDemoChannelFeederMessage` | 55 | Defines PortfolioDemoChannelFeederMessage and its related behavior. |
+| `PortfolioDemoChannelMetadata.cs` | `PortfolioDemoChannelMetadata` | 22 | Defines PortfolioDemoChannelMetadata and its related behavior. |
+| `PortfolioDemoExtensions.cs` | `PortfolioDemoExtensions` | 23 | Defines PortfolioDemoExtensions and its related behavior. |
+| `ThunderPropagator.Channels.Demo.Portfolio.csproj` | — | 20 | Defines project build targets, dependencies, and package metadata. |
 
 ### Direct child areas
 
-- [WeatherApi](./WeatherApi/README.md) `Types:1` `Files:2`
+- [Pipelines](./Pipelines/README.md) `Types:2` `Files:2`
 
 ## Types and Members
 
 | Type | Kind | Summary | Inherits/Implements | Key Members |
 |---|---|---|---|---|
-| [`TimeZonesChannelExtensions`](#timezoneschannelextensions) | class | Represents the TimeZonesChannelExtensions class. | — | `AddTimeZonesChannel(…)` |
+| [`PortfolioDemoExtensions`](#portfoliodemoextensions) | class | Represents the PortfolioDemoExtensions class. | — | `AddPortfolioDemoChannel(…)` |
 
-### TimeZonesChannelExtensions
+### PortfolioDemoExtensions
 
 - **Kind:** class
-- **Namespace:** `ThunderPropagator.Channels.TimeZones`
+- **Namespace:** `ThunderPropagator.Channels.Demo.Portfolio`
 - **Inherits/implements:** None declared
 - **Attributes:** None detected
-- **Key members:** `AddTimeZonesChannel(…)`
-- **Summary:** Represents the TimeZonesChannelExtensions class.
+- **Key members:** `AddPortfolioDemoChannel(…)`
+- **Summary:** Represents the PortfolioDemoExtensions class.
 - **Thread safety:** Follow the lifetime and concurrency guarantees of the owning component; no additional guarantee is inferred.
 
 **Usage recipe**
 
 ```csharp
-// Resolve TimeZonesChannelExtensions from the configured service container or construct it with its declared dependencies.
+// Resolve PortfolioDemoExtensions from the configured service container or construct it with its declared dependencies.
 ```
 
 [↑ Back to top](#contents)
@@ -82,24 +80,20 @@ This area contains performance-sensitive constructs such as pooled buffers, span
 
 ```mermaid
 graph TD
-  Current["TimeZones"]
-  Current --> C0["WeatherApi"]
+  Current["Demo.Portfolio"]
+  Current --> C0["Pipelines"]
 ```
 
-The diagram shows the direct components documented by the **TimeZones** area.
+The diagram shows the direct components documented by the **Demo.Portfolio** area.
 
 ## Examples
 
-Start with `TimeZonesChannelExtensions` as the primary entry point for this folder, then follow its linked contracts and collaborators.
+Start with `PortfolioDemoExtensions` as the primary entry point for this folder, then follow its linked contracts and collaborators.
 
 ## See Also
 
 - [Parent area](../README.md)
-- [Chat](../Chat/README.md)
-- [Clock](../Clock/README.md)
-- [NetworkMonitoring](../NetworkMonitoring/README.md)
-- [Notifications](../Notifications/README.md)
-- [ResourceMonitoring](../ResourceMonitoring/README.md)
-- [Throughput](../Throughput/README.md)
+- [Demo.Airport](../Demo.Airport/README.md)
+- [Demo.StockListBasic](../Demo.StockListBasic/README.md)
 
 [↑ Back to top](#contents)
