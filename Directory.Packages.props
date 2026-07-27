@@ -27,7 +27,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Bogus" Version="35.6.5" />
-    <PackageVersion Include="NodaTime" Version="3.3.2" />
+    <PackageVersion Include="NodaTime" Version="3.3.3" />
     <PackageVersion Include="JetBrains.Annotations" Version="2025.2.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageVersion Include="NSubstitute" Version="6.0.0" />
