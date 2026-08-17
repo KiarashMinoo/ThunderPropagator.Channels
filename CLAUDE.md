@@ -1,100 +1,57 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for working in this repository.
 
 ## Commands
 
 ```powershell
-# Restore packages (also downloads shared build props)
 dotnet restore
-
-# Build (Release mode, default AnyCPU)
 dotnet build -c Release
-
-# Build specific platform
-dotnet build -c Release -p:Platform=x64
-dotnet build -c Release -p:Platform=ARM64
-
-# Run all tests
+dotnet build -c Release -p:Platform=x64   # or ARM64
 dotnet test -c Release
-
-# Run a single test
-dotnet test --filter "FullyQualifiedName~YourTestClassName"
-
-# Run tests with coverage
+dotnet test --filter "FullyQualifiedName~<Name>"
 dotnet test --collect:"XPlat Code Coverage"
-
-# Run architecture tests only
-dotnet test Tests/UnitTests/ArchTests
-
-# Pack NuGet packages
 dotnet pack -c Release -p:Platform=x64
 ```
 
-## NuGet Source Setup
-
-ThunderPropagator packages are on GitHub Packages. Requires `GH_TOKEN` environment variable:
-
-```powershell
-$env:GH_TOKEN = "your_github_token"
-dotnet nuget add source "https://nuget.pkg.github.com/KiarashMinoo/index.json" `
-    --name github --username KiarashMinoo --password $env:GH_TOKEN --store-password-in-clear-text
-```
+First restore against the private package feed needs a read token set as an environment variable and added as a NuGet source.
 
 ## Architecture
 
-### Project Layout
+Three sibling top-level areas, isolated from each other and checked by an architecture-test project: a production area, a demo/sample area, and a games/playground area. None may depend on either of the other two.
 
-```
-src/
-├── Channels/    # 7 production channels (Chat, Clock, NetworkMonitoring, Notifications,
-│                #   ResourceMonitoring, Throughput, TimeZones)
-├── Demo/        # 3 business demos (Airport, Portfolio, StockListBasic)
-└── Games/       # 2 games (RockPaperScissors, TicTacToe)
+## Mandatory unit structure
 
-Tests/
-├── UnitTests/ArchTests/           # NetArchTest architecture validation
-├── UnitTests/ThunderPropagator.UnitTests/
-├── Channels/                      # Per-channel unit test projects
-├── Demo/
-└── Games/
-```
+Every unit in the production area has exactly five files, enforced by architecture tests:
 
-### Mandatory Channel Structure
+| Role | Base type | Visibility |
+|---|---|---|
+| Entry point | generic channel base (metadata, configuration type parameters) | public, sealed in Release |
+| Configuration | channel-configuration base | public |
+| Feeder message | dictionary-backed message base | internal |
+| Metadata | channel-metadata base | public |
+| DI extensions | static class | public static |
 
-Every channel must have exactly these 5 files (enforced by ArchTests):
+Entry-point classes use the Release-seals/Debug-doesn't pattern (`#if !DEBUG sealed #endif`).
 
-| File | Base Type | Visibility |
-|------|-----------|------------|
-| `{Name}Channel.cs` | `AbstractChannel<TMetadata, TConfiguration>` | public, sealed\* |
-| `{Name}ChannelConfiguration.cs` | `AbstractChannelConfiguration` | public |
-| `{Name}ChannelFeederMessage.cs` | `FeederMessage` | internal |
-| `{Name}ChannelMetadata.cs` | `AbstractChannelMetadata` | public |
-| `{Name}ChannelExtensions.cs` | static class | public static |
+## Two core patterns
 
-\* Channel classes use `#if !DEBUG sealed #endif` — sealed in Release, non-sealed in Debug for testability.
-
-### Two Core Patterns
-
-**Feeder Pattern** (push-only channels): Inherit `IterativeFeeder<TChannel, TMessage, TConfig>`, implement `ReceiveAsync()` returning `IAsyncEnumerable<FeederReceivedMessage<TMessage>>`. Feeders are `internal` by convention.
+**Feeder** (push-only): inherit the iterative-feeder base (channel/message/config type parameters), implement the receive method as an `IAsyncEnumerable` yielding received-message wrappers. Feeders are internal by convention.
 
 ```csharp
-internal class NowClockFeeder : IterativeFeeder<ClockChannel, ClockChannelFeederMessage, NowClockFeederConfiguration>
+internal class {Name}Feeder : IterativeFeeder<{Name}Channel, {Name}ChannelFeederMessage, {Name}FeederConfiguration>
 {
-    protected override async IAsyncEnumerable<FeederReceivedMessage<ClockChannelFeederMessage>> ReceiveAsync(
+    protected override async IAsyncEnumerable<FeederReceivedMessage<{Name}ChannelFeederMessage>> ReceiveAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
-        yield return new ClockChannelFeederMessage(...);
+        // await the next value, then yield a message
     }
 }
 ```
 
-**Pipeline Pattern** (bidirectional channels): Receive pipelines live in `Pipelines/` organized by domain. Each pipeline has `{Name}ReceiverPipeline.cs`, `{Name}ReceiverPipelineRequestDto.cs`, and optionally `{Name}ReceiverPipelineResponseDto.cs`. All three must be `public`.
+**Pipeline** (bidirectional): a receive pipeline per concern lives in a domain-named folder, with a pipeline class plus a request DTO and an optional response DTO — all three public.
 
-### FeederMessage Properties
-
-`FeederMessage` is a dictionary-backed class from `ThunderPropagator.BuildingBlocks`. Properties use `GetValueOrDefault<T>()` and `SetValue()`:
+## Feeder-message properties
 
 ```csharp
 public string Key
@@ -104,45 +61,27 @@ public string Key
 }
 ```
 
-### DI Registration
-
-Each channel registers via its `Extensions` class using `AddChannel<T>()` and `AddChannelFeeder<...>()` from `ThunderPropagator.Infrastructure.Extensions`:
+## DI registration
 
 ```csharp
 services
-    .AddSingleton(channelConfiguration)
-    .AddChannel<ClockChannel>()
-    .AddChannelFeeder<ClockChannel, NowClockFeeder, ClockChannelFeederMessage, NowClockFeederConfiguration>(...);
+    .AddSingleton(configuration)
+    .AddChannel<{Name}Channel>()
+    .AddChannelFeeder<{Name}Channel, {Name}Feeder, {Name}ChannelFeederMessage, {Name}FeederConfiguration>(...);
 ```
 
-## Build System
+## Architecture rules (enforced)
 
-### Shared Props
+- The three top-level areas must not cross-depend.
+- Types ending in the entry-point suffix must be abstract or sealed.
+- Types ending in a configuration/feeder/pipeline/metadata/feeder-message/request-DTO/response-DTO suffix must be public.
+- Types ending in an extensions suffix must be static and public.
+- Types ending in an exception suffix must inherit from the base exception type.
 
-`Directory.Build.props` auto-downloads `Shared.Build.props` and `Shared.Nuget.props` from `https://github.com/KiarashMinoo/ThunderPropagator.SharedBuild` into `.shared-props/` (3 retry attempts). Run `dotnet clean` to purge them; `dotnet restore` re-downloads. If downloads fail, check network/GH_TOKEN.
+## Conventions
 
-### Versioning
+Nullable + implicit usings on; private fields `_camelCase`; telemetry activities named `{ClassName}_{MethodName}`; platform names in mixed inner-case, not all-caps; XML docs required on public API; preview language features only in test projects.
 
-Version is set in `Directory.Build.props` under `<Version>`. CI manages bumps automatically — do not edit manually outside of release workflows. The `develop` branch triggers beta CI (increments beta suffix); `release/**` branches trigger release CI (strips beta suffix and publishes).
+## Build & versioning
 
-### Package IDs
-
-Package names are dynamic: `ThunderPropagator$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)`. Debug builds append `.Debug`; AnyCPU omits the platform suffix.
-
-## Architecture Rules (Enforced by ArchTests)
-
-- `Channels` namespace must not depend on `Demo` or `Games` namespaces
-- `Demo` and `Games` namespaces must not cross-depend
-- Classes ending with `Channel` must be abstract or sealed
-- Classes ending with `Configuration`, `Feeder`, `Pipeline`, `Metadata`, `FeederMessage`, `PipelineRequestDto`, `PipelineResponseDto` must be public
-- Classes ending with `Extensions` must be static and public
-- Classes ending with `Exception` must inherit from `System.Exception`
-
-## Code Conventions
-
-- Nullable reference types and implicit usings are enabled globally
-- Internal fields use `_camelCase` prefix
-- Telemetry activity names follow `{ClassName}_{MethodName}` convention
-- Platform names use `MacOs` not `MacOS`, `onAcPower` not `onACPower`
-- XML documentation is required for all public APIs (`GenerateDocumentationFile=true`)
-- `EnablePreviewFeatures=true` is set only in test projects
+Version and target frameworks are centralized; CI bumps automatically — never hand-edit outside a release workflow. Package id carries a debug/platform suffix depending on configuration.
