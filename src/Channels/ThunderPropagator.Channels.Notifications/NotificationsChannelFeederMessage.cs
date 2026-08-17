@@ -97,5 +97,11 @@ namespace ThunderPropagator.Channels.Notifications
             get => GetValueOrDefault(string.Empty);
             private set => SetValue(value);
         }
+
+        internal NotificationsChannelFeederMessage ResetHashKey()
+        {
+            this["HashKey"] = null;
+            return this;
+        }
     }
 }

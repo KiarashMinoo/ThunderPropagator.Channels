@@ -61,7 +61,7 @@ namespace ThunderPropagator.Channels.Notifications
                     {
                         var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
                         notificationsChannelFeederMessage.UserId = userId!.ToString();
-                        notificationsChannelFeederMessage["HashKey"] = null;
+                        notificationsChannelFeederMessage = notificationsChannelFeederMessage.ResetHashKey();
 
                         base.EmitMessage(notificationsChannelFeederMessage);
                     });

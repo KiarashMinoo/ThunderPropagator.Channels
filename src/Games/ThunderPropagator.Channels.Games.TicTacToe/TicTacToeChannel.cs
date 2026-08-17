@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Channels.Subscribers;
+using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Games.TicTacToe.Game;
 using ThunderPropagator.Channels.Games.TicTacToe.Game.Enums;
 using ThunderPropagator.Channels.Games.TicTacToe.Game.Players;

@@ -63,7 +63,7 @@ namespace ThunderPropagator.Channels.ResourceMonitoring
         {
             await Task.Delay(TimeSpan.FromMilliseconds(_window), cancellationToken);
 
-            var metrics = _resourceMonitor.GetMetrics(_window, true);
+            var metrics = await _resourceMonitor.GetMetricsAsync(_window, true, cancellationToken);
 
             var sendAlert = false;
             var alert = GetAlert(metrics);

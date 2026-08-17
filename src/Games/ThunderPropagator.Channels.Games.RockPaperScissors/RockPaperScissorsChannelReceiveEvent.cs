@@ -23,7 +23,7 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
 
         public Task Invoke(ReceiveContext context, CancellationToken cancellationToken = default)
         {
-            context.Response.Subscriptions.ForEach(InternalInvoke);
+            //context.Response.Subscriptions.ForEach(InternalInvoke);
 
             return Task.CompletedTask;
 
