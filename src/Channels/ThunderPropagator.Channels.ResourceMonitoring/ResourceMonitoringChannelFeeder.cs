@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Ardalis.GuardClauses;
+using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
@@ -14,6 +15,10 @@ namespace ThunderPropagator.Channels.ResourceMonitoring
         class ResourceMonitoringChannelFeeder : IterativeFeeder<ResourceMonitoringChannel, ResourceMonitoringChannelFeederMessage, ResourceMonitoringChannelFeederConfiguration>
     {
         private sealed record AlertInfo(string Type, string Alert);
+
+        // Task.Delay(TimeSpan) rejects delays beyond uint.MaxValue - 1 milliseconds; this is the
+        // largest UtilizationWindow (in seconds) that converts to a millisecond value it can accept.
+        internal const int MaxUtilizationWindowSeconds = (int)((uint.MaxValue - 1) / 1000);
 
         private readonly ResourceMonitoringChannelFeederConfiguration _feederConfiguration;
         private readonly ISystemResourceMonitor _resourceMonitor;
@@ -32,7 +37,8 @@ namespace ThunderPropagator.Channels.ResourceMonitoring
             HealthName = nameof(ResourceMonitoringChannelFeeder);
             HealthTags = [.. HealthTags, "StaticFeeder"];
 
-            _window = feederConfiguration.UtilizationWindow * 1000;
+            Guard.Against.OutOfRange(feederConfiguration.UtilizationWindow, nameof(feederConfiguration.UtilizationWindow), 1, MaxUtilizationWindowSeconds);
+            _window = checked((long)feederConfiguration.UtilizationWindow * 1000L);
         }
 
         private string GetAlert(SystemResourceMonitorMetrics metrics)
