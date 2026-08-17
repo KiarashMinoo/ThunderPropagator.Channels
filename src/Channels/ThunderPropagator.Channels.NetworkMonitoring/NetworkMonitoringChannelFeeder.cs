@@ -13,6 +13,11 @@ namespace ThunderPropagator.Channels.NetworkMonitoring
         private long _lastBytesReceived;
         private long _lastBytesSent;
 
+        // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
+        // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
+        // and written with Interlocked so the poll loop always sees the latest count.
+        private int _activeSubscriptions;
+
         public NetworkMonitoringChannelFeeder(NetworkMonitoringChannel channel,
             NetworkMonitoringChannelFeederConfiguration feederConfiguration,
             IFeederHandler<NetworkMonitoringChannel, NetworkMonitoringChannelFeederMessage> feederHandler,
@@ -21,12 +26,18 @@ namespace ThunderPropagator.Channels.NetworkMonitoring
         {
             HealthName = nameof(NetworkMonitoringChannelFeeder);
             HealthTags = [.. HealthTags, "StaticFeeder"];
+
+            channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
+            channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<NetworkMonitoringChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+
+            if (Volatile.Read(ref _activeSubscriptions) <= 0)
+                yield break;
 
             var networkInterfaces = NetworkInterface
                 .GetAllNetworkInterfaces()

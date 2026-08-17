@@ -26,6 +26,11 @@ namespace ThunderPropagator.Channels.Throughput
         private readonly MetricCollector<long>? _pushedMessageMetricCollector;
         private readonly MetricCollector<long>? _pushedMessageSizeMetricCollector;
 
+        // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
+        // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
+        // and written with Interlocked so the poll loop always sees the latest count.
+        private int _activeSubscriptions;
+
         public ThroughputChannelFeeder(ThroughputChannel channel,
             ThroughputChannelFeederConfiguration feederConfiguration,
             IFeederHandler<ThroughputChannel, ThroughputChannelFeederMessage> feederHandler,
@@ -34,6 +39,9 @@ namespace ThunderPropagator.Channels.Throughput
         {
             HealthName = nameof(ThroughputChannelFeeder);
             HealthTags = [.. HealthTags, "StaticFeeder"];
+
+            channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
+            channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);
 
             if (FeedersTelemetry.FeedersHandledCounter is not null)
             {
@@ -73,10 +81,16 @@ namespace ThunderPropagator.Channels.Throughput
         {
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
+            // Snapshots are drained unconditionally, subscribed or not, so each MetricCollector's
+            // internal list keeps getting reset and never grows unboundedly. Only the aggregation
+            // (Average/Sum) and the resulting message are skipped when nobody can observe them.
             var feedersHandledMeasurementSnapshot = _feedersHandledMetricCollector?.GetMeasurementSnapshot(true);
             var feedersHandledDurationMeasurementSnapshot = _feedersHandledDurationMetricCollector?.GetMeasurementSnapshot(true);
             var pushedMessageMeasurementSnapshot = _pushedMessageMetricCollector?.GetMeasurementSnapshot(true);
             var pushedMessageSizeMeasurementSnapshot = _pushedMessageSizeMetricCollector?.GetMeasurementSnapshot(true);
+
+            if (Volatile.Read(ref _activeSubscriptions) <= 0)
+                yield break;
 
             yield return new ThroughputChannelFeederMessage
             {

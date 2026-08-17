@@ -413,6 +413,11 @@ namespace ThunderPropagator.Channels.Demo.Airport
         [SuppressMessage("ReSharper", "MemberInitializerValueIgnored")]
         private readonly HashSet<AirportDemoChannelFeederMessage> _flights = [];
 
+        // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
+        // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
+        // and written with Interlocked so the poll loop always sees the latest count.
+        private int _activeSubscriptions;
+
         public AirportDemoChannelFeeder(AirportDemoChannel channel,
             AirportDemoChannelFeederConfiguration feederConfiguration,
             IFeederHandler<AirportDemoChannel, AirportDemoChannelFeederMessage> feederHandler,
@@ -420,6 +425,9 @@ namespace ThunderPropagator.Channels.Demo.Airport
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
             _flights = GenerateAirports(2);
+
+            channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
+            channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);
         }
 
         private HashSet<AirportDemoChannelFeederMessage> GenerateAirports(int maxHours = 1, int terminalDeparturesPerHour = 4)
@@ -453,6 +461,9 @@ namespace ThunderPropagator.Channels.Demo.Airport
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+
+            if (Volatile.Read(ref _activeSubscriptions) <= 0)
+                yield break;
 
             var flightsToRemove = _flights
                 .Where(airport => airport.Departure < DateTime.UtcNow.AddHours(-1).TimeOfDay)

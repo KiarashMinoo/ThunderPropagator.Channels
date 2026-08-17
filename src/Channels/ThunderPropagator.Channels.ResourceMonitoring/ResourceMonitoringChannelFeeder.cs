@@ -25,6 +25,11 @@ namespace ThunderPropagator.Channels.ResourceMonitoring
         private readonly long _window;
         private string _lastAlert = "";
 
+        // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
+        // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
+        // and written with Interlocked so the poll loop always sees the latest count.
+        private int _activeSubscriptions;
+
         public ResourceMonitoringChannelFeeder(ResourceMonitoringChannel channel,
             ResourceMonitoringChannelFeederConfiguration feederConfiguration,
             IFeederHandler<ResourceMonitoringChannel, ResourceMonitoringChannelFeederMessage> feederHandler,
@@ -39,6 +44,9 @@ namespace ThunderPropagator.Channels.ResourceMonitoring
 
             Guard.Against.OutOfRange(feederConfiguration.UtilizationWindow, nameof(feederConfiguration.UtilizationWindow), 1, MaxUtilizationWindowSeconds);
             _window = checked((long)feederConfiguration.UtilizationWindow * 1000L);
+
+            channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
+            channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);
         }
 
         private string GetAlert(SystemResourceMonitorMetrics metrics)
@@ -68,6 +76,9 @@ namespace ThunderPropagator.Channels.ResourceMonitoring
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(_window), cancellationToken);
+
+            if (Volatile.Read(ref _activeSubscriptions) <= 0)
+                yield break;
 
             var metrics = await _resourceMonitor.GetMetricsAsync(_window, true, cancellationToken);
 
