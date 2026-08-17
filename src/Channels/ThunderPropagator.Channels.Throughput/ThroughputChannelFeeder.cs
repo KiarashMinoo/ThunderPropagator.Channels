@@ -11,6 +11,16 @@ namespace ThunderPropagator.Channels.Throughput
 #endif
         class ThroughputChannelFeeder : IterativeFeeder<ThroughputChannel, ThroughputChannelFeederMessage, ThroughputChannelFeederConfiguration>
     {
+        // Concurrency model: each MetricCollector<long> below guards its internal measurement list with
+        // a private lock shared between the write path (OnMeasurementRecorded, invoked synchronously by
+        // the .NET Meter/MeterListener machinery on whichever thread calls Counter.Add/Histogram.Record)
+        // and GetMeasurementSnapshot(clear: true). Snapshot-and-clear is therefore atomic and mutually
+        // exclusive with concurrent measurement delivery — a producer thread recording a measurement
+        // either lands entirely before or entirely after a given snapshot, never torn, lost, or counted
+        // twice. This feeder owns no additional synchronization because none is needed: every producer
+        // (elsewhere in the app, on arbitrary threads) only ever calls Counter.Add/Histogram.Record, and
+        // this feeder is the sole reader/resetter of each collector, called sequentially from its own
+        // single-threaded ReceiveAsync iteration.
         private readonly MetricCollector<long>? _feedersHandledMetricCollector;
         private readonly MetricCollector<long>? _feedersHandledDurationMetricCollector;
         private readonly MetricCollector<long>? _pushedMessageMetricCollector;
