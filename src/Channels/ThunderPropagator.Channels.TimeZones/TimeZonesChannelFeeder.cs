@@ -16,6 +16,11 @@ namespace ThunderPropagator.Channels.TimeZones
     {
         private readonly WeatherApiService _weatherApiService;
 
+        // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
+        // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
+        // and written with Interlocked so the poll loop always sees the latest count.
+        private int _activeSubscriptions;
+
         public TimeZonesChannelFeeder(TimeZonesChannel channel,
             TimeZonesChannelFeederConfiguration feederConfiguration,
             IFeederHandler<TimeZonesChannel, TimeZonesChannelFeederMessage> feederHandler,
@@ -26,11 +31,24 @@ namespace ThunderPropagator.Channels.TimeZones
 
             HealthName = nameof(TimeZonesChannelFeeder);
             HealthTags = [.. HealthTags, "StaticFeeder"];
+
+            channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
+            channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TimeZonesChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            // This feeder has no poll delay of its own — each pass is paced only by weather-API
+            // round-trip latency. Without an idle delay here, an unsubscribed feeder would re-enter
+            // ReceiveAsync in a tight loop (no yielded items, nothing to await) and spin a core at
+            // 100%. Delay only while idle so the subscribed/active path keeps its existing cadence.
+            if (Volatile.Read(ref _activeSubscriptions) <= 0)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                yield break;
+            }
+
             var zoneLocations = Guard.Against.Null(TzdbDateTimeZoneSource.Default.ZoneLocations).ToArray();
 
             foreach (var source in zoneLocations)

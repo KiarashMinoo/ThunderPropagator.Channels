@@ -12,6 +12,11 @@ namespace ThunderPropagator.Channels.Demo.StockListBasic
     {
         private readonly HashSet<StockListBasicDemoChannelFeederMessage> _stocks;
 
+        // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
+        // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
+        // and written with Interlocked so the poll loop always sees the latest count.
+        private int _activeSubscriptions;
+
         public StockListBasicDemoChannelFeeder(StockListBasicDemoChannel channel,
             StockListBasicDemoChannelFeederConfiguration feederConfiguration,
             IFeederHandler<StockListBasicDemoChannel, StockListBasicDemoChannelFeederMessage> feederHandler,
@@ -25,12 +30,18 @@ namespace ThunderPropagator.Channels.Demo.StockListBasic
                 .RuleFor(x => x.Time, DateTime.UtcNow.TimeOfDay)
                 .Generate(30)
                 .ToHashSet();
+
+            channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
+            channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<StockListBasicDemoChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(500, 90_000)), cancellationToken);
+
+            if (Volatile.Read(ref _activeSubscriptions) <= 0)
+                yield break;
 
             var stocks = _stocks
                 .OrderBy(_ => Guid.NewGuid())
