@@ -10,6 +10,17 @@ using ThunderPropagator.BuildingBlocks.Application.Enums;
 
 namespace ThunderPropagator.Channels.Notifications
 {
+    /// <summary>
+    /// Push-only notification channel: messages are emitted directly via
+    /// <see cref="ThunderPropagator.Application.Channels.IChannel.EmitMessage"/>/<c>EmitMessageAsync</c>
+    /// rather than pulled by a feeder this package provides — see
+    /// <see cref="NotificationsFeederConfiguration"/> for the settings a consumer-authored feeder is
+    /// expected to honor. A message with <see cref="NotificationsChannelFeederMessage.UserId"/> set
+    /// is delivered to that recipient; left unset, it's broadcast to every current subscriber, and a
+    /// subscriber who joins afterward is caught up on broadcasts it missed. See
+    /// <see cref="SearchHistoricalNotificationsAsync"/> for querying a recipient's stored history
+    /// independently of live subscription.
+    /// </summary>
     public
 #if !DEBUG
         sealed
@@ -19,11 +30,18 @@ namespace ThunderPropagator.Channels.Notifications
     {
         private readonly CancellationToken _cancellationToken;
 
+        /// <summary>Resolves the shared application-stopping token used to cancel background/fire-and-forget work started by this channel.</summary>
         public NotificationsChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _cancellationToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         }
 
+        /// <summary>
+        /// Catches up a newly added subscription on any broadcast it missed while it wasn't
+        /// subscribed yet, by re-emitting one representative copy of each such broadcast. Runs
+        /// fire-and-forget (the base subscription hook is synchronous); failures are logged rather
+        /// than thrown.
+        /// </summary>
         protected override void OnSubscriptionAdded(Subscription subscription)
         {
             base.OnSubscriptionAdded(subscription);
@@ -66,6 +84,11 @@ namespace ThunderPropagator.Channels.Notifications
             }
         }
 
+        /// <summary>
+        /// Synchronous fire-and-forget entry point: starts <see cref="EmitMessageAsync"/> and, if it
+        /// doesn't complete synchronously, logs a failure rather than propagating the exception back
+        /// to this synchronous call.
+        /// </summary>
         protected override void EmitMessage(FeederMessage feederMessage)
         {
             var emitTask = EmitMessageAsync(feederMessage, _cancellationToken);
@@ -80,6 +103,13 @@ namespace ThunderPropagator.Channels.Notifications
                 TaskScheduler.Default);
         }
 
+        /// <summary>
+        /// Routes <paramref name="feederMessage"/> based on
+        /// <see cref="NotificationsChannelFeederMessage.UserId"/>: with UserId set, emits it directly
+        /// to that recipient; left unset, fans it out as a broadcast — a fresh per-recipient copy for
+        /// each subscriber known via stored snapshots, so <paramref name="feederMessage"/> itself is
+        /// never mutated and no two recipients share the same emitted instance.
+        /// </summary>
         protected override async Task EmitMessageAsync(FeederMessage feederMessage, CancellationToken cancellationToken = default)
         {
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
@@ -126,6 +156,12 @@ namespace ThunderPropagator.Channels.Notifications
         private static void AssignHashKey(NotificationsChannelFeederMessage message)
             => message.Envelope.HashKey = HashCode.Combine(message.UserId, message.Id);
 
+        /// <summary>
+        /// Stored snapshot entries matching <paramref name="subscription"/>'s subscribed keys —
+        /// i.e. the given recipient's own notifications — used to replay state to a subscription
+        /// when it's established. See <see cref="SearchHistoricalNotificationsAsync"/> for an
+        /// on-demand equivalent that isn't tied to the subscription lifecycle.
+        /// </summary>
         public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = default)
             => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot),
                 0,
