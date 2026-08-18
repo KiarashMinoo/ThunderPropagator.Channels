@@ -45,6 +45,16 @@ namespace ThunderPropagator.UnitTests.Demo.Portfolio
             var type = typeof(ThunderPropagator.Channels.Demo.Portfolio.Pipelines.PortfolioDemoChannelSellReceiverPipeline);
             Assert.True(type.IsNotPublic);
         }
+
+        [Fact]
+        public void PortfolioDemoChannelConfiguration_PollIntervalBounds_HaveNamedNonZeroDefaults()
+        {
+            var configuration = new ThunderPropagator.Channels.Demo.Portfolio.PortfolioDemoChannelConfiguration();
+
+            Assert.Equal(TimeSpan.FromMilliseconds(500), configuration.MinPollInterval);
+            Assert.Equal(TimeSpan.FromSeconds(90), configuration.MaxPollInterval);
+            Assert.True(configuration.MinPollInterval < configuration.MaxPollInterval);
+        }
     }
 }
 

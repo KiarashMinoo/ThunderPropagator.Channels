@@ -8,6 +8,15 @@ public
 #endif
     class AirportDemoChannelFeederConfiguration : AbstractFeederConfiguration
 {
+    /// <summary>
+    /// How often the feeder polls for flight-board changes. Default: 1 minute.
+    /// </summary>
+    public TimeSpan PollInterval
+    {
+        get => Get(TimeSpan.FromMinutes(1));
+        set => Set(value);
+    }
+
     public AirportDemoChannelFeederConfiguration()
     {
         IsEnabled = true;

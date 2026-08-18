@@ -418,12 +418,15 @@ namespace ThunderPropagator.Channels.Demo.Airport
         // and written with Interlocked so the poll loop always sees the latest count.
         private int _activeSubscriptions;
 
+        private readonly AirportDemoChannelFeederConfiguration _feederConfiguration;
+
         public AirportDemoChannelFeeder(AirportDemoChannel channel,
             AirportDemoChannelFeederConfiguration feederConfiguration,
             IFeederHandler<AirportDemoChannel, AirportDemoChannelFeederMessage> feederHandler,
             IServiceProvider serviceProvider)
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
+            _feederConfiguration = feederConfiguration;
             _flights = GenerateAirports(2);
 
             channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
@@ -460,7 +463,7 @@ namespace ThunderPropagator.Channels.Demo.Airport
         protected override async IAsyncEnumerable<FeederReceivedMessage<AirportDemoChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+            await Task.Delay(_feederConfiguration.PollInterval, cancellationToken);
 
             if (Volatile.Read(ref _activeSubscriptions) <= 0)
                 yield break;
