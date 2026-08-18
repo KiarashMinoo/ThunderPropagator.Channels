@@ -11,12 +11,20 @@ public
     /// <summary>
     /// Lower bound of the randomized poll interval between simulated price updates. Default: 500ms.
     /// </summary>
-    public TimeSpan MinPollInterval { get; set; } = TimeSpan.FromMilliseconds(500);
+    public TimeSpan MinPollInterval
+    {
+        get => Get(TimeSpan.FromMilliseconds(500));
+        set => Set(value);
+    }
 
     /// <summary>
     /// Upper bound of the randomized poll interval between simulated price updates. Default: 90s.
     /// </summary>
-    public TimeSpan MaxPollInterval { get; set; } = TimeSpan.FromSeconds(90);
+    public TimeSpan MaxPollInterval
+    {
+        get => Get(TimeSpan.FromSeconds(90));
+        set => Set(value);
+    }
 
     public StockListBasicDemoChannelFeederConfiguration()
     {

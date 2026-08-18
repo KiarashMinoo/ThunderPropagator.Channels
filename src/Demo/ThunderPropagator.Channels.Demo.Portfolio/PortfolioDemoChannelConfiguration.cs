@@ -12,13 +12,21 @@ namespace ThunderPropagator.Channels.Demo.Portfolio
         /// Lower bound of the randomized poll interval between simulated portfolio price updates.
         /// Default: 500ms.
         /// </summary>
-        public TimeSpan MinPollInterval { get; set; } = TimeSpan.FromMilliseconds(500);
+        public TimeSpan MinPollInterval
+        {
+            get;
+            set => SetField(ref field, value);
+        } = TimeSpan.FromMilliseconds(500);
 
         /// <summary>
         /// Upper bound of the randomized poll interval between simulated portfolio price updates.
         /// Default: 90s.
         /// </summary>
-        public TimeSpan MaxPollInterval { get; set; } = TimeSpan.FromSeconds(90);
+        public TimeSpan MaxPollInterval
+        {
+            get;
+            set => SetField(ref field, value);
+        } = TimeSpan.FromSeconds(90);
 
         public PortfolioDemoChannelConfiguration()
         {
