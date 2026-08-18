@@ -1,5 +1,5 @@
-## [1.0.1-beta.15] — 2026-08-18
+## [1.0.1-beta.16] — 2026-08-18
 
 ### 🚀 Features
 
-- Capture Date and Time once when a message is constructed `(8b69dca)` — Kiarash Minoo
+- Use idiomatic default cancellation tokens in SnapshotsToSendAsync `(56478ac)` — Kiarash Minoo
