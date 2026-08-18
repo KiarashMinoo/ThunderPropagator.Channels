@@ -11,7 +11,9 @@ namespace ThunderPropagator.Channels.Notifications
     /// makes it visible to snapshot storage, historical queries, and routing. Recipient targeting is
     /// by <see cref="UserId"/> alone: leaving it unset routes the message as a broadcast, delivered
     /// to every current subscriber and to any subscriber who joins later without having missed it
-    /// (see the channel's broadcast fan-out).
+    /// (see the channel's broadcast fan-out). Leaving <see cref="UserId"/> unset but setting
+    /// <see cref="GroupId"/> narrows that broadcast to recipients already known to belong to that
+    /// group (see #74).
     /// </summary>
     public
 #if !DEBUG
@@ -33,6 +35,12 @@ namespace ThunderPropagator.Channels.Notifications
 
         /// <summary>Maximum allowed length of <see cref="Subject"/>, enforced wherever Subject is validated (see #68).</summary>
         public const int SubjectMaxLength = 200;
+
+        /// <summary>Maximum number of distinct tags <see cref="Tags"/> may hold, enforced when it's assigned (see #74).</summary>
+        public const int TagsMaxCount = 20;
+
+        /// <summary>Maximum allowed length of a single tag within <see cref="Tags"/>, enforced when it's assigned (see #74).</summary>
+        public const int TagMaxLength = 64;
 
         private const string EllipsisSuffix = "...";
 
@@ -70,11 +78,14 @@ namespace ThunderPropagator.Channels.Notifications
         /// <summary>
         /// Creates an independent copy of <paramref name="source"/>: every payload field (UserId,
         /// Subject, Body, etc.) plus the CastType/IsDeleted/CorrelationId/HashKey envelope values.
-        /// All current fields are value types or immutable strings, so a per-field copy is already a
-        /// full deep copy — the new instance shares no mutable state with <paramref name="source"/>.
-        /// Changing a value on either instance afterward (e.g. retargeting UserId, or clearing the
-        /// copy's HashKey via <see cref="ResetHashKey"/> before re-emitting to a specific recipient)
-        /// never affects the other.
+        /// Every field except <see cref="Tags"/> is a value type or an immutable string, so a
+        /// per-field copy is already a full deep copy for those — the new instance shares no mutable
+        /// state with <paramref name="source"/> for them. <see cref="Tags"/> copies the same
+        /// underlying read-only list reference rather than cloning it, which is safe because nothing
+        /// in this package's public surface can mutate a list through its <see cref="IReadOnlyList{T}"/>-typed
+        /// property. Changing a value on either instance afterward (e.g. retargeting UserId, or
+        /// clearing the copy's HashKey via <see cref="ResetHashKey"/> before re-emitting to a
+        /// specific recipient) never affects the other.
         /// </summary>
         internal NotificationsChannelFeederMessage(NotificationsChannelFeederMessage source) : this()
         {
@@ -100,6 +111,24 @@ namespace ThunderPropagator.Channels.Notifications
         {
             get => GetValueOrNull<string>();
             set => SetValue(value);
+        }
+
+        /// <summary>
+        /// The intended audience group. With <see cref="UserId"/> unset, a message carrying a
+        /// GroupId is routed only to recipients already known to be members of that group — see
+        /// the channel's group fan-out (#74) — rather than to every current subscriber the way an
+        /// ordinary (GroupId-less) broadcast is. A recipient becomes a known member the same way a
+        /// broadcast recipient does: by having previously received a targeted, <c>CastType.Broadcast</c>-tagged
+        /// message carrying this same GroupId. Ignored entirely when <see cref="UserId"/> is set,
+        /// since a targeted message is already resolved to one specific recipient. Comparison is
+        /// ordinal (case-sensitive) and exact — unlike <see cref="Tags"/>, GroupId has no
+        /// normalization or deduplication of its own since it's a single scalar value, not a
+        /// collection.
+        /// </summary>
+        public string? GroupId
+        {
+            get => GetValueOrNull<string>();
+            init => SetValue(value);
         }
 
         /// <summary>
@@ -303,6 +332,53 @@ namespace ThunderPropagator.Channels.Notifications
         {
             get => GetValueOrDefault(string.Empty);
             init => SetValue(value);
+        }
+
+        /// <summary>
+        /// Free-form categorization/filtering labels (see #74) — see
+        /// <see cref="NotificationsChannel{T}.SearchHistoricalNotificationsAsync"/> for querying by
+        /// tag. Never null: an empty collection when never assigned, regardless of whether this
+        /// instance came from the parameterless constructor, the dictionary constructor, or the copy
+        /// constructor. Comparison and deduplication are case-insensitive (ordinal), but the
+        /// originally-assigned casing of the first occurrence of each distinct tag is preserved in
+        /// storage and on read — assigning <c>["Urgent", "urgent"]</c> stores just <c>["Urgent"]</c>.
+        /// Insertion order (of first occurrences) is preserved otherwise. Assigning a collection
+        /// throws <see cref="NotificationsChannelFeederMessageValidationException"/> immediately if
+        /// any tag is null, empty, or whitespace-only, if any tag exceeds <see cref="TagMaxLength"/>
+        /// characters, or if the deduplicated tag count exceeds <see cref="TagsMaxCount"/>. There's no
+        /// restriction on which characters a tag may contain beyond those length rules — this
+        /// package doesn't enforce a fixed vocabulary of allowed tag values.
+        /// </summary>
+        public IReadOnlyList<string> Tags
+        {
+            get => GetValueOrNull<IReadOnlyList<string>>() ?? [];
+            init => SetValue(NormalizeTags(value));
+        }
+
+        private static IReadOnlyList<string> NormalizeTags(IReadOnlyList<string>? tags)
+        {
+            if (tags is null || tags.Count == 0)
+                return [];
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var normalized = new List<string>(tags.Count);
+
+            foreach (var tag in tags)
+            {
+                if (string.IsNullOrWhiteSpace(tag))
+                    throw new NotificationsChannelFeederMessageValidationException(nameof(Tags), "must not contain a null, empty, or whitespace-only tag.");
+
+                if (tag.Length > TagMaxLength)
+                    throw new NotificationsChannelFeederMessageValidationException(nameof(Tags), $"must not contain a tag longer than {TagMaxLength} characters (was {tag.Length}).");
+
+                if (seen.Add(tag))
+                    normalized.Add(tag);
+            }
+
+            if (normalized.Count > TagsMaxCount)
+                throw new NotificationsChannelFeederMessageValidationException(nameof(Tags), $"must not contain more than {TagsMaxCount} distinct tags (had {normalized.Count}).");
+
+            return normalized;
         }
 
         internal NotificationsChannelFeederMessage ResetHashKey()

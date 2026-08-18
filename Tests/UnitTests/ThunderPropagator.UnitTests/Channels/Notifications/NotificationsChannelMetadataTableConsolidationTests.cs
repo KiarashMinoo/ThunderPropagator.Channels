@@ -13,7 +13,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
     /// <summary>
     /// Issue #71: UserId and Date used to report their own field name as their schema table
     /// ("userId"/"date"), fragmenting schema discovery for fields that all belong to the same
-    /// notification record — every other field already reported "notifications". All fifteen
+    /// notification record — every other field already reported "notifications". All seventeen
     /// fields now share a single table, so metadata discovery returns one coherent schema.
     /// </summary>
     public sealed class NotificationsChannelMetadataTableConsolidationTests
@@ -35,13 +35,13 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         }
 
         [Fact]
-        public void AllFifteenFields_AreRegisteredUnderTheConsolidatedTable()
+        public void AllSeventeenFields_AreRegisteredUnderTheConsolidatedTable()
         {
             var channel = CreateChannel();
 
             var descriptors = channel.Metadata.ChannelProgramsDescriptors.ToArray();
 
-            Assert.Equal(15, descriptors.Length);
+            Assert.Equal(17, descriptors.Length);
             Assert.All(descriptors, descriptor => Assert.Equal("notifications", descriptor.Table));
         }
 
