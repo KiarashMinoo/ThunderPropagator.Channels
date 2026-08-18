@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.20] — 2026-08-18
+
+### 🚀 Features
+
+- Replace raw Seen integer states with a Flags enum `(b637be0)` — Kiarash Minoo
+
 ## [1.0.1-beta.19] — 2026-08-18
 
 ### 🚀 Features
