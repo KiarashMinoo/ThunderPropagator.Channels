@@ -27,9 +27,16 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         }
 
         [Fact]
-        public void NotificationType_IsEnum()
+        public void NotificationContentType_IsEnum()
         {
-            var type = typeof(NotificationType);
+            var type = typeof(NotificationContentType);
+            Assert.True(type.IsEnum);
+        }
+
+        [Fact]
+        public void NotificationCategory_IsEnum()
+        {
+            var type = typeof(NotificationCategory);
             Assert.True(type.IsEnum);
         }
 

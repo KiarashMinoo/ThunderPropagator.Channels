@@ -153,10 +153,23 @@ namespace ThunderPropagator.Channels.Notifications
             init => SetValue(value);
         }
 
-        /// <summary>Content format of <see cref="Body"/>. Defaults to <see cref="NotificationType.Text"/>.</summary>
-        public NotificationType Type
+        /// <summary>
+        /// Content format of <see cref="Body"/>. Defaults to <see cref="NotificationContentType.Text"/>.
+        /// Independent of <see cref="Category"/> — see #69.
+        /// </summary>
+        public NotificationContentType Type
         {
-            get => GetValueOrDefault(NotificationType.Text);
+            get => GetValueOrDefault(NotificationContentType.Text);
+            init => SetValue(value);
+        }
+
+        /// <summary>
+        /// Semantic category of this notification. Defaults to <see cref="NotificationCategory.Info"/>.
+        /// Independent of <see cref="Type"/> — see #69.
+        /// </summary>
+        public NotificationCategory Category
+        {
+            get => GetValueOrDefault(NotificationCategory.Info);
             init => SetValue(value);
         }
 

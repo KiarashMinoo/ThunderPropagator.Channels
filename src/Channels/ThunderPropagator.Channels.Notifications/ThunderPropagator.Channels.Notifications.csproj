@@ -18,7 +18,10 @@
         <Compile Update="NotificationPriority.cs">
             <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
         </Compile>
-        <Compile Update="NotificationType.cs">
+        <Compile Update="NotificationContentType.cs">
+            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NotificationCategory.cs">
             <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
         </Compile>
         <Compile Update="NotificationsChannelFeederMessage.cs">
