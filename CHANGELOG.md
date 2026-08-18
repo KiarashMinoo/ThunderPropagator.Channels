@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.17] — 2026-08-18
+
+### 🚀 Features
+
+- Add XML documentation to the public notifications API `(48d96df)` — Kiarash Minoo
+
 ## [1.0.1-beta.16] — 2026-08-18
 
 ### 🚀 Features
