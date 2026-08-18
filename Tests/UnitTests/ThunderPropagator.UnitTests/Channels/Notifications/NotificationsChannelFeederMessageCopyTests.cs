@@ -12,7 +12,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
                 UserId = "user-1",
                 Id = "notification-1",
                 Subject = "subject",
-                Seen = 1
+                Seen = NotificationDeliveryState.Delivered
             };
             source.CastType = CastType.Broadcast;
             source.IsDeleted = true;
@@ -73,11 +73,11 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var copy = new NotificationsChannelFeederMessage(source);
 
             copy.UserId = "user-2";
-            copy.Seen = 99;
+            copy.Seen = NotificationDeliveryState.Read | NotificationDeliveryState.Dismissed;
             copy.ResetHashKey();
 
             Assert.Equal("user-1", source.UserId);
-            Assert.Equal(1, source.Seen);
+            Assert.Equal(NotificationDeliveryState.Delivered, source.Seen);
             Assert.Equal(12345, source.Envelope.HashKey);
         }
 

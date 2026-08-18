@@ -24,6 +24,9 @@
         <Compile Update="NotificationCategory.cs">
             <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
         </Compile>
+        <Compile Update="NotificationDeliveryState.cs">
+            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
         <Compile Update="NotificationsChannelFeederMessage.cs">
             <DependentUpon>NotificationsChannel.cs</DependentUpon>
         </Compile>
@@ -32,6 +35,9 @@
         </Compile>
         <Compile Update="NotificationsFeederConfiguration.cs">
             <DependentUpon>NotificationsChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="NotificationsChannelFeederMessageValidationException.cs">
+          <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
         </Compile>
     </ItemGroup>
 

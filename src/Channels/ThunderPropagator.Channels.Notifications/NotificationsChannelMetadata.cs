@@ -38,7 +38,7 @@ namespace ThunderPropagator.Channels.Notifications
                 new ChannelProgramsDescriptor(8, nameof(NotificationsChannelFeederMessage.Subject), DataType.String, "The subject").SetTable(nameof(Notifications)),
                 new ChannelProgramsDescriptor(9, nameof(NotificationsChannelFeederMessage.Body), DataType.String, "The body").SetTable(nameof(Notifications)),
                 new ChannelProgramsDescriptor(10, nameof(NotificationsChannelFeederMessage.EllipsisBody), DataType.String, "The overflowed form of the body").SetTable(nameof(Notifications)),
-                new NumberChannelProgramsDescriptor(11, nameof(NotificationsChannelFeederMessage.Seen), "The seen type(Bitwise`)").SetTable(nameof(Notifications)),
+                new EnumChannelProgramsDescriptor<NotificationDeliveryState>(11, nameof(NotificationsChannelFeederMessage.Seen), "The delivery/read lifecycle state (flags)").SetTable(nameof(Notifications)),
                 new JsonChannelProgramsDescriptor(12, nameof(NotificationsChannelFeederMessage.Metadata), "The metadata").SetTable(nameof(Notifications)),
                 new EnumChannelProgramsDescriptor<NotificationCategory>(13, nameof(NotificationsChannelFeederMessage.Category), "The notification semantic category").SetTable(nameof(Notifications))
             };
