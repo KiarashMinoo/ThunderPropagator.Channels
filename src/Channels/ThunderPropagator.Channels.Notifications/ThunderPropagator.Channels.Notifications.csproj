@@ -1,5 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+    <!-- Issue #67: missing-XML-doc warnings (CS1591) are suppressed repo-wide in the shared build
+         props, since most packages don't document their full public surface yet. Re-enabled here
+         as an error so this package's public API — the one that's actually meant to be documented —
+         can't silently regress back to undocumented members. -->
+    <PropertyGroup>
+        <NoWarn>$(NoWarn.Replace('1591', ''))</NoWarn>
+        <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="$(ThunderPropagatorPackageId)"/>
         <PackageReference Include="JetBrains.Annotations" />

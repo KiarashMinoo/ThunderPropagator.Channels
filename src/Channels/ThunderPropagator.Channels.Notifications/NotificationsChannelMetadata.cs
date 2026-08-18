@@ -6,6 +6,7 @@ using ThunderPropagator.BuildingBlocks.Application.Enums;
 
 namespace ThunderPropagator.Channels.Notifications
 {
+    /// <summary>Channel metadata for <see cref="NotificationsChannel{TNotificationsChannelConfiguration}"/>.</summary>
     public
 #if !DEBUG
         sealed
@@ -13,6 +14,16 @@ namespace ThunderPropagator.Channels.Notifications
         class NotificationsChannelMetadata<TNotificationsChannelConfiguration> : AbstractChannelMetadata<NotificationsChannel<TNotificationsChannelConfiguration>>
         where TNotificationsChannelConfiguration : AbstractChannelConfiguration, new()
     {
+        /// <summary>
+        /// Declares <see cref="NotificationsChannelFeederMessage"/>'s field schema for subscription,
+        /// routing, and snapshot purposes. <see cref="NotificationsChannelFeederMessage.UserId"/> is
+        /// the only subscribing key (see #61) — a client subscribes by UserId alone and does not
+        /// need to know a notification's <see cref="NotificationsChannelFeederMessage.Date"/> or
+        /// <see cref="NotificationsChannelFeederMessage.Id"/> in advance. Every other field is
+        /// declared here as a regular (non-subscribing) field so it's available for snapshot storage
+        /// and, via <c>NotificationsChannel.SearchHistoricalNotificationsAsync</c>, optional
+        /// historical filtering.
+        /// </summary>
         public override ChannelProgramsDescriptorCollection ChannelProgramsDescriptors
             => new()
             {

@@ -3,6 +3,17 @@ using ThunderPropagator.Application.Feeders;
 
 namespace ThunderPropagator.Channels.Notifications
 {
+    /// <summary>
+    /// Base configuration for feeder implementations that push notifications into a
+    /// <see cref="NotificationsChannel{TNotificationsChannelConfiguration}"/>. This package doesn't
+    /// ship a feeder itself — Notifications is push-only, and a consumer registers their own
+    /// <c>AbstractFeeder</c> subclass via one of the
+    /// <c>NotificationsExtensions.AddNotificationsChannelFeeder</c> overloads with a concrete
+    /// subclass of this type. The properties below are settings a feeder implementation is expected
+    /// to read and act on (batching, deduplication, expiration, retry) — this configuration only
+    /// stores and validates the values, it does not enforce them itself. Also carries the settings
+    /// inherited from the base feeder configuration (enable/disable, timeouts, etc.).
+    /// </summary>
     public abstract class NotificationsFeederConfiguration : AbstractFeederConfiguration
     {
         /// <summary>
