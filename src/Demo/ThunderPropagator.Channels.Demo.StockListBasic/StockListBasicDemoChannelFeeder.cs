@@ -17,12 +17,16 @@ namespace ThunderPropagator.Channels.Demo.StockListBasic
         // and written with Interlocked so the poll loop always sees the latest count.
         private int _activeSubscriptions;
 
+        private readonly StockListBasicDemoChannelFeederConfiguration _feederConfiguration;
+
         public StockListBasicDemoChannelFeeder(StockListBasicDemoChannel channel,
             StockListBasicDemoChannelFeederConfiguration feederConfiguration,
             IFeederHandler<StockListBasicDemoChannel, StockListBasicDemoChannelFeederMessage> feederHandler,
             IServiceProvider serviceProvider)
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
+            _feederConfiguration = feederConfiguration;
+
             _stocks = new Faker<StockListBasicDemoChannelFeederMessage>()
                 .RuleFor(x => x.Key, StockListBasicDemoChannelMetadata.StockListBasicDemo)
                 .RuleFor(x => x.Stock, faker => faker.Company.CompanyName())
@@ -38,7 +42,9 @@ namespace ThunderPropagator.Channels.Demo.StockListBasic
         protected override async IAsyncEnumerable<FeederReceivedMessage<StockListBasicDemoChannelFeederMessage>> ReceiveAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(500, 90_000)), cancellationToken);
+            var minMilliseconds = (int)_feederConfiguration.MinPollInterval.TotalMilliseconds;
+            var maxMilliseconds = (int)_feederConfiguration.MaxPollInterval.TotalMilliseconds;
+            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(minMilliseconds, maxMilliseconds)), cancellationToken);
 
             if (Volatile.Read(ref _activeSubscriptions) <= 0)
                 yield break;

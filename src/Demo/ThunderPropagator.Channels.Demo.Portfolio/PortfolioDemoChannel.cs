@@ -82,7 +82,9 @@ namespace ThunderPropagator.Channels.Demo.Portfolio
         {
             while (!_cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(500, 90_000)), _cancellationToken);
+                var minMilliseconds = (int)ChannelConfiguration.MinPollInterval.TotalMilliseconds;
+                var maxMilliseconds = (int)ChannelConfiguration.MaxPollInterval.TotalMilliseconds;
+                await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(minMilliseconds, maxMilliseconds)), _cancellationToken);
 
                 var snapshotEntries = await SearchSnapshotsAsync(_ => true, 0, 0, _cancellationToken);
 
