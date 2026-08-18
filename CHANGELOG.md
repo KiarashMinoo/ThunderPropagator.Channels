@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.19] — 2026-08-18
+
+### 🚀 Features
+
+- Separate notification content format from semantic category `(b2e3aa1)` — Kiarash Minoo
+
 ## [1.0.1-beta.18] — 2026-08-18
 
 ### 🚀 Features
