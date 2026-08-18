@@ -1,5 +1,5 @@
-## [1.0.1-beta.13] — 2026-08-18
+## [1.0.1-beta.14] — 2026-08-18
 
 ### 🚀 Features
 
-- Add batching, deduplication, TTL, and retry options to feeder configuration `(fe0c5d3)` — Kiarash Minoo
+- Derive EllipsisBody consistently from Body `(1a09630)` — Kiarash Minoo
