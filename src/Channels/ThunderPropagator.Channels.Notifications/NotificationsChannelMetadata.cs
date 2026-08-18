@@ -17,7 +17,7 @@ namespace ThunderPropagator.Channels.Notifications
             => new()
             {
                 new SubscribingKeyChannelProgramsDescriptor(0, nameof(NotificationsChannelFeederMessage.UserId)).SetTable(nameof(NotificationsChannelFeederMessage.UserId)),
-                new SubscribingKeyChannelProgramsDescriptor(1, nameof(NotificationsChannelFeederMessage.Date)).SetTable(nameof(NotificationsChannelFeederMessage.Date)),
+                new DateTimeChannelProgramsDescriptor(1, nameof(NotificationsChannelFeederMessage.Date), "The notification date, usable as an optional historical filter").SetTable(nameof(NotificationsChannelFeederMessage.Date)),
                 new ChannelProgramsDescriptor(2, nameof(NotificationsChannelFeederMessage.Id), DataType.String, "The identifier").SetTable(nameof(Notifications)),
                 new TimeChannelProgramsDescriptor(3, nameof(NotificationsChannelFeederMessage.Time), "The time").SetTable(nameof(Notifications)),
                 new ChannelProgramsDescriptor(4, nameof(NotificationsChannelFeederMessage.Origin), DataType.String, "The origin").SetTable(nameof(Notifications)),

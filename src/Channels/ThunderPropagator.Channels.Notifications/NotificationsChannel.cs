@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Ardalis.GuardClauses;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
@@ -51,7 +52,13 @@ namespace ThunderPropagator.Channels.Notifications
                     .ConfigureAwait(false);
 
                 foreach (var snapshotEntry in snapshotEntries)
-                    await EmitMessageAsync(null, CastType.Broadcast, snapshotEntry.Snapshot, typeof(NotificationsChannelFeederMessage), cancellationToken).ConfigureAwait(false);
+                {
+                    var hashKey = HashCode.Combine(
+                        snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)],
+                        snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)]);
+
+                    await EmitMessageAsync(hashKey, CastType.Broadcast, snapshotEntry.Snapshot, typeof(NotificationsChannelFeederMessage), cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (Exception exception)
             {
@@ -96,19 +103,59 @@ namespace ThunderPropagator.Channels.Notifications
                     // delivery). The original notificationsChannelFeederMessage is never touched.
                     var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
                     var recipientMessage = new NotificationsChannelFeederMessage(notificationsChannelFeederMessage) { UserId = userId!.ToString() };
-                    recipientMessage.ResetHashKey();
+                    AssignHashKey(recipientMessage);
 
                     await base.EmitMessageAsync(recipientMessage, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
+            {
+                AssignHashKey(notificationsChannelFeederMessage);
                 await base.EmitMessageAsync(notificationsChannelFeederMessage, cancellationToken).ConfigureAwait(false);
+            }
         }
+
+        /// <summary>
+        /// UserId is now the only subscribing key (#61), so the framework's default snapshot hash
+        /// (derived from subscribing keys) would collapse every notification for a user into a
+        /// single overwritten entry. A notification is a distinct event, not a value that
+        /// supersedes the last one, so the hash is instead derived from (UserId, Id) — stable
+        /// across re-emission (e.g. the missed-broadcast replay path) and independent of the
+        /// live-routing key.
+        /// </summary>
+        private static void AssignHashKey(NotificationsChannelFeederMessage message)
+            => message.Envelope.HashKey = HashCode.Combine(message.UserId, message.Id);
 
         public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = new CancellationToken())
             => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot),
                 0,
                 0,
                 cancellationToken);
+
+        /// <summary>
+        /// Looks up a recipient's stored notifications, optionally narrowed to a date range.
+        /// UserId is the only live subscription key (see #61); this is a separate, explicit query
+        /// path for historical retrieval and has no effect on subscription identity or routing.
+        /// Leaving <paramref name="dateRange"/> null returns the recipient's full history. Entries
+        /// with no recorded Date are excluded whenever a range is supplied, since there's nothing to
+        /// compare against.
+        /// </summary>
+        public Task<SnapshotEntry[]> SearchHistoricalNotificationsAsync(
+            string userId,
+            NotificationsHistoricalDateRangeFilter? dateRange = null,
+            CancellationToken cancellationToken = default)
+        {
+            Guard.Against.NullOrWhiteSpace(userId);
+
+            return SearchSnapshotsAsync(snapshotEntry =>
+                    userId.Equals(snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]?.ToString()) &&
+                    (dateRange is null ||
+                     (snapshotEntry.Snapshot.TryGetValue(nameof(NotificationsChannelFeederMessage.Date), out var date) &&
+                      date is DateTime dateTime &&
+                      dateRange.IsSatisfiedBy(dateTime))),
+                0,
+                0,
+                cancellationToken);
+        }
     }
 }
