@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.8] — 2026-08-18
+
+### 🚀 Features
+
+- Remove sync-over-async calls from Notifications subscription/emission `(88ddfee)` — Kiarash Minoo
+
 ## [1.0.1-beta.7] — 2026-08-18
 
 ### 🧪 Tests

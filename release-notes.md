@@ -1,5 +1,5 @@
-## [1.0.1-beta.7] — 2026-08-18
+## [1.0.1-beta.8] — 2026-08-18
 
-### 🧪 Tests
+### 🚀 Features
 
-- Add channel-level integration coverage for IterativeFeeder shutdown `(ea081d2)` — Kiarash Minoo
+- Remove sync-over-async calls from Notifications subscription/emission `(88ddfee)` — Kiarash Minoo
