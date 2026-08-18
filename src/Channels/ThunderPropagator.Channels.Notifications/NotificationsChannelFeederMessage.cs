@@ -70,43 +70,43 @@ namespace ThunderPropagator.Channels.Notifications
         public string Origin
         {
             get => GetValueOrDefault(string.Empty);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public NotificationType Type
         {
             get => GetValueOrDefault(NotificationType.Text);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public NotificationPriority Priority
         {
             get => GetValueOrDefault(NotificationPriority.Normal);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public string Icon
         {
             get => GetValueOrDefault(string.Empty);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public string Subject
         {
             get => GetValueOrDefault(string.Empty);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public string Body
         {
             get => GetValueOrDefault(string.Empty);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public string EllipsisBody
         {
             get => GetValueOrDefault(string.Empty);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         public int Seen
@@ -118,7 +118,7 @@ namespace ThunderPropagator.Channels.Notifications
         public string Metadata
         {
             get => GetValueOrDefault(string.Empty);
-            private set => SetValue(value);
+            init => SetValue(value);
         }
 
         internal NotificationsChannelFeederMessage ResetHashKey()
