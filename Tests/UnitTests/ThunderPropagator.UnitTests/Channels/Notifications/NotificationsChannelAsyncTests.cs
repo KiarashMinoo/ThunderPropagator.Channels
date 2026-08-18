@@ -83,9 +83,12 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         [Fact]
         public void EmitMessage_WithUserIdAlreadySet_ChannelDisabled_DoesNotThrowSynchronously()
         {
-            // The non-broadcast path skips SearchSnapshotsAsync entirely and goes straight to the
-            // base class's EmitMessageAsync, which no-ops (rather than throws) when disabled — this
-            // just confirms the sync wrapper doesn't introduce a new failure mode for that path.
+            // The non-broadcast path used to skip SearchSnapshotsAsync entirely and go straight to
+            // the base class's EmitMessageAsync, which no-ops (rather than throws) when disabled —
+            // an inconsistency with the broadcast path's throw, fixed in #72 by checking IsEnabled
+            // explicitly up front for both paths alike. Either way, the sync wrapper's
+            // IsCompletedSuccessfully/ContinueWith pattern (see EmitMessage below) keeps a fault from
+            // this async method — old no-op or new throw — from propagating synchronously here.
             var channel = CreateChannel(isEnabled: false);
             IChannel iChannel = channel;
             var message = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1", Subject = "subject" };
