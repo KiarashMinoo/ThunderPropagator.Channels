@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.21] — 2026-08-18
+
+### 🚀 Features
+
+- Consolidate notification metadata fields under one table `(245640c)` — Kiarash Minoo
+
 ## [1.0.1-beta.20] — 2026-08-18
 
 ### 🚀 Features

@@ -1,5 +1,5 @@
-## [1.0.1-beta.20] — 2026-08-18
+## [1.0.1-beta.21] — 2026-08-18
 
 ### 🚀 Features
 
-- Replace raw Seen integer states with a Flags enum `(b637be0)` — Kiarash Minoo
+- Consolidate notification metadata fields under one table `(245640c)` — Kiarash Minoo
