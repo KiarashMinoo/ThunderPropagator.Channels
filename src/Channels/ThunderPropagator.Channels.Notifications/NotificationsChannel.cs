@@ -54,6 +54,18 @@ namespace ThunderPropagator.Channels.Notifications
     /// it. This is independent of <see cref="NotificationsFeederConfiguration.TimeToLive"/>, which
     /// the channel never reads directly — see that property's remarks for how a feeder translates
     /// its own default TTL into a per-message <see cref="NotificationsChannelFeederMessage.ExpiresAt"/>.</para>
+    /// <para><b>Group-scoped routing (see #74):</b> a message with <see cref="NotificationsChannelFeederMessage.UserId"/>
+    /// unset but <see cref="NotificationsChannelFeederMessage.GroupId"/> set is routed only to
+    /// recipients already known to be members of that group, rather than to every current
+    /// subscriber the way an ordinary broadcast is. Membership is implicit: a recipient becomes a
+    /// known member of a group the same way it becomes a known broadcast recipient at all — by
+    /// having previously received a targeted, <c>CastType.Broadcast</c>-tagged message carrying that
+    /// GroupId. Missed-broadcast catch-up respects this too: a newly (re)subscribed recipient is
+    /// caught up on every plain (GroupId-less) broadcast it missed, as before, but only on a
+    /// group-scoped broadcast for a group it's already a known member of — never on a group's
+    /// history purely by virtue of reconnecting. <see cref="NotificationsChannelFeederMessage.Tags"/>
+    /// carries no routing behavior of its own; see <see cref="SearchHistoricalNotificationsAsync"/>
+    /// for filtering stored history by tag or GroupId.</para>
     /// </remarks>
     public
 #if !DEBUG
@@ -102,8 +114,26 @@ namespace ThunderPropagator.Channels.Notifications
         {
             try
             {
+                // Group-scoped broadcasts (see #74) share the same CastType.Broadcast storage pool
+                // as plain broadcasts, distinguished only by GroupId — so catch-up must know which
+                // groups userId already belongs to before deciding whether a group-scoped entry is
+                // eligible for replay. Without this, a brand-new subscriber would be caught up on
+                // every group's past messages (having "missed" all of them), leaking group content
+                // to users who were never members. A plain (GroupId-less) entry has no such
+                // restriction and remains eligible for anyone, as before.
+                var memberGroupIds = (await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
+                            .Where(snapshotEntry => userId.Equals(snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]?.ToString()))
+                            .Where(snapshotEntry => GroupIdOf(snapshotEntry.Snapshot) is not null),
+                        0,
+                        0,
+                        cancellationToken)
+                    .ConfigureAwait(false))
+                    .Select(snapshotEntry => GroupIdOf(snapshotEntry.Snapshot)!)
+                    .ToHashSet(StringComparer.Ordinal);
+
                 var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
                             .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast && !IsExpired(snapshotEntry.Snapshot))
+                            .Where(snapshotEntry => GroupIdOf(snapshotEntry.Snapshot) is not { } groupId || memberGroupIds.Contains(groupId))
                             .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
                             .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
                             .Select(grouped => grouped.First()),
@@ -198,8 +228,13 @@ namespace ThunderPropagator.Channels.Notifications
 
             if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
             {
+                // A GroupId narrows discovery to recipients already known to be members of that
+                // group (a prior CastType.Broadcast-tagged entry carrying the same GroupId) instead
+                // of every known broadcast recipient (see #74).
+                var groupId = notificationsChannelFeederMessage.GroupId;
                 var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
                             .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
+                            .Where(snapshotEntry => string.IsNullOrWhiteSpace(groupId) || string.Equals(groupId, GroupIdOf(snapshotEntry.Snapshot), StringComparison.Ordinal))
                             .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)])
                             .Select(grouped => grouped.First()),
                         0,
@@ -217,6 +252,14 @@ namespace ThunderPropagator.Channels.Notifications
                     var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
                     var recipientMessage = new NotificationsChannelFeederMessage(notificationsChannelFeederMessage) { UserId = userId!.ToString() };
                     AssignHashKey(recipientMessage);
+
+                    // Forced explicitly rather than left to whatever the original (unrouted)
+                    // broadcast/group message's own CastType happened to be — a caller sending a
+                    // plain broadcast rarely sets CastType themselves, and the copy constructor would
+                    // otherwise propagate that untouched default (Multicast). Without this, a
+                    // recipient's stored copy is invisible to future fan-out discovery and to
+                    // missed-broadcast catch-up, both of which filter on CastType.Broadcast (see #74).
+                    recipientMessage.CastType = CastType.Broadcast;
 
                     await base.EmitMessageAsync(recipientMessage, cancellationToken).ConfigureAwait(false);
                 }
@@ -252,16 +295,30 @@ namespace ThunderPropagator.Channels.Notifications
                 cancellationToken);
 
         /// <summary>
-        /// Looks up a recipient's stored notifications, optionally narrowed to a date range.
-        /// UserId is the only live subscription key (see #61); this is a separate, explicit query
-        /// path for historical retrieval and has no effect on subscription identity or routing.
-        /// Leaving <paramref name="dateRange"/> null returns the recipient's full history. Entries
-        /// with no recorded Date are excluded whenever a range is supplied, since there's nothing to
-        /// compare against.
+        /// Looks up a recipient's stored notifications, optionally narrowed to a date range, a set
+        /// of tags, and/or a GroupId. UserId is the only live subscription key (see #61); this is a
+        /// separate, explicit query path for historical retrieval and has no effect on subscription
+        /// identity or routing. Leaving <paramref name="dateRange"/> null returns the recipient's
+        /// full history. Entries with no recorded Date are excluded whenever a range is supplied,
+        /// since there's nothing to compare against.
         /// </summary>
+        /// <param name="userId">The recipient whose stored history to search.</param>
+        /// <param name="dateRange">Optional inclusive date-range filter; null returns every date.</param>
+        /// <param name="tags">
+        /// Optional tag filter (see #74): a notification matches if it carries <i>any</i> of the
+        /// given tags (case-insensitive) — not all of them. Null or empty returns notifications
+        /// regardless of their tags, including untagged ones.
+        /// </param>
+        /// <param name="groupId">
+        /// Optional exact, case-sensitive GroupId filter (see #74); null returns notifications
+        /// regardless of GroupId, including those with none.
+        /// </param>
+        /// <param name="cancellationToken"></param>
         public Task<SnapshotEntry[]> SearchHistoricalNotificationsAsync(
             string userId,
             NotificationsHistoricalDateRangeFilter? dateRange = null,
+            IReadOnlyList<string>? tags = null,
+            string? groupId = null,
             CancellationToken cancellationToken = default)
         {
             Guard.Against.NullOrWhiteSpace(userId);
@@ -269,6 +326,8 @@ namespace ThunderPropagator.Channels.Notifications
             return SearchSnapshotsAsync(snapshotEntry =>
                     userId.Equals(snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]?.ToString()) &&
                     !IsExpired(snapshotEntry.Snapshot) &&
+                    MatchesAnyTag(snapshotEntry.Snapshot, tags) &&
+                    (groupId is null || string.Equals(groupId, GroupIdOf(snapshotEntry.Snapshot), StringComparison.Ordinal)) &&
                     (dateRange is null ||
                      (snapshotEntry.Snapshot.TryGetValue(nameof(NotificationsChannelFeederMessage.Date), out var date) &&
                       date is DateTime dateTime &&
@@ -277,6 +336,27 @@ namespace ThunderPropagator.Channels.Notifications
                 0,
                 cancellationToken);
         }
+
+        /// <summary>
+        /// The value of <see cref="NotificationsChannelFeederMessage.GroupId"/> as stored in
+        /// <paramref name="snapshot"/>, or null when absent, blank, or not a string.
+        /// </summary>
+        private static string? GroupIdOf(IReadOnlyDictionary<string, object?> snapshot)
+            => snapshot.TryGetValue(nameof(NotificationsChannelFeederMessage.GroupId), out var value) && value is string { Length: > 0 } groupId && !string.IsNullOrWhiteSpace(groupId)
+                ? groupId
+                : null;
+
+        /// <summary>
+        /// Whether <paramref name="snapshot"/> carries at least one of <paramref name="tags"/>
+        /// (case-insensitive) — match-any (OR), not match-all. Null or empty <paramref name="tags"/>
+        /// always matches, including a snapshot with no <see cref="NotificationsChannelFeederMessage.Tags"/>
+        /// entry at all.
+        /// </summary>
+        private static bool MatchesAnyTag(IReadOnlyDictionary<string, object?> snapshot, IReadOnlyList<string>? tags)
+            => tags is null || tags.Count == 0 ||
+               (snapshot.TryGetValue(nameof(NotificationsChannelFeederMessage.Tags), out var value) &&
+                value is IEnumerable<string> storedTags &&
+                tags.Any(tag => storedTags.Contains(tag, StringComparer.OrdinalIgnoreCase)));
 
         /// <summary>
         /// Whether <paramref name="snapshot"/>'s <see cref="NotificationsChannelFeederMessage.ExpiresAt"/>
