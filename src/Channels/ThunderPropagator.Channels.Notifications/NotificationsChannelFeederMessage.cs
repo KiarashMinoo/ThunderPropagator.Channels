@@ -1,4 +1,5 @@
-﻿using Ardalis.GuardClauses;
+﻿using System.Globalization;
+using Ardalis.GuardClauses;
 using ThunderPropagator.BuildingBlocks.Application;
 
 namespace ThunderPropagator.Channels.Notifications
@@ -9,6 +10,17 @@ namespace ThunderPropagator.Channels.Notifications
 #endif
         class NotificationsChannelFeederMessage : FeederMessage
     {
+        /// <summary>
+        /// Maximum number of text elements (user-perceived characters — see
+        /// <see cref="StringInfo"/> — rather than raw UTF-16 code units, so a truncation never
+        /// splits a surrogate pair or combining character sequence) that <see cref="EllipsisBody"/>
+        /// keeps from <see cref="Body"/> before appending <see cref="EllipsisSuffix"/>. Chosen as a
+        /// reasonable notification-list preview length.
+        /// </summary>
+        public const int EllipsisBodyThreshold = 100;
+
+        private const string EllipsisSuffix = "...";
+
         public NotificationsChannelFeederMessage()
         {
         }
@@ -103,10 +115,32 @@ namespace ThunderPropagator.Channels.Notifications
             init => SetValue(value);
         }
 
+        /// <summary>
+        /// An overflowed/preview form of <see cref="Body"/>, truncated to
+        /// <see cref="EllipsisBodyThreshold"/> text elements with <see cref="EllipsisSuffix"/>
+        /// appended when <see cref="Body"/> is longer. Derived automatically from <see cref="Body"/>
+        /// unless explicitly set — an explicit value (including an empty string) is always honored
+        /// as-is and never overwritten by the derivation.
+        /// </summary>
         public string EllipsisBody
         {
-            get => GetValueOrDefault(string.Empty);
+            get => GetValueOrNull<string>() ?? DeriveEllipsisBody(Body);
             init => SetValue(value);
+        }
+
+        private static string DeriveEllipsisBody(string? body)
+        {
+            if (string.IsNullOrEmpty(body))
+                return string.Empty;
+
+            var textElements = new List<string>();
+            var enumerator = StringInfo.GetTextElementEnumerator(body);
+            while (enumerator.MoveNext())
+                textElements.Add((string)enumerator.Current);
+
+            return textElements.Count <= EllipsisBodyThreshold
+                ? body
+                : string.Concat(textElements.Take(EllipsisBodyThreshold)) + EllipsisSuffix;
         }
 
         public int Seen
