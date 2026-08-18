@@ -73,7 +73,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             // an empty UserId routes through SearchSnapshotsAsync to resolve broadcast recipients.
             var channel = CreateChannel(isEnabled: false);
             IChannel iChannel = channel;
-            var message = new NotificationsChannelFeederMessage();
+            var message = new NotificationsChannelFeederMessage { Id = "notification-1", Subject = "subject" };
 
             var exception = Record.Exception(() => iChannel.EmitMessage(message));
 
@@ -88,7 +88,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             // just confirms the sync wrapper doesn't introduce a new failure mode for that path.
             var channel = CreateChannel(isEnabled: false);
             IChannel iChannel = channel;
-            var message = new NotificationsChannelFeederMessage { UserId = "user-1" };
+            var message = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1", Subject = "subject" };
 
             var exception = Record.Exception(() => iChannel.EmitMessage(message));
 
@@ -102,7 +102,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             // by a caller that opts in), not as a synchronous throw from the call expression itself.
             var channel = CreateChannel(isEnabled: false);
             IChannel iChannel = channel;
-            var message = new NotificationsChannelFeederMessage();
+            var message = new NotificationsChannelFeederMessage { Id = "notification-1", Subject = "subject" };
 
             // The call expression itself must not throw — only the returned Task may fault.
             var callException = Record.Exception(() =>
@@ -121,7 +121,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         {
             var channel = CreateChannel(isEnabled: true);
             IChannel iChannel = channel;
-            var message = new NotificationsChannelFeederMessage();
+            var message = new NotificationsChannelFeederMessage { Id = "notification-1", Subject = "subject" };
 
             using var cancellationTokenSource = new CancellationTokenSource();
             await cancellationTokenSource.CancelAsync();

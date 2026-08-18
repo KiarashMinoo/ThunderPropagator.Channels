@@ -78,6 +78,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             IDictionary<string, object?> raw = new Dictionary<string, object?>
             {
                 [nameof(NotificationsChannelFeederMessage.UserId)] = "user-1",
+                [nameof(NotificationsChannelFeederMessage.Id)] = "notification-1",
                 [nameof(NotificationsChannelFeederMessage.Origin)] = "billing-service",
                 [nameof(NotificationsChannelFeederMessage.Type)] = NotificationType.Html,
                 [nameof(NotificationsChannelFeederMessage.Subject)] = "Invoice ready"

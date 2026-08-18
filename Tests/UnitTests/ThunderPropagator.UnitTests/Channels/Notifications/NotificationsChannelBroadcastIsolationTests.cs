@@ -80,7 +80,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         /// </summary>
         private static async Task SeedBroadcastRecipientAsync(IChannel channel, string userId)
         {
-            var seed = new NotificationsChannelFeederMessage { UserId = userId, CastType = CastType.Broadcast };
+            var seed = new NotificationsChannelFeederMessage { UserId = userId, CastType = CastType.Broadcast, Id = $"seed-{userId}", Subject = "subject" };
             await channel.EmitMessageAsync(seed, CancellationToken.None);
         }
 
@@ -98,7 +98,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
             channel.MessageEmitting += (_, feederMessage) => emitted.Add(feederMessage);
 
-            var broadcast = new NotificationsChannelFeederMessage();
+            var broadcast = new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject" };
             await iChannel.EmitMessageAsync(broadcast, CancellationToken.None);
 
             Assert.Equal(3, emitted.Count);
@@ -121,7 +121,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
             channel.MessageEmitting += (_, feederMessage) => emitted.Add(feederMessage);
 
-            var broadcast = new NotificationsChannelFeederMessage();
+            var broadcast = new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject" };
             await iChannel.EmitMessageAsync(broadcast, CancellationToken.None);
 
             var deliveredUserIds = emitted
@@ -142,7 +142,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             await SeedBroadcastRecipientAsync(iChannel, "user-1");
             await SeedBroadcastRecipientAsync(iChannel, "user-2");
 
-            var broadcast = new NotificationsChannelFeederMessage();
+            var broadcast = new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject" };
             await iChannel.EmitMessageAsync(broadcast, CancellationToken.None);
 
             Assert.True(string.IsNullOrEmpty(broadcast.UserId), "The original broadcast instance must never be retargeted at a specific recipient.");
@@ -158,7 +158,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
             channel.MessageEmitting += (_, feederMessage) => emitted.Add(feederMessage);
 
-            var targeted = new NotificationsChannelFeederMessage { UserId = "user-1" };
+            var targeted = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1", Subject = "subject" };
             await iChannel.EmitMessageAsync(targeted, CancellationToken.None);
 
             var single = Assert.Single(emitted);

@@ -45,7 +45,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         [Fact]
         public void Copying_APreviouslyConstructedMessage_DoesNotReplaceItsTimestamp()
         {
-            var source = new NotificationsChannelFeederMessage();
+            var source = new NotificationsChannelFeederMessage { Id = "notification-1", Subject = "subject" };
             var originalDate = source.Date;
             var originalTime = source.Time;
 
@@ -62,7 +62,9 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             IDictionary<string, object?> raw = new Dictionary<string, object?>
             {
                 [nameof(NotificationsChannelFeederMessage.Date)] = explicitDate,
-                [nameof(NotificationsChannelFeederMessage.Time)] = explicitDate.TimeOfDay
+                [nameof(NotificationsChannelFeederMessage.Time)] = explicitDate.TimeOfDay,
+                [nameof(NotificationsChannelFeederMessage.Id)] = "notification-1",
+                [nameof(NotificationsChannelFeederMessage.Subject)] = "subject"
             };
 
             var message = new NotificationsChannelFeederMessage(raw);

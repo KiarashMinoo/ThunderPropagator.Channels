@@ -108,11 +108,19 @@ namespace ThunderPropagator.Channels.Notifications
         /// <see cref="NotificationsChannelFeederMessage.UserId"/>: with UserId set, emits it directly
         /// to that recipient; left unset, fans it out as a broadcast — a fresh per-recipient copy for
         /// each subscriber known via stored snapshots, so <paramref name="feederMessage"/> itself is
-        /// never mutated and no two recipients share the same emitted instance.
+        /// never mutated and no two recipients share the same emitted instance. Throws
+        /// <see cref="NotificationsChannelFeederMessageValidationException"/> before doing anything
+        /// else if <see cref="NotificationsChannelFeederMessage.Id"/> or
+        /// <see cref="NotificationsChannelFeederMessage.Subject"/> was never set — this is the
+        /// earliest point a message built via the public parameterless constructor and object
+        /// initializer can reliably be checked, since an unset property never invokes its own
+        /// validating setter (see #68).
         /// </summary>
         protected override async Task EmitMessageAsync(FeederMessage feederMessage, CancellationToken cancellationToken = default)
         {
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
+            notificationsChannelFeederMessage.ValidateRequiredFields();
+
             if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
             {
                 var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
