@@ -40,10 +40,14 @@ namespace ThunderPropagator.Channels.Notifications
 
         /// <summary>
         /// Default lifetime after which a feeder implementation should stop attempting to deliver a
-        /// notification. This is a default only, not an enforced ceiling: a feeder implementation
-        /// that supports a per-message expiry (e.g. reading it from the message's own payload) may
-        /// let a specific message override it. Null means no expiration, preserving today's
-        /// behavior.
+        /// notification. This is a default only, not an enforced ceiling: the channel itself only
+        /// ever enforces <see cref="NotificationsChannelFeederMessage.ExpiresAt"/> (see #73) and has
+        /// no reference to this configuration, so a feeder implementation that wants this default
+        /// actually enforced by the channel must compute and assign
+        /// <see cref="NotificationsChannelFeederMessage.ExpiresAt"/> itself (e.g. as
+        /// <c>message.Date + TimeToLive</c>) before emitting — a specific message can freely set its
+        /// own <see cref="NotificationsChannelFeederMessage.ExpiresAt"/> to override this default.
+        /// Null means no expiration, preserving today's behavior.
         /// </summary>
         public TimeSpan? TimeToLive
         {

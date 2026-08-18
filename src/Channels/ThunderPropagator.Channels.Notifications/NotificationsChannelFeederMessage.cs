@@ -268,6 +268,36 @@ namespace ThunderPropagator.Channels.Notifications
             return value;
         }
 
+        /// <summary>
+        /// Optional UTC instant after which this notification is treated as expired (see #73):
+        /// excluded from snapshot replay, from historical queries, and from missed-broadcast
+        /// catch-up once expired, and rejected outright if it's already expired at the moment
+        /// <c>EmitMessage</c>/<c>EmitMessageAsync</c> is called (skipped with a logged notice, not
+        /// thrown — an expired message is an expected, benign outcome rather than a caller error).
+        /// The boundary is inclusive: this message is treated as expired the instant the clock
+        /// reaches <see cref="ExpiresAt"/>, not strictly after it.
+        /// </summary>
+        /// <remarks>
+        /// Null (the default) means this message never expires on its own. This is a per-message
+        /// value only — the channel holds no reference to a feeder's own
+        /// <see cref="NotificationsFeederConfiguration.TimeToLive"/> and can't derive an expiration
+        /// from it automatically. A feeder implementation that wants that default TTL enforced by
+        /// the channel must compute and assign this property itself (e.g. <c>Date + TimeToLive</c>)
+        /// before emitting; leaving it unset means <see cref="NotificationsFeederConfiguration.TimeToLive"/>
+        /// remains purely advisory for this message, exactly as it was before this property existed.
+        /// </remarks>
+        public DateTime? ExpiresAt
+        {
+            // GetValueOrNull<T>'s generic implementation resolves an unset key's "default" branch
+            // as default(T) rather than default(T?), so calling it directly with a value type (e.g.
+            // GetValueOrNull<DateTime>()) returns DateTime.MinValue instead of null when ExpiresAt
+            // was never set. Reading through GetValueOrNull<object>() first and casting sidesteps
+            // that — object is a reference type, so its own default is already null — matching the
+            // same defensive pattern Seen already uses below.
+            get => GetValueOrNull<object>() as DateTime?;
+            init => SetValue(value);
+        }
+
         /// <summary>Caller-defined JSON metadata for arbitrary extra data. Empty string when unset.</summary>
         public string Metadata
         {
