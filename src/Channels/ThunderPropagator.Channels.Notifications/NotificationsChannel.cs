@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Channels.Snapshots;
 using ThunderPropagator.Application.Channels.Subscribers;
@@ -28,46 +29,75 @@ namespace ThunderPropagator.Channels.Notifications
 
             var userId = subscription.SubscribedPrograms.SubscribedKeys[nameof(NotificationsChannelFeederMessage.UserId)];
 
-            SearchSnapshotsAsync(snapshotEntries => snapshotEntries
-                        .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
-                        .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
-                        .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
-                        .Select(grouped => grouped.First()),
-                    0,
-                    0,
-                    _cancellationToken
-                )
-                .Result
-                .ToList()
-                .ForEach(snapshotEntry => base.EmitMessage(null, CastType.Broadcast, snapshotEntry.Snapshot, typeof(NotificationsChannelFeederMessage)));
+            // AbstractChannel.Subscribe (which invokes this hook) is a synchronous, non-awaitable
+            // API with no asynchronous subscription hook available yet, so this can't await without
+            // blocking the caller. Fire-and-forget mirrors the base class's own EmitMessage pattern
+            // for the same reason; errors are caught and logged so a fault here doesn't crash on GC.
+            _ = SendMissedBroadcastsAsync(userId, _cancellationToken);
+        }
+
+        private async Task SendMissedBroadcastsAsync(string userId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
+                            .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
+                            .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
+                            .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
+                            .Select(grouped => grouped.First()),
+                        0,
+                        0,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                foreach (var snapshotEntry in snapshotEntries)
+                    await EmitMessageAsync(null, CastType.Broadcast, snapshotEntry.Snapshot, typeof(NotificationsChannelFeederMessage), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Failed to send missed broadcasts to user {UserId} on channel {ChannelName}.", userId, Metadata.ChannelName);
+            }
         }
 
         protected override void EmitMessage(FeederMessage feederMessage)
         {
+            var emitTask = EmitMessageAsync(feederMessage, _cancellationToken);
+
+            if (emitTask.IsCompletedSuccessfully)
+                return;
+
+            _ = emitTask.ContinueWith(
+                task => Logger.LogError(task.Exception, "Failed to emit message on channel {ChannelName}.", Metadata.ChannelName),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        protected override async Task EmitMessageAsync(FeederMessage feederMessage, CancellationToken cancellationToken = default)
+        {
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
             if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
             {
-                SearchSnapshotsAsync(snapshotEntries => snapshotEntries
+                var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
                             .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
                             .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)])
                             .Select(grouped => grouped.First()),
                         0,
                         0,
-                        _cancellationToken
-                    )
-                    .Result
-                    .ToList()
-                    .ForEach(snapshotEntry =>
-                    {
-                        var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
-                        notificationsChannelFeederMessage.UserId = userId!.ToString();
-                        notificationsChannelFeederMessage = notificationsChannelFeederMessage.ResetHashKey();
+                        cancellationToken)
+                    .ConfigureAwait(false);
 
-                        base.EmitMessage(notificationsChannelFeederMessage);
-                    });
+                foreach (var snapshotEntry in snapshotEntries)
+                {
+                    var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
+                    notificationsChannelFeederMessage.UserId = userId!.ToString();
+                    notificationsChannelFeederMessage = notificationsChannelFeederMessage.ResetHashKey();
+
+                    await base.EmitMessageAsync(notificationsChannelFeederMessage, cancellationToken).ConfigureAwait(false);
+                }
             }
             else
-                base.EmitMessage(notificationsChannelFeederMessage);
+                await base.EmitMessageAsync(notificationsChannelFeederMessage, cancellationToken).ConfigureAwait(false);
         }
 
         public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = new CancellationToken())
