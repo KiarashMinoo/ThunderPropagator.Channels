@@ -28,7 +28,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
                 Subject = "Invoice ready",
                 Body = "Your invoice is ready to view.",
                 EllipsisBody = "Your invoice is ready…",
-                Seen = 0,
+                Seen = NotificationDeliveryState.Delivered,
                 Metadata = "{\"invoiceId\":42}",
                 CastType = CastType.Broadcast,
                 IsDeleted = false,
@@ -45,7 +45,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             Assert.Equal("Invoice ready", message.Subject);
             Assert.Equal("Your invoice is ready to view.", message.Body);
             Assert.Equal("Your invoice is ready…", message.EllipsisBody);
-            Assert.Equal(0, message.Seen);
+            Assert.Equal(NotificationDeliveryState.Delivered, message.Seen);
             Assert.Equal("{\"invoiceId\":42}", message.Metadata);
             Assert.Equal(CastType.Broadcast, message.CastType);
             Assert.False(message.IsDeleted);

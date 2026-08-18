@@ -236,15 +236,36 @@ namespace ThunderPropagator.Channels.Notifications
         }
 
         /// <summary>
-        /// Read/delivery state, encoded as a bitwise field per the channel's descriptor for this
-        /// property rather than a plain boolean — this package defines no named bit constants, so
-        /// interpretation of individual bits is left to the caller/consuming client. Defaults to 0
-        /// (unseen).
+        /// Delivery/read lifecycle state (see <see cref="NotificationDeliveryState"/>). Defaults to
+        /// <see cref="NotificationDeliveryState.None"/>. The setter rejects a value with any bit set
+        /// outside the defined flags, throwing
+        /// <see cref="NotificationsChannelFeederMessageValidationException"/> — see #70. A raw
+        /// integer previously stored under this same field name (e.g. by an earlier version of this
+        /// package) is still read correctly: a <see cref="System.FlagsAttribute"/> enum's underlying
+        /// representation is an <see cref="int"/>, so a legacy value maps onto these flags bit-for-bit
+        /// with no stored-data migration needed.
         /// </summary>
-        public int Seen
+        public NotificationDeliveryState Seen
         {
-            get => GetValueOrDefault<int>(0);
-            set => SetValue(value);
+            get => GetValueOrNull<object>() switch
+            {
+                int legacyValue => (NotificationDeliveryState)legacyValue,
+                _ => GetValueOrDefault(NotificationDeliveryState.None)
+            };
+            set => SetValue(ValidateDeliveryState(value));
+        }
+
+        private static NotificationDeliveryState ValidateDeliveryState(NotificationDeliveryState value)
+        {
+            const NotificationDeliveryState allDefinedFlags = NotificationDeliveryState.Delivered
+                | NotificationDeliveryState.Seen
+                | NotificationDeliveryState.Read
+                | NotificationDeliveryState.Dismissed;
+
+            if ((value & ~allDefinedFlags) != 0)
+                throw new NotificationsChannelFeederMessageValidationException(nameof(Seen), $"must only combine defined NotificationDeliveryState flags (was {value}).");
+
+            return value;
         }
 
         /// <summary>Caller-defined JSON metadata for arbitrary extra data. Empty string when unset.</summary>
