@@ -43,6 +43,17 @@ namespace ThunderPropagator.Channels.Notifications
     /// feeder implementation (see <see cref="NotificationsFeederConfiguration"/>) is responsible for
     /// whatever it queues before calling into this channel, and for deciding how its own queue reacts
     /// to <c>IsEnabled</c> — this contract only covers the channel's own boundary.</para>
+    /// <para><b>Per-message expiration (see #73):</b> <see cref="NotificationsChannelFeederMessage.ExpiresAt"/>
+    /// is evaluated fresh, per call, against a <see cref="TimeProvider"/> resolved once at
+    /// construction — never cached across calls. An expired entry is excluded from snapshot replay,
+    /// from <see cref="SearchHistoricalNotificationsAsync"/>, and from missed-broadcast catch-up;
+    /// a message that's already expired at the moment <c>EmitMessage</c>/<c>EmitMessageAsync</c> is
+    /// called is skipped (logged, not thrown — unlike the <c>IsEnabled</c> checks above, an expired
+    /// message isn't a caller error). The boundary is inclusive: a message is expired the instant the
+    /// clock reaches <see cref="NotificationsChannelFeederMessage.ExpiresAt"/>, not strictly after
+    /// it. This is independent of <see cref="NotificationsFeederConfiguration.TimeToLive"/>, which
+    /// the channel never reads directly — see that property's remarks for how a feeder translates
+    /// its own default TTL into a per-message <see cref="NotificationsChannelFeederMessage.ExpiresAt"/>.</para>
     /// </remarks>
     public
 #if !DEBUG
@@ -52,11 +63,20 @@ namespace ThunderPropagator.Channels.Notifications
         where TNotificationsChannelConfiguration : AbstractChannelConfiguration, new()
     {
         private readonly CancellationToken _cancellationToken;
+        private readonly TimeProvider _timeProvider;
 
-        /// <summary>Resolves the shared application-stopping token used to cancel background/fire-and-forget work started by this channel.</summary>
+        /// <summary>
+        /// Resolves the shared application-stopping token used to cancel background/fire-and-forget
+        /// work started by this channel, and the <see cref="TimeProvider"/> used to evaluate
+        /// <see cref="NotificationsChannelFeederMessage.ExpiresAt"/> (see #73) — falling back to
+        /// <see cref="TimeProvider.System"/> when nothing is registered, so existing hosts that never
+        /// registered one keep working unchanged. Tests inject a fake one via DI for deterministic
+        /// expiration behavior.
+        /// </summary>
         public NotificationsChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _cancellationToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+            _timeProvider = serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
         }
 
         /// <summary>
@@ -83,7 +103,7 @@ namespace ThunderPropagator.Channels.Notifications
             try
             {
                 var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
-                            .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)
+                            .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast && !IsExpired(snapshotEntry.Snapshot))
                             .GroupBy(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)])
                             .Where(grouped => grouped.All(snapshotEntry => snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]!.ToString() != userId))
                             .Select(grouped => grouped.First()),
@@ -165,6 +185,17 @@ namespace ThunderPropagator.Channels.Notifications
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
             notificationsChannelFeederMessage.ValidateRequiredFields();
 
+            if (IsExpired(notificationsChannelFeederMessage.ExpiresAt))
+            {
+                // Expiry is an expected, benign outcome that occurs naturally over time (e.g. a
+                // delayed feeder retry), not a caller error — skipped with a log rather than thrown,
+                // unlike the IsEnabled check above. Checked once here, before branching on UserId, so
+                // an already-expired broadcast never produces any per-recipient copies either (the
+                // copy constructor would otherwise propagate the same ExpiresAt to every copy).
+                Logger.LogInformation("Skipped emitting message {Id} on channel {ChannelName} because it is already expired.", notificationsChannelFeederMessage.Id, Metadata.ChannelName);
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
             {
                 var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
@@ -215,7 +246,7 @@ namespace ThunderPropagator.Channels.Notifications
         /// on-demand equivalent that isn't tied to the subscription lifecycle.
         /// </summary>
         public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = default)
-            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot),
+            => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot) && !IsExpired(snapshotEntry.Snapshot),
                 0,
                 0,
                 cancellationToken);
@@ -237,6 +268,7 @@ namespace ThunderPropagator.Channels.Notifications
 
             return SearchSnapshotsAsync(snapshotEntry =>
                     userId.Equals(snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]?.ToString()) &&
+                    !IsExpired(snapshotEntry.Snapshot) &&
                     (dateRange is null ||
                      (snapshotEntry.Snapshot.TryGetValue(nameof(NotificationsChannelFeederMessage.Date), out var date) &&
                       date is DateTime dateTime &&
@@ -245,5 +277,24 @@ namespace ThunderPropagator.Channels.Notifications
                 0,
                 cancellationToken);
         }
+
+        /// <summary>
+        /// Whether <paramref name="snapshot"/>'s <see cref="NotificationsChannelFeederMessage.ExpiresAt"/>
+        /// field, if present, is at or before the current instant per this channel's
+        /// <see cref="TimeProvider"/> (see #73). A snapshot with no ExpiresAt entry, or one that
+        /// failed to deserialize as a <see cref="DateTime"/>, is treated as never expired.
+        /// </summary>
+        private bool IsExpired(IReadOnlyDictionary<string, object?> snapshot)
+            => snapshot.TryGetValue(nameof(NotificationsChannelFeederMessage.ExpiresAt), out var value) &&
+               value is DateTime expiresAt &&
+               IsExpired(expiresAt);
+
+        /// <summary>
+        /// Whether <paramref name="expiresAt"/> is at or before the current instant per this
+        /// channel's <see cref="TimeProvider"/> — inclusive, so a value exactly equal to "now" counts
+        /// as expired (see #73). Null (never set) is never expired.
+        /// </summary>
+        private bool IsExpired(DateTime? expiresAt)
+            => expiresAt is { } value && value <= _timeProvider.GetUtcNow().UtcDateTime;
     }
 }
