@@ -126,7 +126,7 @@ namespace ThunderPropagator.Channels.Notifications
         private static void AssignHashKey(NotificationsChannelFeederMessage message)
             => message.Envelope.HashKey = HashCode.Combine(message.UserId, message.Id);
 
-        public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = new CancellationToken())
+        public override Task<SnapshotEntry[]> SnapshotsToSendAsync(Subscription subscription, CancellationToken cancellationToken = default)
             => SearchSnapshotsAsync(snapshotEntry => subscription.SubscribedPrograms.SubscribedKeys.IsEquals(snapshotEntry.Snapshot),
                 0,
                 0,
