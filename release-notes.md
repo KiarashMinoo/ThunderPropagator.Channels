@@ -1,5 +1,5 @@
-## [1.0.1-beta.11] — 2026-08-18
+## [1.0.1-beta.12] — 2026-08-18
 
 ### 🚀 Features
 
-- Allow message construction through immutable init accessors `(95d6452)` — Kiarash Minoo
+- Remove Date from subscription keys and support optional historical date filtering `(77908b6)` — Kiarash Minoo

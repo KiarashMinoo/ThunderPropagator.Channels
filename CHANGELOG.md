@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.12] — 2026-08-18
+
+### 🚀 Features
+
+- Remove Date from subscription keys and support optional historical date filtering `(77908b6)` — Kiarash Minoo
+
 ## [1.0.1-beta.11] — 2026-08-18
 
 ### 🚀 Features
