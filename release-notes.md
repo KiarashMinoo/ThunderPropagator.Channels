@@ -1,6 +1,5 @@
-## [1.0.1-beta.6] — 2026-08-18
+## [1.0.1-beta.7] — 2026-08-18
 
-### 🚀 Features
+### 🧪 Tests
 
-- Prevent busy-spin loops in demo feeders via configurable poll intervals `(0e0a395)` — Kiarash Minoo
-- Route new poll-interval properties through Get/Set instead of plain auto-properties `(fd43c6d)` — Kiarash Minoo
+- Add channel-level integration coverage for IterativeFeeder shutdown `(ea081d2)` — Kiarash Minoo
