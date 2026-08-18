@@ -21,7 +21,8 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
                 UserId = "user-1",
                 Id = "notification-1",
                 Origin = "billing-service",
-                Type = NotificationType.Html,
+                Type = NotificationContentType.Html,
+                Category = NotificationCategory.Warning,
                 Priority = NotificationPriority.High,
                 Icon = "bell",
                 Subject = "Invoice ready",
@@ -37,7 +38,8 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             Assert.Equal("user-1", message.UserId);
             Assert.Equal("notification-1", message.Id);
             Assert.Equal("billing-service", message.Origin);
-            Assert.Equal(NotificationType.Html, message.Type);
+            Assert.Equal(NotificationContentType.Html, message.Type);
+            Assert.Equal(NotificationCategory.Warning, message.Category);
             Assert.Equal(NotificationPriority.High, message.Priority);
             Assert.Equal("bell", message.Icon);
             Assert.Equal("Invoice ready", message.Subject);
@@ -53,6 +55,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         [Theory]
         [InlineData(nameof(NotificationsChannelFeederMessage.Origin))]
         [InlineData(nameof(NotificationsChannelFeederMessage.Type))]
+        [InlineData(nameof(NotificationsChannelFeederMessage.Category))]
         [InlineData(nameof(NotificationsChannelFeederMessage.Priority))]
         [InlineData(nameof(NotificationsChannelFeederMessage.Icon))]
         [InlineData(nameof(NotificationsChannelFeederMessage.Subject))]
@@ -80,7 +83,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
                 [nameof(NotificationsChannelFeederMessage.UserId)] = "user-1",
                 [nameof(NotificationsChannelFeederMessage.Id)] = "notification-1",
                 [nameof(NotificationsChannelFeederMessage.Origin)] = "billing-service",
-                [nameof(NotificationsChannelFeederMessage.Type)] = NotificationType.Html,
+                [nameof(NotificationsChannelFeederMessage.Type)] = NotificationContentType.Html,
                 [nameof(NotificationsChannelFeederMessage.Subject)] = "Invoice ready"
             };
 
@@ -88,7 +91,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
 
             Assert.Equal("user-1", message.UserId);
             Assert.Equal("billing-service", message.Origin);
-            Assert.Equal(NotificationType.Html, message.Type);
+            Assert.Equal(NotificationContentType.Html, message.Type);
             Assert.Equal("Invoice ready", message.Subject);
         }
     }
