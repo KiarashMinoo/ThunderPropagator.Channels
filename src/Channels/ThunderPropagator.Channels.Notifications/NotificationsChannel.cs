@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Channels.Exceptions;
 using ThunderPropagator.Application.Channels.Snapshots;
 using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.BuildingBlocks.Application;
@@ -21,6 +22,28 @@ namespace ThunderPropagator.Channels.Notifications
     /// <see cref="SearchHistoricalNotificationsAsync"/> for querying a recipient's stored history
     /// independently of live subscription.
     /// </summary>
+    /// <remarks>
+    /// <para><b>ChannelConfiguration.IsEnabled contract (see #72):</b> checked fresh on every call,
+    /// never cached — toggling it takes effect on the very next operation, with no restart or
+    /// reconnect required.</para>
+    /// <para>While disabled: <see cref="ThunderPropagator.Application.Channels.IChannel.EmitMessage"/>/<c>EmitMessageAsync</c>
+    /// throws <see cref="ThunderPropagator.Application.Channels.Exceptions.ChannelIsNotEnabledException"/>
+    /// for every new publish — broadcast and targeted alike — and logs a warning naming the channel;
+    /// <c>Subscribe</c> throws the same exception, so no new subscription can be created;
+    /// <c>SnapshotsToSendAsync</c> and <see cref="SearchHistoricalNotificationsAsync"/> throw it too,
+    /// so snapshot/history queries are rejected rather than returning stale or partial data.</para>
+    /// <para>What's <i>not</i> affected: a subscription created before the channel was disabled stays
+    /// registered (it's simply unable to receive new snapshot replay or historical query results
+    /// until re-enabled), and snapshot entries already stored are retained, not cleared, while
+    /// disabled.</para>
+    /// <para>What's out of scope for this contract: "queued" or "in-flight" notification state.
+    /// This channel is push-only and holds no internal delivery queue of its own — emitting a message
+    /// either completes synchronously against current subscriptions/snapshot storage or throws
+    /// immediately; there's no in-process backlog to pause, drain, or acknowledge. A consumer's own
+    /// feeder implementation (see <see cref="NotificationsFeederConfiguration"/>) is responsible for
+    /// whatever it queues before calling into this channel, and for deciding how its own queue reacts
+    /// to <c>IsEnabled</c> — this contract only covers the channel's own boundary.</para>
+    /// </remarks>
     public
 #if !DEBUG
         sealed
@@ -116,8 +139,29 @@ namespace ThunderPropagator.Channels.Notifications
         /// initializer can reliably be checked, since an unset property never invokes its own
         /// validating setter (see #68).
         /// </summary>
+        /// <remarks>
+        /// <b>Disabled-channel contract (see #72):</b> throws <see cref="ChannelIsNotEnabledException"/>
+        /// immediately when <c>ChannelConfiguration.IsEnabled</c> is false, for both the broadcast and
+        /// the targeted path alike — new publishes are rejected outright rather than silently dropped,
+        /// consistent with <c>Subscribe</c>, <c>SnapshotsToSendAsync</c>, and
+        /// <see cref="SearchHistoricalNotificationsAsync"/>, which already throw the same way. This
+        /// channel has no internal queue or in-flight delivery state of its own to pause or drain —
+        /// it's push-only, and a consumer's own feeder implementation (see
+        /// <see cref="NotificationsFeederConfiguration"/>) is responsible for anything it queues before
+        /// calling <c>EmitMessage</c>/<c>EmitMessageAsync</c>. <c>IsEnabled</c> is read fresh on every
+        /// call rather than cached, so toggling it at runtime takes effect immediately on the next
+        /// publish or subscription attempt; no restart is required. Existing subscriptions and stored
+        /// snapshots are untouched by disabling the channel — only new publishes, new subscriptions,
+        /// and snapshot queries are rejected while disabled.
+        /// </remarks>
         protected override async Task EmitMessageAsync(FeederMessage feederMessage, CancellationToken cancellationToken = default)
         {
+            if (!ChannelConfiguration.IsEnabled)
+            {
+                Logger.LogWarning("Rejected message emission on channel {ChannelName} because the channel is disabled.", Metadata.ChannelName);
+                throw new ChannelIsNotEnabledException();
+            }
+
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
             notificationsChannelFeederMessage.ValidateRequiredFields();
 
