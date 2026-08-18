@@ -89,11 +89,16 @@ namespace ThunderPropagator.Channels.Notifications
 
                 foreach (var snapshotEntry in snapshotEntries)
                 {
+                    // A fresh copy per recipient — base.EmitMessageAsync can queue or otherwise hold
+                    // onto the reference beyond this call, so retargeting the same shared instance's
+                    // UserId for the next recipient would let every recipient observe whichever
+                    // UserId happened to be set last (or race on it entirely under concurrent
+                    // delivery). The original notificationsChannelFeederMessage is never touched.
                     var userId = snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)];
-                    notificationsChannelFeederMessage.UserId = userId!.ToString();
-                    notificationsChannelFeederMessage = notificationsChannelFeederMessage.ResetHashKey();
+                    var recipientMessage = new NotificationsChannelFeederMessage(notificationsChannelFeederMessage) { UserId = userId!.ToString() };
+                    recipientMessage.ResetHashKey();
 
-                    await base.EmitMessageAsync(notificationsChannelFeederMessage, cancellationToken).ConfigureAwait(false);
+                    await base.EmitMessageAsync(recipientMessage, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
