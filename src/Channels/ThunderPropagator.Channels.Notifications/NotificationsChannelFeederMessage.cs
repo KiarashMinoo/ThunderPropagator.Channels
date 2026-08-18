@@ -23,6 +23,12 @@ namespace ThunderPropagator.Channels.Notifications
 
         public NotificationsChannelFeederMessage()
         {
+            // Captured once here rather than left to each property's getter — reading Date and
+            // Time repeatedly (or reading them apart in time) must observe the same instant this
+            // message was constructed at, not the clock at the moment of each read.
+            var now = DateTime.UtcNow;
+            Date = now;
+            Time = now.TimeOfDay;
         }
 
         internal NotificationsChannelFeederMessage(IDictionary<string, object?> feederMessage) : this()
