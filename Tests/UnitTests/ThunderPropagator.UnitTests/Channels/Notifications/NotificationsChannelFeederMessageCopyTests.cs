@@ -11,6 +11,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             {
                 UserId = "user-1",
                 Id = "notification-1",
+                Subject = "subject",
                 Seen = 1
             };
             source.CastType = CastType.Broadcast;

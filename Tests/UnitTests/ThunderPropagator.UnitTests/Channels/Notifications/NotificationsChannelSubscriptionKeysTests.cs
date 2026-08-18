@@ -111,8 +111,8 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             IChannel iChannel = channel;
             EnableSnapshotting(channel);
 
-            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1" }, CancellationToken.None);
-            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-2" }, CancellationToken.None);
+            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1", Subject = "subject" }, CancellationToken.None);
+            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-2", Subject = "subject" }, CancellationToken.None);
 
             var history = await channel.SearchHistoricalNotificationsAsync("user-1");
 
@@ -126,8 +126,8 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             IChannel iChannel = channel;
             EnableSnapshotting(channel);
 
-            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1" }, CancellationToken.None);
-            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-2" }, CancellationToken.None);
+            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1", Subject = "subject" }, CancellationToken.None);
+            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-2", Subject = "subject" }, CancellationToken.None);
 
             var history = await channel.SearchHistoricalNotificationsAsync("user-1", dateRange: null);
 
@@ -141,8 +141,8 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             IChannel iChannel = channel;
             EnableSnapshotting(channel);
 
-            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1" }, CancellationToken.None);
-            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-2", Id = "notification-2" }, CancellationToken.None);
+            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-1", Subject = "subject" }, CancellationToken.None);
+            await iChannel.EmitMessageAsync(new NotificationsChannelFeederMessage { UserId = "user-2", Id = "notification-2", Subject = "subject" }, CancellationToken.None);
 
             var history = await channel.SearchHistoricalNotificationsAsync("user-1");
 
@@ -157,10 +157,10 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             IChannel iChannel = channel;
             EnableSnapshotting(channel);
 
-            var inRange = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-in-range" };
+            var inRange = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-in-range", Subject = "subject" };
             SetDate(inRange, new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc));
 
-            var outOfRange = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-out-of-range" };
+            var outOfRange = new NotificationsChannelFeederMessage { UserId = "user-1", Id = "notification-out-of-range", Subject = "subject" };
             SetDate(outOfRange, new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc));
 
             await iChannel.EmitMessageAsync(inRange, CancellationToken.None);
