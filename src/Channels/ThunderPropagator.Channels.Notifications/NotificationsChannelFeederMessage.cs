@@ -1,4 +1,5 @@
-﻿using ThunderPropagator.BuildingBlocks.Application;
+﻿using Ardalis.GuardClauses;
+using ThunderPropagator.BuildingBlocks.Application;
 
 namespace ThunderPropagator.Channels.Notifications
 {
@@ -18,6 +19,28 @@ namespace ThunderPropagator.Channels.Notifications
             {
                 SetValue(item.Value, item.Key);
             }
+        }
+
+        /// <summary>
+        /// Creates an independent copy of <paramref name="source"/>: every payload field (UserId,
+        /// Subject, Body, etc.) plus the CastType/IsDeleted/CorrelationId/HashKey envelope values.
+        /// All current fields are value types or immutable strings, so a per-field copy is already a
+        /// full deep copy — the new instance shares no mutable state with <paramref name="source"/>.
+        /// Changing a value on either instance afterward (e.g. retargeting UserId, or clearing the
+        /// copy's HashKey via <see cref="ResetHashKey"/> before re-emitting to a specific recipient)
+        /// never affects the other.
+        /// </summary>
+        internal NotificationsChannelFeederMessage(NotificationsChannelFeederMessage source) : this()
+        {
+            Guard.Against.Null(source);
+
+            foreach (var item in (IReadOnlyDictionary<string, object?>)source)
+                SetValue(item.Value, item.Key);
+
+            CastType = source.CastType;
+            IsDeleted = source.IsDeleted;
+            CorrelationId = source.CorrelationId;
+            Envelope.HashKey = source.Envelope.HashKey;
         }
 
         public string? UserId
@@ -100,7 +123,11 @@ namespace ThunderPropagator.Channels.Notifications
 
         internal NotificationsChannelFeederMessage ResetHashKey()
         {
-            this["HashKey"] = null;
+            // The indexer (this["HashKey"] = ...) writes to the payload dictionary under a literal
+            // "HashKey" key, which is a completely different storage location from the actual
+            // envelope HashKey property read by EmitMessageAsync — that one is only reachable via
+            // Envelope.HashKey, which is what this method actually needs to clear.
+            Envelope.HashKey = null;
             return this;
         }
     }
