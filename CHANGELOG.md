@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.22] — 2026-08-18
+
+### 🚀 Features
+
+- Define IsEnabled behavior for delivery and in-flight notifications `(d2a45cf)` — Kiarash Minoo
+
 ## [1.0.1-beta.21] — 2026-08-18
 
 ### 🚀 Features
