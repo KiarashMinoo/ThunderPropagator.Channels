@@ -24,11 +24,20 @@ namespace ThunderPropagator.Channels.Notifications
         /// and, via <c>NotificationsChannel.SearchHistoricalNotificationsAsync</c>, optional
         /// historical filtering.
         /// </summary>
+        /// <remarks>
+        /// Every field is registered under the same <c>"notifications"</c> table (see #71) — UserId
+        /// and Date previously reported their own field name as their table ("userId"/"date"
+        /// respectively), fragmenting schema discovery for fields that all belong to the same
+        /// notification record. There's no stored data to migrate (Table is discovery/schema
+        /// metadata, not a storage key), but a consumer that queried or filtered schema discovery
+        /// output by the old per-field table names needs to look for those fields under
+        /// <c>"notifications"</c> instead.
+        /// </remarks>
         public override ChannelProgramsDescriptorCollection ChannelProgramsDescriptors
             => new()
             {
-                new SubscribingKeyChannelProgramsDescriptor(0, nameof(NotificationsChannelFeederMessage.UserId)).SetTable(nameof(NotificationsChannelFeederMessage.UserId)),
-                new DateTimeChannelProgramsDescriptor(1, nameof(NotificationsChannelFeederMessage.Date), "The notification date, usable as an optional historical filter").SetTable(nameof(NotificationsChannelFeederMessage.Date)),
+                new SubscribingKeyChannelProgramsDescriptor(0, nameof(NotificationsChannelFeederMessage.UserId)).SetTable(nameof(Notifications)),
+                new DateTimeChannelProgramsDescriptor(1, nameof(NotificationsChannelFeederMessage.Date), "The notification date, usable as an optional historical filter").SetTable(nameof(Notifications)),
                 new ChannelProgramsDescriptor(2, nameof(NotificationsChannelFeederMessage.Id), DataType.String, "The identifier").SetTable(nameof(Notifications)),
                 new TimeChannelProgramsDescriptor(3, nameof(NotificationsChannelFeederMessage.Time), "The time").SetTable(nameof(Notifications)),
                 new ChannelProgramsDescriptor(4, nameof(NotificationsChannelFeederMessage.Origin), DataType.String, "The origin").SetTable(nameof(Notifications)),
