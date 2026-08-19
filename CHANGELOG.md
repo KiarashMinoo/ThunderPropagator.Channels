@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.37] — 2026-08-19
+
+### 🚀 Features
+
+- Move chat context migration/seeding to an async host lifecycle `(7721b80)` — Kiarash Minoo
+
 ## [1.0.1-beta.36] — 2026-08-19
 
 ### 🚀 Features

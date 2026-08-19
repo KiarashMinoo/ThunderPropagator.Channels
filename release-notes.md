@@ -1,5 +1,5 @@
-## [1.0.1-beta.36] — 2026-08-19
+## [1.0.1-beta.37] — 2026-08-19
 
 ### 🚀 Features
 
-- Scope chat context initialization per provider type `(44c6964)` — Kiarash Minoo
+- Move chat context migration/seeding to an async host lifecycle `(7721b80)` — Kiarash Minoo
