@@ -8,12 +8,15 @@ namespace ThunderPropagator.Channels.Notifications
     /// The message emitted on and stored by the Notifications channel. Every field is
     /// dictionary-backed (see the base <see cref="FeederMessage"/>) — reading a field that was never
     /// set returns that field's documented default rather than throwing, and setting a field is what
-    /// makes it visible to snapshot storage, historical queries, and routing. Recipient targeting is
-    /// by <see cref="UserId"/> alone: leaving it unset routes the message as a broadcast, delivered
-    /// to every current subscriber and to any subscriber who joins later without having missed it
-    /// (see the channel's broadcast fan-out). Leaving <see cref="UserId"/> unset but setting
-    /// <see cref="GroupId"/> narrows that broadcast to recipients already known to belong to that
-    /// group (see #74).
+    /// makes it visible to snapshot storage, historical queries, and routing. <see cref="Audience"/>
+    /// (see #76) determines who a message reaches, rather than the presence or absence of
+    /// <see cref="UserId"/>/<see cref="GroupId"/> alone:
+    /// <see cref="NotificationAudience.Individual"/> delivers to that one recipient;
+    /// <see cref="NotificationAudience.Group"/> delivers to recipients already known to belong to
+    /// that group (see #74); <see cref="NotificationAudience.Broadcast"/> delivers to every current
+    /// subscriber, and to any subscriber who joins later without having missed it (see the channel's
+    /// fan-out). See <see cref="ValidateAudienceCombination"/> for exactly which of
+    /// <see cref="UserId"/>/<see cref="GroupId"/> each value requires or forbids.
     /// </summary>
     public
 #if !DEBUG
@@ -103,9 +106,10 @@ namespace ThunderPropagator.Channels.Notifications
         }
 
         /// <summary>
-        /// The intended recipient. Left null or whitespace, the message is a broadcast, delivered to
-        /// every current subscriber rather than a single recipient — see the channel's fan-out
-        /// behavior. This is the only field the channel uses for live subscription routing (#61).
+        /// The intended recipient — required when <see cref="Audience"/> is
+        /// <see cref="NotificationAudience.Individual"/> (the default) and forbidden otherwise; see
+        /// <see cref="ValidateAudienceCombination"/> (#76). This is the only field the channel uses
+        /// for live subscription routing (#61).
         /// </summary>
         public string? UserId
         {
@@ -114,20 +118,42 @@ namespace ThunderPropagator.Channels.Notifications
         }
 
         /// <summary>
-        /// The intended audience group. With <see cref="UserId"/> unset, a message carrying a
-        /// GroupId is routed only to recipients already known to be members of that group — see
-        /// the channel's group fan-out (#74) — rather than to every current subscriber the way an
-        /// ordinary (GroupId-less) broadcast is. A recipient becomes a known member the same way a
-        /// broadcast recipient does: by having previously received a targeted, <c>CastType.Broadcast</c>-tagged
-        /// message carrying this same GroupId. Ignored entirely when <see cref="UserId"/> is set,
-        /// since a targeted message is already resolved to one specific recipient. Comparison is
-        /// ordinal (case-sensitive) and exact — unlike <see cref="Tags"/>, GroupId has no
-        /// normalization or deduplication of its own since it's a single scalar value, not a
-        /// collection.
+        /// The intended audience group — required when <see cref="Audience"/> is
+        /// <see cref="NotificationAudience.Group"/>, forbidden when it's
+        /// <see cref="NotificationAudience.Broadcast"/>, and optional (usable purely for
+        /// categorization/filtering, with no routing effect) when it's
+        /// <see cref="NotificationAudience.Individual"/> — see
+        /// <see cref="ValidateAudienceCombination"/> (#76). A message with the Group audience is
+        /// routed only to recipients already known to be members of this group — see the channel's group
+        /// fan-out (#74) — rather than to every current subscriber the way
+        /// <see cref="NotificationAudience.Broadcast"/> is. A recipient becomes a known member the
+        /// same way a broadcast recipient does: by having previously received a targeted,
+        /// <c>CastType.Broadcast</c>-tagged message carrying this same GroupId. Comparison is ordinal
+        /// (case-sensitive) and exact — unlike <see cref="Tags"/>, GroupId has no normalization or
+        /// deduplication of its own since it's a single scalar value, not a collection.
         /// </summary>
         public string? GroupId
         {
             get => GetValueOrNull<string>();
+            init => SetValue(value);
+        }
+
+        /// <summary>
+        /// Who this message is routed to (see #76). Defaults to <see cref="NotificationAudience.Individual"/>
+        /// — the safe default, since it's the value that requires a specific
+        /// <see cref="UserId"/> rather than letting an unset one reach every subscriber by accident.
+        /// The channel routes strictly by this value rather than by inferring intent from which of
+        /// <see cref="UserId"/>/<see cref="GroupId"/> happens to be set — see
+        /// <see cref="ValidateAudienceCombination"/> for the combinations each value requires or
+        /// forbids, checked by the channel immediately before routing (not on every property set,
+        /// since a message built via the copy constructor can legitimately carry a combination that
+        /// would be invalid for a caller-authored message — e.g. a stored broadcast recipient copy
+        /// keeps <see cref="NotificationAudience.Broadcast"/> alongside the specific
+        /// <see cref="UserId"/> it was delivered to).
+        /// </summary>
+        public NotificationAudience Audience
+        {
+            get => GetValueOrDefault(NotificationAudience.Individual);
             init => SetValue(value);
         }
 
@@ -423,6 +449,47 @@ namespace ThunderPropagator.Channels.Notifications
         {
             ValidateExplicitValue(Id, nameof(Id), IdMaxLength);
             ValidateExplicitValue(Subject, nameof(Subject), SubjectMaxLength);
+        }
+
+        /// <summary>
+        /// Verifies <see cref="Audience"/>'s required and forbidden combination with
+        /// <see cref="UserId"/> and <see cref="GroupId"/> (see #76): <see cref="NotificationAudience.Individual"/>
+        /// requires UserId; <see cref="NotificationAudience.Group"/> requires GroupId and forbids
+        /// UserId; <see cref="NotificationAudience.Broadcast"/> forbids both. Individual doesn't
+        /// forbid GroupId — a message can be addressed to one specific recipient while still
+        /// carrying a GroupId purely for categorization/filtering (see #74's
+        /// <c>SearchHistoricalNotificationsAsync</c> groupId filter), since GroupId only affects
+        /// routing for the Group audience. Deliberately <b>not</b> called from either constructor the
+        /// way <see cref="ValidateRequiredFields"/> is — the channel's own fan-out constructs a
+        /// per-recipient copy of a Group/Broadcast-audience message via the copy constructor and
+        /// then sets that copy's <see cref="UserId"/>, a combination this method would otherwise
+        /// reject despite being entirely legitimate (it's how a delivered copy records who received
+        /// it while still recording which audience it was originally sent to). Called by the channel
+        /// only against the original, caller-authored message immediately before routing it.
+        /// </summary>
+        internal void ValidateAudienceCombination()
+        {
+            switch (Audience)
+            {
+                case NotificationAudience.Individual:
+                    if (string.IsNullOrWhiteSpace(UserId))
+                        throw new NotificationsChannelFeederMessageValidationException(nameof(Audience), $"{NotificationAudience.Individual} requires {nameof(UserId)} to be set.");
+                    break;
+
+                case NotificationAudience.Group:
+                    if (string.IsNullOrWhiteSpace(GroupId))
+                        throw new NotificationsChannelFeederMessageValidationException(nameof(Audience), $"{NotificationAudience.Group} requires {nameof(GroupId)} to be set.");
+                    if (!string.IsNullOrWhiteSpace(UserId))
+                        throw new NotificationsChannelFeederMessageValidationException(nameof(Audience), $"{NotificationAudience.Group} must not set {nameof(UserId)}.");
+                    break;
+
+                case NotificationAudience.Broadcast:
+                    if (!string.IsNullOrWhiteSpace(UserId))
+                        throw new NotificationsChannelFeederMessageValidationException(nameof(Audience), $"{NotificationAudience.Broadcast} must not set {nameof(UserId)}.");
+                    if (!string.IsNullOrWhiteSpace(GroupId))
+                        throw new NotificationsChannelFeederMessageValidationException(nameof(Audience), $"{NotificationAudience.Broadcast} must not set {nameof(GroupId)}.");
+                    break;
+            }
         }
     }
 }

@@ -27,6 +27,9 @@
         <Compile Update="NotificationDeliveryState.cs">
             <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
         </Compile>
+        <Compile Update="NotificationAudience.cs">
+            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
+        </Compile>
         <Compile Update="NotificationsChannelFeederMessage.cs">
             <DependentUpon>NotificationsChannel.cs</DependentUpon>
         </Compile>
