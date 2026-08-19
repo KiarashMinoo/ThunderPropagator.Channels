@@ -1,0 +1,117 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using ThunderPropagator.Application.Channels.ChannelProgramsDescriptors;
+using ThunderPropagator.BuildingBlocks.Application.Enums;
+using ThunderPropagator.Channels.Chat;
+
+namespace ThunderPropagator.UnitTests.Channels.Chat
+{
+    /// <summary>
+    /// Issue #107: ChatChannelMetadata declared descriptor indices 0, 1, 3, and 4 — index 2 was
+    /// missing entirely, along with any descriptor for ChatChannelFeederMessage.DateTime. A gap in
+    /// the declared indices can break a positional metadata consumer, and the missing DateTime
+    /// descriptor meant the message timestamp was absent from the schema altogether. A
+    /// DateTimeChannelProgramsDescriptor (not TimeChannelProgramsDescriptor — DateTime here is a
+    /// DateTimeOffset carrying the full message-creation instant, not a bare time-of-day component,
+    /// so DataType.DateTime is the type that actually matches it) now fills index 2.
+    /// </summary>
+    public sealed class ChatChannelMetadataTests
+    {
+        private static ChatChannel CreateChannel()
+        {
+            var serviceProvider = Substitute.For<IServiceProvider>();
+            serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
+            serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
+            serviceProvider.GetService(typeof(ChatChannelConfiguration)).Returns(new ChatChannelConfiguration());
+
+            var channel = new ChatChannel(serviceProvider);
+            channel.Initialize(CancellationToken.None);
+
+            return channel;
+        }
+
+        [Fact]
+        public void ChannelProgramsDescriptors_HasExactlyFiveEntries()
+        {
+            var channel = CreateChannel();
+
+            var descriptors = channel.Metadata.ChannelProgramsDescriptors.ToArray();
+
+            Assert.Equal(5, descriptors.Length);
+        }
+
+        [Fact]
+        public void ChannelProgramsDescriptors_IndicesAreContiguousFromZeroThroughFour()
+        {
+            var channel = CreateChannel();
+
+            var indices = channel.Metadata.ChannelProgramsDescriptors.ToArray()
+                .Select(descriptor => descriptor.Index)
+                .OrderBy(index => index)
+                .ToArray();
+
+            Assert.Equal([0, 1, 2, 3, 4], indices);
+        }
+
+        [Fact]
+        public void ChannelProgramsDescriptors_HasNoDuplicateIndices()
+        {
+            var channel = CreateChannel();
+
+            var descriptors = channel.Metadata.ChannelProgramsDescriptors.ToArray();
+
+            Assert.Equal(descriptors.Length, descriptors.Select(descriptor => descriptor.Index).Distinct().Count());
+        }
+
+        [Fact]
+        public void ChannelProgramsDescriptors_HasNoDuplicateNames()
+        {
+            var channel = CreateChannel();
+
+            var descriptors = channel.Metadata.ChannelProgramsDescriptors.ToArray();
+
+            Assert.Equal(descriptors.Length, descriptors.Select(descriptor => descriptor.Name).Distinct().Count());
+        }
+
+        [Theory]
+        [InlineData(0, nameof(ChatChannelFeederMessage.UserId), DataType.String)]
+        [InlineData(1, nameof(ChatChannelFeederMessage.SenderUserId), DataType.String)]
+        [InlineData(2, nameof(ChatChannelFeederMessage.DateTime), DataType.DateTime)]
+        [InlineData(3, nameof(ChatChannelFeederMessage.GroupId), DataType.String)]
+        [InlineData(4, nameof(ChatChannelFeederMessage.Message), DataType.String)]
+        public void ChannelProgramsDescriptors_EachFieldIsRegisteredAtItsExpectedIndexWithItsExpectedType(int expectedIndex, string fieldName, DataType expectedType)
+        {
+            var channel = CreateChannel();
+
+            var descriptor = channel.Metadata.ChannelProgramsDescriptors[fieldName];
+
+            Assert.Equal(expectedIndex, descriptor.Index);
+            Assert.Equal(expectedType, descriptor.Type);
+        }
+
+        [Fact]
+        public void DateTime_UsesADateTimeDescriptor_NotABareTimeDescriptor()
+        {
+            var channel = CreateChannel();
+
+            var descriptor = channel.Metadata.ChannelProgramsDescriptors[nameof(ChatChannelFeederMessage.DateTime)];
+
+            Assert.IsType<ThunderPropagator.Application.Channels.ChannelProgramsDescriptors.DataTypes.DateTimeChannelProgramsDescriptor>(descriptor);
+        }
+
+        [Fact]
+        public void UserId_RemainsTheOnlySubscribingKey()
+        {
+            var channel = CreateChannel();
+
+            var subscribingKeyNames = channel.Metadata.ChannelProgramsDescriptors.SubscribingKeys
+                .Select(descriptor => descriptor.Name)
+                .ToArray();
+
+            Assert.Equal([nameof(ChatChannelFeederMessage.UserId)], subscribingKeyNames);
+        }
+    }
+}
