@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- ThunderPropagator.Channels.Chat's whole public surface (User, Group, Message,
+             BaseChatContext, ChatChannelConfiguration, AddChatChannel<T>, ...) is marked
+             [assembly: RequiresPreviewFeatures] — any consumer needs EnablePreviewFeatures too.
+             The installed SDK only honors that for its own current target framework (net10.0
+             here); net8.0/net9.0 are already fully GA, so CA2252 still fires for them even with
+             the property set. Until that's resolved (e.g. by removing the attribute from Chat, if
+             nothing there actually depends on it), this package targets net10.0 only instead of
+             the repo's usual net8.0;net9.0;net10.0 — a net8.0/net9.0 consumer can't reference it. -->
+        <TargetFrameworks>net10.0</TargetFrameworks>
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Channels.Chat\ThunderPropagator.Channels.Chat.csproj" />
+    </ItemGroup>
+
+</Project>
