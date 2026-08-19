@@ -1,4 +1,5 @@
-﻿using Ardalis.GuardClauses;
+﻿using System.Collections.Concurrent;
+using Ardalis.GuardClauses;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -80,6 +81,27 @@ namespace ThunderPropagator.Channels.Notifications
         private readonly CancellationToken _cancellationToken;
         private readonly TimeProvider _timeProvider;
 
+        // Guards the read-modify-write sequence in AcknowledgeAsync (see #77): a per-recipient
+        // fetch-merge-re-emit that isn't atomic on its own, since the fetch and the re-emit are two
+        // separate calls into the framework's own (correctly-locked, but per-call) snapshot storage.
+        // Without this, two concurrent acknowledgements for the same notification could both read
+        // the same "before" state, merge independently, and the second write would clobber the
+        // first's flags instead of the two merging together. Scoped to the whole channel rather than
+        // per-notification: acknowledgement is a low-frequency, latency-insensitive action, so
+        // channel-wide serialization is a deliberate simplicity-over-throughput tradeoff rather than
+        // per-key lock management.
+        private readonly SemaphoreSlim _acknowledgementSemaphore = new(1, 1);
+
+        /// <summary>
+        /// Maps a connection's <see cref="ThunderPropagator.Application.Connections.IConnectionInfo.ConnectionId"/>
+        /// to the <see cref="NotificationsChannelFeederMessage.UserId"/> it subscribed as (see #77) —
+        /// the basis for <c>NotificationsAcknowledgeReceiverPipeline</c> authorizing an acknowledgement
+        /// against the connection's own established identity rather than trusting a caller-supplied
+        /// UserId over the wire. Populated in <see cref="OnSubscriptionAdded"/>, cleared in
+        /// <see cref="OnSubscriptionRemoved"/>. A connection that never subscribed has no entry here.
+        /// </summary>
+        internal ConcurrentDictionary<string, string> SubscribedUserIdsByConnectionId { get; } = new();
+
         /// <summary>
         /// Resolves the shared application-stopping token used to cancel background/fire-and-forget
         /// work started by this channel, and the <see cref="TimeProvider"/> used to evaluate
@@ -98,19 +120,35 @@ namespace ThunderPropagator.Channels.Notifications
         /// Catches up a newly added subscription on any broadcast it missed while it wasn't
         /// subscribed yet, by re-emitting one representative copy of each such broadcast. Runs
         /// fire-and-forget (the base subscription hook is synchronous); failures are logged rather
-        /// than thrown.
+        /// than thrown. Also records this connection's UserId (see #77) for
+        /// <c>NotificationsAcknowledgeReceiverPipeline</c> to authorize against later.
         /// </summary>
         protected override void OnSubscriptionAdded(Subscription subscription)
         {
             base.OnSubscriptionAdded(subscription);
 
             var userId = subscription.SubscribedPrograms.SubscribedKeys[nameof(NotificationsChannelFeederMessage.UserId)];
+            SubscribedUserIdsByConnectionId[subscription.ConnectionInfo.ConnectionId] = userId;
 
             // AbstractChannel.Subscribe (which invokes this hook) is a synchronous, non-awaitable
             // API with no asynchronous subscription hook available yet, so this can't await without
             // blocking the caller. Fire-and-forget mirrors the base class's own EmitMessage pattern
             // for the same reason; errors are caught and logged so a fault here doesn't crash on GC.
             _ = SendMissedBroadcastsAsync(userId, _cancellationToken);
+        }
+
+        /// <summary>
+        /// Forgets the connection's UserId (see #77) recorded by <see cref="OnSubscriptionAdded"/>.
+        /// A connection with multiple subscriptions removed one at a time loses the mapping on the
+        /// first removal rather than the last — acceptable since UserId is this channel's only
+        /// subscribing key (#61), so a single connection subscribing under more than one UserId isn't
+        /// a scenario this channel otherwise supports.
+        /// </summary>
+        protected override void OnSubscriptionRemoved(Subscription subscription)
+        {
+            base.OnSubscriptionRemoved(subscription);
+
+            SubscribedUserIdsByConnectionId.TryRemove(subscription.ConnectionInfo.ConnectionId, out _);
         }
 
         private async Task SendMissedBroadcastsAsync(string userId, CancellationToken cancellationToken)
@@ -345,6 +383,89 @@ namespace ThunderPropagator.Channels.Notifications
                 0,
                 0,
                 cancellationToken);
+        }
+
+        /// <summary>
+        /// Records a delivery/read-lifecycle acknowledgement (see #77) against the stored
+        /// notification identified by <paramref name="userId"/>/<paramref name="id"/>, merging
+        /// <paramref name="state"/> into whatever <see cref="NotificationsChannelFeederMessage.Seen"/>
+        /// already holds and returning the merged result. This is the same core operation whether
+        /// called directly (e.g. from a REST endpoint or message-broker consumer that has already
+        /// authenticated the caller as <paramref name="userId"/>) or via
+        /// <c>NotificationsAcknowledgeReceiverPipeline</c>, which instead resolves
+        /// <paramref name="userId"/> from the calling connection's own established identity (see
+        /// <see cref="SubscribedUserIdsByConnectionId"/>) rather than trusting a value supplied over
+        /// the wire.
+        /// </summary>
+        /// <param name="userId">
+        /// The caller's own identity — trusted by this method as already authenticated/authorized.
+        /// Acknowledgement only succeeds if this is exactly the UserId the notification was stored
+        /// under; a mismatch is indistinguishable from the Id simply not existing (see
+        /// <see cref="NotificationsChannelUnknownNotificationException"/>), so this doubles as this
+        /// method's only authorization check — a caller can never learn that a notification exists
+        /// for a different UserId.
+        /// </param>
+        /// <param name="id">The notification's <see cref="NotificationsChannelFeederMessage.Id"/>.</param>
+        /// <param name="state">
+        /// The delivery-state flag(s) to acknowledge — <see cref="NotificationDeliveryState.Delivered"/>,
+        /// <see cref="NotificationDeliveryState.Seen"/>, <see cref="NotificationDeliveryState.Read"/>,
+        /// and/or <see cref="NotificationDeliveryState.Dismissed"/>, in any combination. There's no
+        /// enforced ordering between them (acknowledging Read without ever having acknowledged Seen
+        /// is allowed) — flags only ever accumulate, they're never required to arrive in a particular
+        /// sequence or cleared by a later acknowledgement, so this call is naturally idempotent:
+        /// acknowledging the same state twice, or in either order relative to a concurrent
+        /// acknowledgement of a different state, always converges on the same union of flags. Must
+        /// contain only defined flags, or this throws immediately (see
+        /// <see cref="NotificationsChannelFeederMessage.ValidateDeliveryState"/>) before any lookup
+        /// or locking happens.
+        /// </param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>The merged <see cref="NotificationDeliveryState"/> now stored for this notification.</returns>
+        /// <exception cref="ChannelIsNotEnabledException">The channel is currently disabled (see #72).</exception>
+        /// <exception cref="NotificationsChannelUnknownNotificationException">
+        /// No unexpired notification matches <paramref name="userId"/>/<paramref name="id"/>.
+        /// </exception>
+        public async Task<NotificationDeliveryState> AcknowledgeAsync(string userId, string id, NotificationDeliveryState state, CancellationToken cancellationToken = default)
+        {
+            Guard.Against.NullOrWhiteSpace(userId);
+            Guard.Against.NullOrWhiteSpace(id);
+            NotificationsChannelFeederMessage.ValidateDeliveryState(state);
+
+            if (!ChannelConfiguration.IsEnabled)
+            {
+                Logger.LogWarning("Rejected acknowledgement on channel {ChannelName} because the channel is disabled.", Metadata.ChannelName);
+                throw new ChannelIsNotEnabledException();
+            }
+
+            await _acknowledgementSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var matches = await SearchSnapshotsAsync(snapshotEntry =>
+                        userId.Equals(snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.UserId)]?.ToString()) &&
+                        id.Equals(snapshotEntry.Snapshot[nameof(NotificationsChannelFeederMessage.Id)]?.ToString()) &&
+                        !IsExpired(snapshotEntry.Snapshot),
+                    0,
+                    0,
+                    cancellationToken)
+                    .ConfigureAwait(false);
+
+                var existingEntry = matches.FirstOrDefault() ?? throw new NotificationsChannelUnknownNotificationException(userId, id);
+
+                var updatedMessage = new NotificationsChannelFeederMessage(new Dictionary<string, object?>(existingEntry.Snapshot));
+                var mergedState = updatedMessage.Seen | state;
+                updatedMessage.Seen = mergedState;
+                AssignHashKey(updatedMessage);
+
+                await base.EmitMessageAsync(updatedMessage, cancellationToken).ConfigureAwait(false);
+
+                Logger.LogInformation("Acknowledged {State} for notification {Id} on channel {ChannelName}.", state, id, Metadata.ChannelName);
+
+                return mergedState;
+            }
+            finally
+            {
+                _acknowledgementSemaphore.Release();
+            }
         }
 
         /// <summary>
