@@ -1,5 +1,5 @@
-## [1.0.1-beta.28] — 2026-08-19
+## [1.0.1-beta.29] — 2026-08-19
 
-### 🐛 Bug Fixes
+### 🚀 Features
 
-- Fix GroupId DTO mapping so group messages can be sent `(bb75a16)` — Kiarash Minoo
+- Return Unauthorized when SendMessage is called without a logged-in session `(3ff7517)` — Kiarash Minoo
