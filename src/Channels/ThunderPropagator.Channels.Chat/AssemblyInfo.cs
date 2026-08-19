@@ -5,3 +5,4 @@ using System.Runtime.Versioning;
 [assembly: InternalsVisibleTo("ThunderPropagator.UnitTests")]
 [assembly: InternalsVisibleTo("ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests")]
 [assembly: InternalsVisibleTo("ThunderPropagator.Channels.Chat.MongoDB.UnitTests")]
+[assembly: InternalsVisibleTo("ThunderPropagator.Channels.Chat.InMemory.UnitTests")]
