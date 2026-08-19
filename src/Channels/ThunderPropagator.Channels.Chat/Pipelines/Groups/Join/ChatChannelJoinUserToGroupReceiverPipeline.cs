@@ -1,12 +1,7 @@
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Net;
-using System.Reflection;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
-using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
-using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
@@ -24,65 +19,39 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.Join
             GroupService groupService,
             UserService userService,
             MessageService messageService)
-        : AbstractReceivePipeline<ChatChannel>(loggerFactory)
+        : AuthenticatedChatChannelReceiverPipeline(loggerFactory)
     {
-        private Counter<long>? _counter;
-
         public override string RequestKey => $"{nameof(Groups)}/{nameof(Join)}";
 
-        public async Task Invoke(ChannelInfo channelInfo,
+        protected override async Task InvokeAuthenticatedAsync(
+            ChannelInfo channelInfo,
             ReceiveContext context,
-            ReceivePipelineDelegate next,
-            CancellationToken cancellationToken = default)
+            ChatChannel chatChannel,
+            Guid currentUserId,
+            CancellationToken cancellationToken)
         {
-            var activityName = $"{channelInfo.ChannelName}_{GetType().GetTypeInfo().Name}_{nameof(Invoke)}";
-            _counter ??= Telemetry.CreateCounter<long>($"thunderpropagator.{activityName.ToLowerInvariant().Replace('_', '.')}");
+            var joinUserRequest = context.Request.GetRequestContentFormData<ChatChannelJoinUserToGroupReceiverPipelineRequestDto>()!;
 
-            using var activity = Telemetry.StartActivity(activityName, ActivityKind.Consumer)?
-                .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType)
-                .SetTag(nameof(ChannelInfo.ChannelKey), channelInfo.ChannelKey)
-                .SetTag(nameof(ChannelInfo.ChannelName), channelInfo.ChannelName);
+            var user = await userService.GetByIdAsync(currentUserId, cancellationToken) ?? throw new UserNotFoundException();
+            var group = await groupService.GetByIdAsync(joinUserRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
 
-            try
+            await groupService.AddUserToGroupAsync(group.Id, user.Id, cancellationToken);
+
+            //Send Added Message To User
+            chatChannel.EmitMessage(new ChatChannelFeederMessage(
+                await messageService.SendMessageAsync(user.Id, user.Id, $"you have joined to group {group.Name}.", cancellationToken)
+            ));
+
+            //Send Add Message To Group
+            var messages = await messageService.SendMessageToGroupAsync(currentUserId, group.Id, $"User {user.Name} has joined to group.", cancellationToken);
+            await Task.WhenAll(messages.Select(message =>
             {
-                if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
-                {
-                    var joinUserRequest = context.Request.GetRequestContentFormData<ChatChannelJoinUserToGroupReceiverPipelineRequestDto>()!;
+                chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
+                return Task.CompletedTask;
+            }));
 
-                    var chatChannel = (ChatChannel)channelInfo.Channel;
-                    var userId = chatChannel.LoggedInUsers[context.WebSocketConnectionInfo.ConnectionId];
-                    var user = await userService.GetByIdAsync(userId, cancellationToken) ?? throw new UserNotFoundException();
-                    var group = await groupService.GetByIdAsync(joinUserRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
-
-                    await groupService.AddUserToGroupAsync(group.Id, user.Id, cancellationToken);
-
-                    //Send Added Message To User
-                    chatChannel.EmitMessage(new ChatChannelFeederMessage(
-                        await messageService.SendMessageAsync(user.Id, user.Id, $"you have joined to group {group.Name}.", cancellationToken)
-                    ));
-
-                    //Send Add Message To Group
-                    var messages = await messageService.SendMessageToGroupAsync(userId, group.Id, $"User {user.Name} has joined to group.", cancellationToken);
-                    await Task.WhenAll(messages.Select(message =>
-                    {
-                        chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
-                        return Task.CompletedTask;
-                    }));
-
-                    context.Response.ResponseCode = (int)HttpStatusCode.OK;
-                    context.Response.ResponseContent = "Joined";
-
-                    _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));
-                }
-                else
-                {
-                    await next(context, cancellationToken);
-                }
-            }
-            finally
-            {
-                activity?.SetStatus(ActivityStatusCode.Ok);
-            }
+            context.Response.ResponseCode = (int)HttpStatusCode.OK;
+            context.Response.ResponseContent = "Joined";
         }
     }
 }
