@@ -40,10 +40,10 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
         }
 
         [Fact]
-        public void User_HasPasswordProperty()
+        public void User_HasPasswordHashProperty()
         {
             var type = typeof(User);
-            var property = type.GetProperty("Password");
+            var property = type.GetProperty("PasswordHash");
             Assert.NotNull(property);
             Assert.Equal(typeof(string), property.PropertyType);
         }

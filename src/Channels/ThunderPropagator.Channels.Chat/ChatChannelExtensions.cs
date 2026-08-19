@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
@@ -57,7 +58,8 @@ namespace ThunderPropagator.Channels.Chat
                 .AddScoped<IChatContext>(serviceProvider => serviceProvider.GetRequiredService<TChatContext>())
                 .AddScoped<GroupService>()
                 .AddScoped<MessageService>()
-                .AddScoped<UserService>();
+                .AddScoped<UserService>()
+                .AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
             return services;
         }

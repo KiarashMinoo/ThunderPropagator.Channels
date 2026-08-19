@@ -2,7 +2,8 @@
 
     <ItemGroup>
         <PackageReference Include="$(ThunderPropagatorPackageId)"/>
-        <PackageReference Include="JetBrains.Annotations" />       
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="Microsoft.Extensions.Identity.Core" />
     </ItemGroup>
 
     <ItemGroup>

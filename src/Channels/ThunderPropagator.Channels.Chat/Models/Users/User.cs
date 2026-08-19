@@ -13,7 +13,7 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
 
         [JsonIgnore]
         [Newtonsoft.Json.JsonIgnore]
-        public string Password { get; } = null!;
+        public string PasswordHash { get; private set; } = null!;
 
         public string Name { get; private set; } = null!;
         public string? Avatar { get; private set; }
@@ -25,16 +25,12 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             Id = Guid.NewGuid();
         }
 
-        private User(string userName, string password, string name) : this()
+        private User(string userName, string name) : this()
         {
             if (string.IsNullOrWhiteSpace(userName))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(userName));
 
-            if (string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("Value cannot be null or whitespace.", nameof(password));
-
             UserName = userName;
-            Password = password;
             SetName(name);
         }
 
@@ -65,6 +61,15 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             return this;
         }
 
-        internal static User Create(string username, string password, string name) => new(username, password, name);
+        internal User SetPasswordHash(string passwordHash)
+        {
+            if (string.IsNullOrWhiteSpace(passwordHash))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(passwordHash));
+
+            PasswordHash = passwordHash;
+            return this;
+        }
+
+        internal static User Create(string username, string name) => new(username, name);
     }
 }
