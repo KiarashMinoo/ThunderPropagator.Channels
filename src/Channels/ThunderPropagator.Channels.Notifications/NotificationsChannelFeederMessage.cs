@@ -310,7 +310,13 @@ namespace ThunderPropagator.Channels.Notifications
             set => SetValue(ValidateDeliveryState(value));
         }
 
-        private static NotificationDeliveryState ValidateDeliveryState(NotificationDeliveryState value)
+        /// <summary>
+        /// Rejects a <see cref="NotificationDeliveryState"/> with any bit set outside the defined
+        /// flags. Internal rather than private so <c>NotificationsChannel.AcknowledgeAsync</c> (see
+        /// #77) can validate a caller-supplied state up front, before doing any lookup work, using
+        /// the exact same rule the <see cref="Seen"/> setter itself enforces.
+        /// </summary>
+        internal static NotificationDeliveryState ValidateDeliveryState(NotificationDeliveryState value)
         {
             const NotificationDeliveryState allDefinedFlags = NotificationDeliveryState.Delivered
                 | NotificationDeliveryState.Seen

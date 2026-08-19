@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Channels.Notifications.Pipelines.Acknowledge;
 using ThunderPropagator.Infrastructure.Extensions;
 
 namespace ThunderPropagator.Channels.Notifications
@@ -24,6 +25,12 @@ namespace ThunderPropagator.Channels.Notifications
         /// left at its defaults.
         /// </param>
         /// <returns><paramref name="services"/>, for chaining.</returns>
+        /// <remarks>
+        /// Also registers <c>NotificationsAcknowledgeReceiverPipeline</c> (see #77) — acknowledging
+        /// delivery/read state is a core capability of this channel, not an opt-in extra, so every
+        /// consumer registering the channel gets it automatically, the same way Chat bakes in all of
+        /// its own receive pipelines unconditionally.
+        /// </remarks>
         public static IServiceCollection AddNotificationsChannel<TNotificationsChannelConfiguration>(this IServiceCollection services, Action<TNotificationsChannelConfiguration>? options = null)
             where TNotificationsChannelConfiguration : AbstractChannelConfiguration, new()
         {
@@ -31,7 +38,8 @@ namespace ThunderPropagator.Channels.Notifications
             options?.Invoke(channelConfiguration);
             services.TryAddSingleton(channelConfiguration);
 
-            services.AddChannel<NotificationsChannel<TNotificationsChannelConfiguration>>();
+            services.AddChannel<NotificationsChannel<TNotificationsChannelConfiguration>>()
+                .AddReceivePipeline<NotificationsChannel<TNotificationsChannelConfiguration>, NotificationsAcknowledgeReceiverPipeline<TNotificationsChannelConfiguration>>();
 
             return services;
         }

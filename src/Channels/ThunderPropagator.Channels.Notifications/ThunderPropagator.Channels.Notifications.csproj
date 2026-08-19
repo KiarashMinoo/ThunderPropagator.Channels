@@ -42,6 +42,9 @@
         <Compile Update="NotificationsChannelFeederMessageValidationException.cs">
           <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
         </Compile>
+        <Compile Update="NotificationsChannelUnknownNotificationException.cs">
+          <DependentUpon>NotificationsChannel.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 
 </Project>
