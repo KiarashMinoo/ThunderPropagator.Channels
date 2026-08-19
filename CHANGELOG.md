@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.31] — 2026-08-19
+
+### 🚀 Features
+
+- Hash Chat passwords with IPasswordHasher<User> instead of storing plaintext `(db3619f)` — Kiarash Minoo
+
 ## [1.0.1-beta.30] — 2026-08-19
 
 ### 🚀 Features

@@ -1,5 +1,5 @@
-## [1.0.1-beta.30] — 2026-08-19
+## [1.0.1-beta.31] — 2026-08-19
 
 ### 🚀 Features
 
-- Add DateTime descriptor and restore contiguous metadata indices `(5a2eeb4)` — Kiarash Minoo
+- Hash Chat passwords with IPasswordHasher<User> instead of storing plaintext `(db3619f)` — Kiarash Minoo
