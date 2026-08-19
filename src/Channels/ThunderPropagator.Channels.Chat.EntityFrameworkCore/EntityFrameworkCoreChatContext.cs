@@ -14,12 +14,10 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
     /// </summary>
     public sealed class EntityFrameworkCoreChatContext(ChatDbContext dbContext) : BaseChatContext
     {
-        protected override void Migrate() => dbContext.Database.Migrate();
+        protected override Task MigrateAsync(CancellationToken cancellationToken) => dbContext.Database.MigrateAsync(cancellationToken);
 
         // No default seed data — the Chat domain has no fixed reference data to install.
-        protected override void Seed()
-        {
-        }
+        protected override Task SeedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public override async Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
             => await dbContext.Set<TEntity>().FirstOrDefaultAsync(expression, cancellationToken);

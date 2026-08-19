@@ -72,17 +72,15 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
             new(Builders<Message>.IndexKeys.Ascending(message => message.GroupId))
         ];
 
-        protected override void Migrate()
+        protected override async Task MigrateAsync(CancellationToken cancellationToken)
         {
-            GetCollection<User>().Indexes.CreateOne(GetUserNameIndex());
-            GetCollection<GroupUser>().Indexes.CreateOne(GetGroupUserMembershipIndex());
-            GetCollection<Message>().Indexes.CreateMany(GetMessageIndexes());
+            await GetCollection<User>().Indexes.CreateOneAsync(GetUserNameIndex(), cancellationToken: cancellationToken);
+            await GetCollection<GroupUser>().Indexes.CreateOneAsync(GetGroupUserMembershipIndex(), cancellationToken: cancellationToken);
+            await GetCollection<Message>().Indexes.CreateManyAsync(GetMessageIndexes(), cancellationToken);
         }
 
         // No default seed data — the Chat domain has no fixed reference data to install.
-        protected override void Seed()
-        {
-        }
+        protected override Task SeedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         private static string GetCollectionName<TEntity>()
         {
