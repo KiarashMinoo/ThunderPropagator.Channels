@@ -10,15 +10,27 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
     /// </summary>
     public sealed class NotificationsChannelFeederMessageTimestampTests
     {
-        [Fact]
-        public async Task RepeatedReads_OfDateAndTime_AreStableAcrossADelay()
+        private sealed class TestTimeProvider : TimeProvider
         {
-            var message = new NotificationsChannelFeederMessage();
+            public DateTimeOffset UtcNow { get; set; } = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+            public override DateTimeOffset GetUtcNow() => UtcNow;
+        }
+
+        [Fact]
+        public void RepeatedReads_OfDateAndTime_AreStableDespiteTheClockAdvancing()
+        {
+            // Issue #78: proves the same regression the delay-based version of this test proved
+            // (a buggy Date/Time getter falling back to a live clock read on every call would
+            // observe the clock having moved), but deterministically — advancing a fake clock
+            // instead of waiting on the real one.
+            var timeProvider = new TestTimeProvider();
+            var message = new NotificationsChannelFeederMessage(timeProvider);
 
             var firstDate = message.Date;
             var firstTime = message.Time;
 
-            await Task.Delay(50);
+            timeProvider.UtcNow = timeProvider.UtcNow.AddMilliseconds(50);
 
             Assert.Equal(firstDate, message.Date);
             Assert.Equal(firstTime, message.Time);

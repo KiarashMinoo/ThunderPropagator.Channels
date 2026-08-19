@@ -52,12 +52,21 @@ namespace ThunderPropagator.Channels.Notifications
         /// instant (see the remarks on those properties). All other fields start unset at their
         /// documented defaults until explicitly assigned.
         /// </summary>
-        public NotificationsChannelFeederMessage()
+        public NotificationsChannelFeederMessage() : this(TimeProvider.System)
+        {
+        }
+
+        /// <summary>
+        /// Test-only entry point (see #78) that captures <see cref="Date"/>/<see cref="Time"/> from
+        /// <paramref name="timeProvider"/> instead of the real system clock, so a test can advance a
+        /// fake clock between reads to prove they're stable without an actual wall-clock delay.
+        /// </summary>
+        internal NotificationsChannelFeederMessage(TimeProvider timeProvider)
         {
             // Captured once here rather than left to each property's getter — reading Date and
             // Time repeatedly (or reading them apart in time) must observe the same instant this
             // message was constructed at, not the clock at the moment of each read.
-            var now = DateTime.UtcNow;
+            var now = timeProvider.GetUtcNow().UtcDateTime;
             Date = now;
             Time = now.TimeOfDay;
         }
