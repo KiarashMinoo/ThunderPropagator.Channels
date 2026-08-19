@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.32] — 2026-08-19
+
+### 🚀 Features
+
+- Enforce authentication on every protected Chat WebSocket pipeline `(eb7d081)` — Kiarash Minoo
+
 ## [1.0.1-beta.31] — 2026-08-19
 
 ### 🚀 Features

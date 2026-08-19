@@ -1,5 +1,5 @@
-## [1.0.1-beta.31] — 2026-08-19
+## [1.0.1-beta.32] — 2026-08-19
 
 ### 🚀 Features
 
-- Hash Chat passwords with IPasswordHasher<User> instead of storing plaintext `(db3619f)` — Kiarash Minoo
+- Enforce authentication on every protected Chat WebSocket pipeline `(eb7d081)` — Kiarash Minoo
