@@ -1,4 +1,5 @@
 ﻿using System.Security.Authentication;
+using Microsoft.AspNetCore.Identity;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 
@@ -8,7 +9,7 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
 #if !DEBUG
         sealed
 #endif
-        class UserService(IChatContext chatContext)
+        class UserService(IChatContext chatContext, IPasswordHasher<User> passwordHasher)
     {
         public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default)
             => chatContext.GetAsync<User, Guid>(userId, cancellationToken);
@@ -22,7 +23,8 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             if (dbUser is not null)
                 throw new InvalidOperationException("Username already exists");
 
-            var user = User.Create(username, password, name);
+            var user = User.Create(username, name);
+            user.SetPasswordHash(passwordHasher.HashPassword(user, password));
 
             return await chatContext.CreateAsync(user, cancellationToken);
         }
@@ -31,8 +33,27 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
         {
             var user = await GetByUsernameAsync(username, cancellationToken);
 
-            if (user is null || user.Password != password)
+            if (user is null)
                 throw new InvalidCredentialException();
+
+            PasswordVerificationResult result;
+            try
+            {
+                result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+            }
+            catch (FormatException)
+            {
+                throw new InvalidCredentialException();
+            }
+
+            if (result == PasswordVerificationResult.Failed)
+                throw new InvalidCredentialException();
+
+            if (result == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                user.SetPasswordHash(passwordHasher.HashPassword(user, password));
+                await chatContext.UpdateAsync(user, cancellationToken);
+            }
 
             return user;
         }
