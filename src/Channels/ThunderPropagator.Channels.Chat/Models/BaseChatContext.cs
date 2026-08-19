@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.Concurrent;
+using System.Linq.Expressions;
 
 namespace ThunderPropagator.Channels.Chat.Models
 {
@@ -15,26 +16,47 @@ namespace ThunderPropagator.Channels.Chat.Models
 
     public abstract class BaseChatContext : IChatContext
     {
-        private static volatile bool _isInitialized;
+        // Issue #113: this used to be one static bool shared by every subclass — once ANY concrete
+        // provider (EntityFrameworkCoreChatContext, MongoDbChatContext, InMemoryChatContext, ...)
+        // initialized, every OTHER provider type would see _isInitialized already true and skip its
+        // own Migrate()/Seed() entirely. State is now keyed per concrete type (GetType()), so each
+        // provider type tracks its own initialization and its own lock — one type's (possibly slow)
+        // migration never blocks or gets confused with another, unrelated type's.
+        //
+        // Retry policy: a failed Migrate()/Seed() (either throws) leaves that type's state
+        // uninitialized — the exception propagates out of the lock before IsInitialized is set, the
+        // same as before this fix. The next construction of that same concrete type retries
+        // Migrate()+Seed() from scratch, whether that next attempt comes from a thread that was
+        // waiting on the lock during the failed attempt or a completely new caller. There is no
+        // backoff or circuit breaker: a persistently failing provider (e.g. a genuinely unreachable
+        // database) will re-attempt the full Migrate()+Seed() sequence on every single subsequent
+        // construction, which callers should account for if that sequence is expensive.
+        private static readonly ConcurrentDictionary<Type, InitializationState> InitializationStates = new();
+
+        private sealed class InitializationState
+        {
 #if NET9_0_OR_GREATER
-        private static readonly Lock Lock = new();
+            public readonly Lock Lock = new();
 #else
-        private static readonly object Lock = new();
+            public readonly object Lock = new();
 #endif
+            public volatile bool IsInitialized;
+        }
 
         protected BaseChatContext()
         {
-            if (_isInitialized)
+            var state = InitializationStates.GetOrAdd(GetType(), static _ => new InitializationState());
+            if (state.IsInitialized)
                 return;
 
-            lock (Lock)
+            lock (state.Lock)
             {
-                if (_isInitialized)
+                if (state.IsInitialized)
                     return;
 
                 Migrate();
                 Seed();
-                _isInitialized = true;
+                state.IsInitialized = true;
             }
         }
 
