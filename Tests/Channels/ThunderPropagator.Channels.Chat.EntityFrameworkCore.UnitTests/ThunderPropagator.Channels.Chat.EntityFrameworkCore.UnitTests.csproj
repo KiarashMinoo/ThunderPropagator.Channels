@@ -6,7 +6,7 @@
         <TargetFrameworks />
         <!-- Consumes ThunderPropagator.Channels.Chat's public surface, which is marked
              [assembly: RequiresPreviewFeatures] — see the provider project's own csproj comment. -->
-        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <NoWarn>$(NoWarn);CA2252</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

@@ -3,14 +3,15 @@
     <PropertyGroup>
         <!-- ThunderPropagator.Channels.Chat's whole public surface (User, Group, Message,
              BaseChatContext, ChatChannelConfiguration, AddChatChannel<T>, ...) is marked
-             [assembly: RequiresPreviewFeatures] — any consumer needs EnablePreviewFeatures too.
-             The installed SDK only honors that for its own current target framework (net10.0
-             here); net8.0/net9.0 are already fully GA, so CA2252 still fires for them even with
-             the property set. Until that's resolved (e.g. by removing the attribute from Chat, if
-             nothing there actually depends on it — see #110's commit for the same finding), this
-             package targets net10.0 only instead of the repo's usual net8.0;net9.0;net10.0. -->
-        <TargetFrameworks>net10.0</TargetFrameworks>
-        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+             [assembly: RequiresPreviewFeatures] — every channel in this repo carries the same
+             attribute (it's a repo-wide "pre-1.0/beta API" marker, not tied to any actual preview
+             C#/BCL feature; nothing in Chat's source uses one). EnablePreviewFeatures would silence
+             the resulting CA2252, but the installed SDK only honors that property for its own
+             current target framework, so it can't cover net8.0/net9.0 too. Since the attribute has
+             no runtime enforcement — it only drives this one build-time analyzer — suppressing
+             CA2252 directly is the correct fix, and lets this package multi-target normally instead
+             of being pinned to net10.0 only. -->
+        <NoWarn>$(NoWarn);CA2252</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

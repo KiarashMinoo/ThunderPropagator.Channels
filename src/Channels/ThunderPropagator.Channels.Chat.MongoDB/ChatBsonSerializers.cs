@@ -13,7 +13,11 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
     /// </summary>
     internal static class ChatBsonSerializers
     {
+#if NET9_0_OR_GREATER
         private static readonly Lock RegistrationLock = new();
+#else
+        private static readonly object RegistrationLock = new();
+#endif
         private static bool _registered;
 
         public static void EnsureRegistered()
