@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.33] — 2026-08-19
+
+### 🚀 Features
+
+- Add the Entity Framework Core database provider package for Chat `(6655e47)` — Kiarash Minoo
+
 ## [1.0.1-beta.32] — 2026-08-19
 
 ### 🚀 Features

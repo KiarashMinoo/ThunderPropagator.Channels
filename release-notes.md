@@ -1,5 +1,5 @@
-## [1.0.1-beta.32] — 2026-08-19
+## [1.0.1-beta.33] — 2026-08-19
 
 ### 🚀 Features
 
-- Enforce authentication on every protected Chat WebSocket pipeline `(eb7d081)` — Kiarash Minoo
+- Add the Entity Framework Core database provider package for Chat `(6655e47)` — Kiarash Minoo
