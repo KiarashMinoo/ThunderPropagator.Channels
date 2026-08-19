@@ -41,11 +41,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.Send
                 if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
                 {
                     var sendMessageRequest = context.Request.GetRequestContentFormData<ChatChannelSendMessageReceiverPipelineRequestDto>()!;
-                    if ((sendMessageRequest.ReceiverId is null || sendMessageRequest.ReceiverId == Guid.Empty) &&
-                        (sendMessageRequest.GroupId is null || sendMessageRequest.GroupId == Guid.Empty))
-                    {
-                        throw new InvalidOperationException("One of the ReceiverId or GroupId are required.");
-                    }
+                    sendMessageRequest.ValidateTarget();
 
                     var chatChannel = (ChatChannel)channelInfo.Channel;
                     var senderId = chatChannel.LoggedInUsers[context.WebSocketConnectionInfo.ConnectionId];
@@ -55,10 +51,9 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.Send
                         var message = await messageService.SendMessageAsync(senderId, sendMessageRequest.ReceiverId.Value, sendMessageRequest.Body, cancellationToken);
                         chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
                     }
-
-                    if (sendMessageRequest.GroupId is not null && sendMessageRequest.GroupId != Guid.Empty)
+                    else
                     {
-                        var messages = await messageService.SendMessageToGroupAsync(senderId, sendMessageRequest.GroupId.Value, sendMessageRequest.Body, cancellationToken);
+                        var messages = await messageService.SendMessageToGroupAsync(senderId, sendMessageRequest.GroupId!.Value, sendMessageRequest.Body, cancellationToken);
                         await Task.WhenAll(messages.Select(message =>
                         {
                             chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
