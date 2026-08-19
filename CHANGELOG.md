@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.36] — 2026-08-19
+
+### 🚀 Features
+
+- Scope chat context initialization per provider type `(44c6964)` — Kiarash Minoo
+
 ## [1.0.1-beta.35] — 2026-08-19
 
 ### 🚀 Features

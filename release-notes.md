@@ -1,5 +1,5 @@
-## [1.0.1-beta.35] — 2026-08-19
+## [1.0.1-beta.36] — 2026-08-19
 
 ### 🚀 Features
 
-- Add the In-Memory database provider package for Chat `(94ae7d9)` — Kiarash Minoo
+- Scope chat context initialization per provider type `(44c6964)` — Kiarash Minoo
