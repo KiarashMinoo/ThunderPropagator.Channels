@@ -22,13 +22,9 @@ namespace ThunderPropagator.Channels.Chat.InMemory
         // process (see BaseChatContext), which wouldn't be useful for per-instance test state even
         // if there were something to do here — InMemoryChatStore.Reset()/Seed() are the actual,
         // per-instance test setup mechanism the AC asks for.
-        protected override void Migrate()
-        {
-        }
+        protected override Task MigrateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-        protected override void Seed()
-        {
-        }
+        protected override Task SeedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public override Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
         {

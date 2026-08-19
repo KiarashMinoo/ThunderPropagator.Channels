@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
@@ -59,7 +60,10 @@ namespace ThunderPropagator.Channels.Chat
                 .AddScoped<GroupService>()
                 .AddScoped<MessageService>()
                 .AddScoped<UserService>()
-                .AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+                .AddScoped<IPasswordHasher<User>, PasswordHasher<User>>()
+                // Issue #114: awaited during host startup, before the host (and, for ASP.NET Core,
+                // Kestrel) starts accepting traffic — see ChatContextInitializationHostedService.
+                .AddHostedService<ChatContextInitializationHostedService<TChatContext>>();
 
             return services;
         }

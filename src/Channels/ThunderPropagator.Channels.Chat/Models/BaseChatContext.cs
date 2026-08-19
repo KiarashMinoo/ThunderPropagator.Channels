@@ -16,52 +16,58 @@ namespace ThunderPropagator.Channels.Chat.Models
 
     public abstract class BaseChatContext : IChatContext
     {
-        // Issue #113: this used to be one static bool shared by every subclass — once ANY concrete
-        // provider (EntityFrameworkCoreChatContext, MongoDbChatContext, InMemoryChatContext, ...)
-        // initialized, every OTHER provider type would see _isInitialized already true and skip its
-        // own Migrate()/Seed() entirely. State is now keyed per concrete type (GetType()), so each
-        // provider type tracks its own initialization and its own lock — one type's (possibly slow)
-        // migration never blocks or gets confused with another, unrelated type's.
+        // Issue #114: Migrate()/Seed() used to run synchronously from this class's constructor —
+        // every DI-scoped construction of a concrete provider risked blocking a thread on I/O with no
+        // way to cancel, and a failing provider surfaced as whatever pipeline happened to construct it
+        // first, rather than failing application startup up front. InitializeAsync now runs
+        // explicitly instead: ChatContextInitializationHostedService (registered by
+        // AddChatChannel<TChatContext>) awaits it during host startup, and since an exception from
+        // IHostedService.StartAsync aborts IHost.StartAsync/RunAsync itself, nothing ever resolves a
+        // Chat pipeline against an unmigrated/unseeded store. Callers that don't use the generic host
+        // may instead call InitializeAsync directly as an explicit startup step.
         //
-        // Retry policy: a failed Migrate()/Seed() (either throws) leaves that type's state
-        // uninitialized — the exception propagates out of the lock before IsInitialized is set, the
-        // same as before this fix. The next construction of that same concrete type retries
-        // Migrate()+Seed() from scratch, whether that next attempt comes from a thread that was
-        // waiting on the lock during the failed attempt or a completely new caller. There is no
-        // backoff or circuit breaker: a persistently failing provider (e.g. a genuinely unreachable
-        // database) will re-attempt the full Migrate()+Seed() sequence on every single subsequent
-        // construction, which callers should account for if that sequence is expensive.
+        // State is still keyed per concrete type (GetType()), carried over from #113: one provider
+        // type's initialization must never block or interfere with another's.
+        //
+        // Retry policy: unchanged in spirit from #113, adapted to be awaitable — a failed
+        // MigrateAsync/SeedAsync (either throws) leaves that type's state uninitialized and the
+        // exception propagates to the caller. The next InitializeAsync call for that same concrete
+        // type retries MigrateAsync+SeedAsync from scratch, whether that call comes from a caller that
+        // was waiting on the semaphore during the failed attempt or a completely new one. There is no
+        // backoff, circuit breaker, or internal timeout — InitializeAsync only ever honors the
+        // CancellationToken its caller passes in.
         private static readonly ConcurrentDictionary<Type, InitializationState> InitializationStates = new();
 
         private sealed class InitializationState
         {
-#if NET9_0_OR_GREATER
-            public readonly Lock Lock = new();
-#else
-            public readonly object Lock = new();
-#endif
+            public readonly SemaphoreSlim Semaphore = new(1, 1);
             public volatile bool IsInitialized;
         }
 
-        protected BaseChatContext()
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
             var state = InitializationStates.GetOrAdd(GetType(), static _ => new InitializationState());
             if (state.IsInitialized)
                 return;
 
-            lock (state.Lock)
+            await state.Semaphore.WaitAsync(cancellationToken);
+            try
             {
                 if (state.IsInitialized)
                     return;
 
-                Migrate();
-                Seed();
+                await MigrateAsync(cancellationToken);
+                await SeedAsync(cancellationToken);
                 state.IsInitialized = true;
+            }
+            finally
+            {
+                state.Semaphore.Release();
             }
         }
 
-        protected abstract void Migrate();
-        protected abstract void Seed();
+        protected abstract Task MigrateAsync(CancellationToken cancellationToken);
+        protected abstract Task SeedAsync(CancellationToken cancellationToken);
         public abstract Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class;
         public abstract Task<TEntity?> GetAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
         public abstract Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class;
