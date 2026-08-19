@@ -15,6 +15,7 @@ namespace ThunderPropagator.Channels.Chat
         {
             new SubscribingKeyChannelProgramsDescriptor(0, nameof(ChatChannelFeederMessage.UserId)),
             new ChannelProgramsDescriptor(1, nameof(ChatChannelFeederMessage.SenderUserId), DataType.String),
+            new DateTimeChannelProgramsDescriptor(2, nameof(ChatChannelFeederMessage.DateTime), "The UTC timestamp the message was created"),
             new ChannelProgramsDescriptor(3, nameof(ChatChannelFeederMessage.GroupId), DataType.String),
             new ChannelProgramsDescriptor(4, nameof(ChatChannelFeederMessage.Message), DataType.String)
         };
