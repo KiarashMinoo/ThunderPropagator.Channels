@@ -46,6 +46,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
 
             public Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
+
+            public Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
         }
 
         private static (UserService Service, FakeChatContext Context) CreateService()

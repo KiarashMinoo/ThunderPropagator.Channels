@@ -21,10 +21,10 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
     ///    InsertInitialGroupUsersAsync/ReconcileGroupUsersAsync — since replacing the Group document
     ///    alone would silently drop membership changes GroupService made to the in-memory
     ///    GroupUsers collection.
-    /// 2. Group.GroupUsers and Message.Sender (the only two navigations the existing services
-    ///    actually read in memory — see MessageService.SendMessageToGroupAsync and
-    ///    UserService.GetUserContactsAsync) are populated with a follow-up query after every read,
-    ///    mirroring EntityFrameworkCore's AutoInclude but done by hand.
+    /// 2. Group.GroupUsers (read by MessageService.SendMessageToGroupAsync) and Message.Sender (public
+    ///    API, kept populated for any consumer displaying a message's sender directly — not GetContactsAsync,
+    ///    which projects SenderId/ReceiverId server-side instead, see #115) are populated with a
+    ///    follow-up query after every read, mirroring EntityFrameworkCore's AutoInclude but done by hand.
     ///
     /// Transactions: multi-document operations here (e.g. a Group create alongside its initial
     /// GroupUsers) are NOT wrapped in a MongoDB session transaction. IChatContext exposes no
@@ -178,6 +178,43 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
                 await GetCollection<GroupUser>().DeleteManyAsync(groupUser => groupUser.GroupId == groupId, cancellationToken);
 
             return result.DeletedCount > 0;
+        }
+
+        // Extracted so the direction/uniqueness logic - which of SenderId/ReceiverId is "the other
+        // side" of the conversation, and collapsing repeated contacts to one - can be unit-tested
+        // without a live MongoDB server, mirroring GetUserNameIndex/GetGroupUserMembershipIndex/
+        // GetMessageIndexes above. The only server round trips GetContactsAsync makes are the
+        // projection (SenderId/ReceiverId only, never Body) and the final $in lookup by id.
+        internal static IReadOnlyCollection<Guid> GetDistinctOtherParticipantIds(
+            IReadOnlyCollection<(Guid SenderId, Guid ReceiverId)> messages, Guid userId)
+            => messages
+                .Select(message => message.SenderId == userId ? message.ReceiverId : message.SenderId)
+                .Distinct()
+                .ToList();
+
+        // Issue #115: projects only SenderId/ReceiverId - never Body - so no message content or
+        // history is loaded to build the contact list, and never touches Message.Sender/Receiver, so
+        // no navigation population is needed either.
+        public override async Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var filter = Builders<Message>.Filter.Or(
+                Builders<Message>.Filter.Eq(message => message.SenderId, userId),
+                Builders<Message>.Filter.Eq(message => message.ReceiverId, userId));
+
+            var pairs = await GetCollection<Message>()
+                .Find(filter)
+                .Project(message => new { message.SenderId, message.ReceiverId })
+                .ToListAsync(cancellationToken);
+
+            var otherUserIds = GetDistinctOtherParticipantIds(
+                pairs.Select(pair => (pair.SenderId, pair.ReceiverId)).ToList(), userId);
+
+            if (otherUserIds.Count == 0)
+                return [];
+
+            return await GetCollection<User>()
+                .Find(user => otherUserIds.Contains(user.Id))
+                .ToListAsync(cancellationToken);
         }
 
         private async Task InsertInitialGroupUsersAsync(Group group, CancellationToken cancellationToken)

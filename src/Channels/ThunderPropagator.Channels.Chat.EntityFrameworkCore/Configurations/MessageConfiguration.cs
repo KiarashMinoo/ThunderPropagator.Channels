@@ -41,8 +41,10 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
                 .HasForeignKey(message => message.GroupId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // UserService.GetUserContactsAsync projects Message.Sender in memory after loading
-            // messages by ReceiverId, so it must always be populated.
+            // Message.Sender is public API — keep it populated for any consumer that reads a Message
+            // directly and displays its sender. GetUserContactsAsync no longer depends on this: #115
+            // moved it to a server-side SenderId/ReceiverId projection that never touches this
+            // navigation.
             builder.Navigation(message => message.Sender)
                 .AutoInclude();
         }

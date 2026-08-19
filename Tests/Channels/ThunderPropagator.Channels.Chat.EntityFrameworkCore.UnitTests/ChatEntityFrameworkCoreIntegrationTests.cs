@@ -87,20 +87,78 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             Assert.Contains(sent, message => message.ReceiverId == memberB.Id);
         }
 
+        // Issue #115: GetContactsAsync composes a single server-side query (a Message subquery feeding
+        // an IN filter on Users) rather than loading Messages and projecting Sender in memory, so it no
+        // longer depends on MessageConfiguration's AutoInclude at all. These five cases are this
+        // provider's share of the AC's "empty, duplicate, sent-only, received-only, and bidirectional"
+        // contract coverage.
         [Fact]
-        public async Task GetUserContacts_ReadsSenderThroughTheAutoIncludedNavigation()
+        public async Task GetContacts_WithNoMessages_ReturnsEmpty()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var user = await users.RegisterAsync($"lonely-{Guid.NewGuid():N}", "password", "Lonely", CancellationToken.None);
+
+            var contacts = await users.GetUserContactsAsync(user.Id, CancellationToken.None);
+
+            Assert.Empty(contacts);
+        }
+
+        [Fact]
+        public async Task GetContacts_WithDuplicateMessagesFromTheSameContact_ReturnsThatContactOnce()
         {
             var (users, _, messages, _) = CreateServices(fixture);
-            var sender = await users.RegisterAsync($"contact-sender-{Guid.NewGuid():N}", "password", "ContactSender", CancellationToken.None);
-            var receiver = await users.RegisterAsync($"contact-receiver-{Guid.NewGuid():N}", "password", "ContactReceiver", CancellationToken.None);
+            var user = await users.RegisterAsync($"dup-owner-{Guid.NewGuid():N}", "password", "DupOwner", CancellationToken.None);
+            var contact = await users.RegisterAsync($"dup-contact-{Guid.NewGuid():N}", "password", "DupContact", CancellationToken.None);
+            await messages.SendMessageAsync(contact.Id, user.Id, "hi", CancellationToken.None);
+            await messages.SendMessageAsync(contact.Id, user.Id, "hi again", CancellationToken.None);
+            await messages.SendMessageAsync(user.Id, contact.Id, "hey back", CancellationToken.None);
+
+            var contacts = await users.GetUserContactsAsync(user.Id, CancellationToken.None);
+
+            Assert.Single(contacts, c => c.Id == contact.Id);
+        }
+
+        [Fact]
+        public async Task GetContacts_WithOnlySentMessages_IncludesTheReceiver()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"sent-only-sender-{Guid.NewGuid():N}", "password", "SentOnlySender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"sent-only-receiver-{Guid.NewGuid():N}", "password", "SentOnlyReceiver", CancellationToken.None);
             await messages.SendMessageAsync(sender.Id, receiver.Id, "hi", CancellationToken.None);
 
-            // UserService.GetUserContactsAsync projects Message.Sender in memory after loading by
-            // ReceiverId — this throws a NullReferenceException instead of returning contacts if
-            // MessageConfiguration's AutoInclude on Sender isn't wired up.
+            var contacts = await users.GetUserContactsAsync(sender.Id, CancellationToken.None);
+
+            Assert.Contains(contacts, contact => contact.Id == receiver.Id);
+        }
+
+        [Fact]
+        public async Task GetContacts_WithOnlyReceivedMessages_IncludesTheSender()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"received-only-sender-{Guid.NewGuid():N}", "password", "ReceivedOnlySender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"received-only-receiver-{Guid.NewGuid():N}", "password", "ReceivedOnlyReceiver", CancellationToken.None);
+            await messages.SendMessageAsync(sender.Id, receiver.Id, "hi", CancellationToken.None);
+
             var contacts = await users.GetUserContactsAsync(receiver.Id, CancellationToken.None);
 
             Assert.Contains(contacts, contact => contact.Id == sender.Id);
+        }
+
+        [Fact]
+        public async Task GetContacts_WithBidirectionalHistory_IncludesEveryDistinctCounterparty()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var user = await users.RegisterAsync($"bidi-user-{Guid.NewGuid():N}", "password", "BidiUser", CancellationToken.None);
+            var sentTo = await users.RegisterAsync($"bidi-sent-to-{Guid.NewGuid():N}", "password", "BidiSentTo", CancellationToken.None);
+            var receivedFrom = await users.RegisterAsync($"bidi-received-from-{Guid.NewGuid():N}", "password", "BidiReceivedFrom", CancellationToken.None);
+            await messages.SendMessageAsync(user.Id, sentTo.Id, "outgoing", CancellationToken.None);
+            await messages.SendMessageAsync(receivedFrom.Id, user.Id, "incoming", CancellationToken.None);
+
+            var contacts = await users.GetUserContactsAsync(user.Id, CancellationToken.None);
+
+            Assert.Equal(2, contacts.Count);
+            Assert.Contains(contacts, contact => contact.Id == sentTo.Id);
+            Assert.Contains(contacts, contact => contact.Id == receivedFrom.Id);
         }
 
         [Fact]

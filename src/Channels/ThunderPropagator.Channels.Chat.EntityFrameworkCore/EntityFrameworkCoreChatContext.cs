@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
 {
@@ -64,6 +66,22 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
             dbContext.Set<TEntity>().Remove(entity);
             await dbContext.SaveChangesAsync(cancellationToken);
             return true;
+        }
+
+        // Issue #115: a single query, composed entirely server-side — the inner IQueryable<Guid> is
+        // never materialized on its own, so EF translates this into one SQL statement with an IN
+        // subquery. No Message row (let alone its Body) is ever loaded into memory, and neither
+        // Message.Sender/Receiver nor User's own navigations need to be populated for this to work.
+        public override async Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var otherUserIds = dbContext.Set<Message>()
+                .Where(message => message.SenderId == userId || message.ReceiverId == userId)
+                .Select(message => message.SenderId == userId ? message.ReceiverId : message.SenderId)
+                .Distinct();
+
+            return await dbContext.Set<User>()
+                .Where(user => otherUserIds.Contains(user.Id))
+                .ToListAsync(cancellationToken);
         }
     }
 }
