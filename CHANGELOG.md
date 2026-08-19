@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.27] — 2026-08-19
+
+### 🚀 Features
+
+- Add unit and integration coverage for routing and message behavior `(5599827)` — Kiarash Minoo
+
 ## [1.0.1-beta.26] — 2026-08-19
 
 ### 🚀 Features
