@@ -1,5 +1,5 @@
-## [1.0.1-beta.27] — 2026-08-19
+## [1.0.1-beta.28] — 2026-08-19
 
-### 🚀 Features
+### 🐛 Bug Fixes
 
-- Add unit and integration coverage for routing and message behavior `(5599827)` — Kiarash Minoo
+- Fix GroupId DTO mapping so group messages can be sent `(bb75a16)` — Kiarash Minoo
