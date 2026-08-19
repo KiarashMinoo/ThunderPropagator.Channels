@@ -1,5 +1,5 @@
-## [1.0.1-beta.29] — 2026-08-19
+## [1.0.1-beta.30] — 2026-08-19
 
 ### 🚀 Features
 
-- Return Unauthorized when SendMessage is called without a logged-in session `(3ff7517)` — Kiarash Minoo
+- Add DateTime descriptor and restore contiguous metadata indices `(5a2eeb4)` — Kiarash Minoo
