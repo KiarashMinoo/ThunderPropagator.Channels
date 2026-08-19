@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.26] — 2026-08-19
+
+### 🚀 Features
+
+- Add delivery acknowledgements and read-receipt state tracking `(c90c0a1)` — Kiarash Minoo
+
 ## [1.0.1-beta.25] — 2026-08-19
 
 ### 🚀 Features
