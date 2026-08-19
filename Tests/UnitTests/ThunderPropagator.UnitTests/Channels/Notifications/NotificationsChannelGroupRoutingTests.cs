@@ -98,7 +98,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
             channel.MessageEmitting += (_, feederMessage) => emitted.Add(feederMessage);
 
-            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a" };
+            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a", Audience = NotificationAudience.Group };
             await iChannel.EmitMessageAsync(groupBroadcast, CancellationToken.None);
 
             var recipients = emitted
@@ -121,7 +121,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
             channel.MessageEmitting += (_, feederMessage) => emitted.Add(feederMessage);
 
-            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a" };
+            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a", Audience = NotificationAudience.Group };
             await iChannel.EmitMessageAsync(groupBroadcast, CancellationToken.None);
 
             var delivered = Assert.Single(emitted);
@@ -141,7 +141,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
             channel.MessageEmitting += (_, feederMessage) => emitted.Add(feederMessage);
 
-            var plainBroadcast = new NotificationsChannelFeederMessage { Id = "plain-announcement", Subject = "subject" };
+            var plainBroadcast = new NotificationsChannelFeederMessage { Id = "plain-announcement", Subject = "subject", Audience = NotificationAudience.Broadcast };
             await iChannel.EmitMessageAsync(plainBroadcast, CancellationToken.None);
 
             var recipients = emitted
@@ -165,7 +165,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
 
             await SeedGroupMemberAsync(iChannel, "member-1", "group-a");
 
-            var plainBroadcast = new NotificationsChannelFeederMessage { Id = "plain-announcement", Subject = "subject" };
+            var plainBroadcast = new NotificationsChannelFeederMessage { Id = "plain-announcement", Subject = "subject", Audience = NotificationAudience.Broadcast };
             await iChannel.EmitMessageAsync(plainBroadcast, CancellationToken.None);
 
             var history = await channel.SearchHistoricalNotificationsAsync("member-1");
@@ -188,7 +188,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
             EnableSnapshotting(channel);
 
             await SeedGroupMemberAsync(iChannel, "member-2", "group-a");
-            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a" };
+            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a", Audience = NotificationAudience.Group };
             await iChannel.EmitMessageAsync(groupBroadcast, CancellationToken.None);
 
             await SeedGroupMemberAsync(iChannel, "member-1", "group-a");
@@ -210,7 +210,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
 
             await SeedGroupMemberAsync(iChannel, "member-1", "group-a");
 
-            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a" };
+            var groupBroadcast = new NotificationsChannelFeederMessage { Id = "group-a-announcement", Subject = "subject", GroupId = "group-a", Audience = NotificationAudience.Group };
             await iChannel.EmitMessageAsync(groupBroadcast, CancellationToken.None);
 
             var emitted = new List<IReadOnlyDictionary<string, object?>>();
@@ -232,7 +232,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
 
             await SeedGroupMemberAsync(iChannel, "member-1", "group-a");
 
-            var plainBroadcast = new NotificationsChannelFeederMessage { Id = "plain-announcement", Subject = "subject" };
+            var plainBroadcast = new NotificationsChannelFeederMessage { Id = "plain-announcement", Subject = "subject", Audience = NotificationAudience.Broadcast };
             await iChannel.EmitMessageAsync(plainBroadcast, CancellationToken.None);
 
             var emitted = new List<IReadOnlyDictionary<string, object?>>();

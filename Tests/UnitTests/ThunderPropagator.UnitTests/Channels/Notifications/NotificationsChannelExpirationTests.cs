@@ -253,7 +253,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
 
             var alreadyExpired = created.TimeProvider.UtcNow.UtcDateTime.AddSeconds(-1);
             await iChannel.EmitMessageAsync(
-                new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject", ExpiresAt = alreadyExpired },
+                new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject", ExpiresAt = alreadyExpired, Audience = NotificationAudience.Broadcast },
                 CancellationToken.None);
 
             Assert.Empty(emitted);
@@ -275,7 +275,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
                 CancellationToken.None);
 
             var expiresAt = created.TimeProvider.UtcNow.UtcDateTime.AddHours(1);
-            var broadcast = new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject", ExpiresAt = expiresAt };
+            var broadcast = new NotificationsChannelFeederMessage { Id = "broadcast-1", Subject = "subject", ExpiresAt = expiresAt, Audience = NotificationAudience.Broadcast };
             await iChannel.EmitMessageAsync(broadcast, CancellationToken.None);
 
             created.TimeProvider.UtcNow = new DateTimeOffset(expiresAt.AddSeconds(1), TimeSpan.Zero);

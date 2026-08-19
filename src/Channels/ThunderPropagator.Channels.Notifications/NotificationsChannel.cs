@@ -16,9 +16,12 @@ namespace ThunderPropagator.Channels.Notifications
     /// <see cref="ThunderPropagator.Application.Channels.IChannel.EmitMessage"/>/<c>EmitMessageAsync</c>
     /// rather than pulled by a feeder this package provides — see
     /// <see cref="NotificationsFeederConfiguration"/> for the settings a consumer-authored feeder is
-    /// expected to honor. A message with <see cref="NotificationsChannelFeederMessage.UserId"/> set
-    /// is delivered to that recipient; left unset, it's broadcast to every current subscriber, and a
-    /// subscriber who joins afterward is caught up on broadcasts it missed. See
+    /// expected to honor. Routing follows <see cref="NotificationsChannelFeederMessage.Audience"/>
+    /// (see #76): <see cref="NotificationAudience.Individual"/> delivers to that one recipient;
+    /// <see cref="NotificationAudience.Broadcast"/> reaches every current subscriber, and a
+    /// subscriber who joins afterward is caught up on broadcasts it missed;
+    /// <see cref="NotificationAudience.Group"/> narrows that catch-up and delivery to recipients
+    /// already known to belong to the given group (see #74). See
     /// <see cref="SearchHistoricalNotificationsAsync"/> for querying a recipient's stored history
     /// independently of live subscription.
     /// </summary>
@@ -178,16 +181,21 @@ namespace ThunderPropagator.Channels.Notifications
 
         /// <summary>
         /// Routes <paramref name="feederMessage"/> based on
-        /// <see cref="NotificationsChannelFeederMessage.UserId"/>: with UserId set, emits it directly
-        /// to that recipient; left unset, fans it out as a broadcast — a fresh per-recipient copy for
-        /// each subscriber known via stored snapshots, so <paramref name="feederMessage"/> itself is
-        /// never mutated and no two recipients share the same emitted instance. Throws
-        /// <see cref="NotificationsChannelFeederMessageValidationException"/> before doing anything
-        /// else if <see cref="NotificationsChannelFeederMessage.Id"/> or
-        /// <see cref="NotificationsChannelFeederMessage.Subject"/> was never set — this is the
-        /// earliest point a message built via the public parameterless constructor and object
-        /// initializer can reliably be checked, since an unset property never invokes its own
-        /// validating setter (see #68).
+        /// <see cref="NotificationsChannelFeederMessage.Audience"/> (see #76):
+        /// <see cref="NotificationAudience.Individual"/> emits it directly to
+        /// <see cref="NotificationsChannelFeederMessage.UserId"/>; <see cref="NotificationAudience.Group"/>
+        /// and <see cref="NotificationAudience.Broadcast"/> fan it out — a fresh per-recipient copy
+        /// for each subscriber known via stored snapshots (narrowed to group members for Group), so
+        /// <paramref name="feederMessage"/> itself is never mutated and no two recipients share the
+        /// same emitted instance. Throws <see cref="NotificationsChannelFeederMessageValidationException"/>
+        /// before doing anything else if <see cref="NotificationsChannelFeederMessage.Id"/> or
+        /// <see cref="NotificationsChannelFeederMessage.Subject"/> was never set (see #68), or if
+        /// <see cref="NotificationsChannelFeederMessage.Audience"/>'s required/forbidden combination
+        /// with <see cref="NotificationsChannelFeederMessage.UserId"/>/<see cref="NotificationsChannelFeederMessage.GroupId"/>
+        /// is violated — see <see cref="NotificationsChannelFeederMessage.ValidateAudienceCombination"/>.
+        /// Both checks run at this earliest point a message built via the public parameterless
+        /// constructor and object initializer can reliably be checked, since an unset property never
+        /// invokes its own validating setter.
         /// </summary>
         /// <remarks>
         /// <b>Disabled-channel contract (see #72):</b> throws <see cref="ChannelIsNotEnabledException"/>
@@ -214,6 +222,7 @@ namespace ThunderPropagator.Channels.Notifications
 
             var notificationsChannelFeederMessage = (NotificationsChannelFeederMessage)feederMessage;
             notificationsChannelFeederMessage.ValidateRequiredFields();
+            notificationsChannelFeederMessage.ValidateAudienceCombination();
 
             if (IsExpired(notificationsChannelFeederMessage.ExpiresAt))
             {
@@ -226,11 +235,12 @@ namespace ThunderPropagator.Channels.Notifications
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(notificationsChannelFeederMessage.UserId))
+            if (notificationsChannelFeederMessage.Audience != NotificationAudience.Individual)
             {
-                // A GroupId narrows discovery to recipients already known to be members of that
-                // group (a prior CastType.Broadcast-tagged entry carrying the same GroupId) instead
-                // of every known broadcast recipient (see #74).
+                // Group narrows discovery to recipients already known to be members of that group (a
+                // prior CastType.Broadcast-tagged entry carrying the same GroupId); Broadcast leaves
+                // GroupId null (enforced by ValidateAudienceCombination above), matching every known
+                // broadcast recipient instead (see #74, #76).
                 var groupId = notificationsChannelFeederMessage.GroupId;
                 var snapshotEntries = await SearchSnapshotsAsync(snapshotEntries => snapshotEntries
                             .Where(snapshotEntry => snapshotEntry.CastType == CastType.Broadcast)

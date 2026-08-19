@@ -52,7 +52,8 @@ namespace ThunderPropagator.Channels.Notifications
                 new EnumChannelProgramsDescriptor<NotificationCategory>(13, nameof(NotificationsChannelFeederMessage.Category), "The notification semantic category").SetTable(nameof(Notifications)),
                 new DateTimeChannelProgramsDescriptor(14, nameof(NotificationsChannelFeederMessage.ExpiresAt), "The UTC instant after which this notification is expired").SetTable(nameof(Notifications)),
                 new ChannelProgramsDescriptor(15, nameof(NotificationsChannelFeederMessage.GroupId), DataType.String, "The audience group, usable for group-scoped routing and filtering").SetTable(nameof(Notifications)),
-                new JsonChannelProgramsDescriptor(16, nameof(NotificationsChannelFeederMessage.Tags), "The categorization/filtering tags").SetTable(nameof(Notifications))
+                new JsonChannelProgramsDescriptor(16, nameof(NotificationsChannelFeederMessage.Tags), "The categorization/filtering tags").SetTable(nameof(Notifications)),
+                new EnumChannelProgramsDescriptor<NotificationAudience>(17, nameof(NotificationsChannelFeederMessage.Audience), "Who this notification is routed to").SetTable(nameof(Notifications))
             };
     }
 }

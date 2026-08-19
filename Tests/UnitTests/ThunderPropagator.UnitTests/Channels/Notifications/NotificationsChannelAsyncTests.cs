@@ -124,7 +124,7 @@ namespace ThunderPropagator.UnitTests.Channels.Notifications
         {
             var channel = CreateChannel(isEnabled: true);
             IChannel iChannel = channel;
-            var message = new NotificationsChannelFeederMessage { Id = "notification-1", Subject = "subject" };
+            var message = new NotificationsChannelFeederMessage { Id = "notification-1", Subject = "subject", Audience = NotificationAudience.Broadcast };
 
             using var cancellationTokenSource = new CancellationTokenSource();
             await cancellationTokenSource.CancelAsync();
