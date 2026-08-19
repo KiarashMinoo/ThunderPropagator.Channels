@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.25] — 2026-08-19
+
+### 🚀 Features
+
+- Add explicit Individual, Group, and Broadcast audience targeting `(11ba30c)` — Kiarash Minoo
+
 ## [1.0.1-beta.24] — 2026-08-18
 
 ### 🚀 Features

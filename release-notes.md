@@ -1,5 +1,5 @@
-## [1.0.1-beta.24] — 2026-08-18
+## [1.0.1-beta.25] — 2026-08-19
 
 ### 🚀 Features
 
-- Add GroupId and Tags for routing, categorization, and filtering `(49deda8)` — Kiarash Minoo
+- Add explicit Individual, Group, and Broadcast audience targeting `(11ba30c)` — Kiarash Minoo
