@@ -40,11 +40,12 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.Send
             {
                 if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
                 {
+                    var chatChannel = (ChatChannel)channelInfo.Channel;
+                    if (!chatChannel.TryGetLoggedInUserId(context.WebSocketConnectionInfo.ConnectionId, out var senderId))
+                        throw new ChatChannelSendMessageReceiverPipelineUnauthorizedException();
+
                     var sendMessageRequest = context.Request.GetRequestContentFormData<ChatChannelSendMessageReceiverPipelineRequestDto>()!;
                     sendMessageRequest.ValidateTarget();
-
-                    var chatChannel = (ChatChannel)channelInfo.Channel;
-                    var senderId = chatChannel.LoggedInUsers[context.WebSocketConnectionInfo.ConnectionId];
 
                     if (sendMessageRequest.ReceiverId is not null && sendMessageRequest.ReceiverId != Guid.Empty)
                     {
