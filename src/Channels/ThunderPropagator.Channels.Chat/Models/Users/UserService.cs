@@ -1,7 +1,6 @@
 ﻿using System.Security.Authentication;
 using Microsoft.AspNetCore.Identity;
 using ThunderPropagator.Channels.Chat.Models.Groups;
-using ThunderPropagator.Channels.Chat.Models.Messages;
 
 namespace ThunderPropagator.Channels.Chat.Models.Users
 {
@@ -61,11 +60,8 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
         public async Task<IReadOnlyCollection<Group>> GetUserGroupsAsync(Guid id, CancellationToken cancellationToken = default)
             => await chatContext.GetAllAsync<Group>(x => x.GroupUsers.Any(y => y.UserId == id), cancellationToken);
 
-        public async Task<IReadOnlyCollection<User>> GetUserContactsAsync(Guid id, CancellationToken cancellationToken = default)
-            => (await chatContext.GetAllAsync<Message>(x => x.ReceiverId == id, cancellationToken))
-                .Select(x => x.Sender)
-                .Distinct()
-                .ToList();
+        public Task<IReadOnlyCollection<User>> GetUserContactsAsync(Guid id, CancellationToken cancellationToken = default)
+            => chatContext.GetContactsAsync(id, cancellationToken);
 
         public async Task<User> UpdateAsync(Guid userId, string bio, DateOnly? birthDate, CancellationToken cancellationToken = default)
         {

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Expressions;
+using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.Channels.Chat.Models
 {
@@ -12,6 +13,15 @@ namespace ThunderPropagator.Channels.Chat.Models
         Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
         Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
         Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
+
+        // Issue #115: UserService.GetUserContactsAsync used to load every Message the user received
+        // via the generic GetAllAsync<Message> and project distinct senders in memory — a cost that
+        // scales with conversation history and only ever considered messages received, not sent. Each
+        // provider implements this as its own server-side, distinct-by-the-other-party projection
+        // (see each GetContactsAsync override for how) instead of routing through the generic entity
+        // methods. A "contact" is anyone the user has exchanged a direct or group-fanned-out message
+        // with in EITHER direction (sent to or received from) — not received-only.
+        Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 
     public abstract class BaseChatContext : IChatContext
@@ -75,5 +85,6 @@ namespace ThunderPropagator.Channels.Chat.Models
         public abstract Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
         public abstract Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
         public abstract Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
+        public abstract Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }

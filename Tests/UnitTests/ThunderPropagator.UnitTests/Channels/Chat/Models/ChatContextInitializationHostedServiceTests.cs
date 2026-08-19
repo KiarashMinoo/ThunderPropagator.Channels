@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Models
 {
@@ -46,6 +47,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
                 => throw new NotSupportedException();
 
             public override Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
+                => throw new NotSupportedException();
+
+            public override Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
         }
 

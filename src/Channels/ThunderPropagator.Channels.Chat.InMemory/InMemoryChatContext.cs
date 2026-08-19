@@ -1,5 +1,7 @@
 using System.Linq.Expressions;
 using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.Channels.Chat.InMemory
 {
@@ -93,6 +95,26 @@ namespace ThunderPropagator.Channels.Chat.InMemory
             cancellationToken.ThrowIfCancellationRequested();
 
             return Task.FromResult(store.Delete<TEntity, TPk>(id));
+        }
+
+        // Issue #115: reads SenderId/ReceiverId straight off the stored Message entries — never
+        // Message.Sender/Receiver — so no navigation population is needed to build the contact list.
+        public override Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var otherUserIds = store.GetStore<Message>().Values
+                .Where(message => message.SenderId == userId || message.ReceiverId == userId)
+                .Select(message => message.SenderId == userId ? message.ReceiverId : message.SenderId)
+                .Distinct();
+
+            IReadOnlyCollection<User> results = otherUserIds
+                .Select(id => store.GetStore<User>().TryGetValue(id, out var user) ? user : null)
+                .Where(user => user is not null)
+                .Select(user => InMemoryEntityCloner.Clone(user!))
+                .ToList();
+
+            return Task.FromResult(results);
         }
 
         private TEntity CloneAndPopulate<TEntity>(TEntity entity) where TEntity : class

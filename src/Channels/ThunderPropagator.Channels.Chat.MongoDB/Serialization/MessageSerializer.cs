@@ -16,8 +16,9 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
         private static readonly FieldInfo BodyField = GetBackingField(nameof(Message.Body));
 
         // Message.Sender/.Receiver/.Group are intentionally not serialized — Sender is populated by
-        // MongoDbChatContext after a read (the only one the existing services actually consume in
-        // memory — see UserService.GetUserContactsAsync); Receiver/Group are never read that way.
+        // MongoDbChatContext after a read, for any consumer that displays a message's sender directly
+        // (Message.Sender is public API). GetContactsAsync (#115) doesn't touch this navigation — it
+        // projects SenderId/ReceiverId server-side instead. Receiver/Group are never populated this way.
         public override Message Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
         {
             var reader = context.Reader;
