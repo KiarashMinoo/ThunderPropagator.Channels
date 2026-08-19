@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <TargetFramework>net10.0</TargetFramework>
+        <TargetFrameworks />
+        <!-- Consumes ThunderPropagator.Channels.Chat's public surface, which is marked
+             [assembly: RequiresPreviewFeatures] — see the provider project's own csproj comment. -->
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+        <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="coverlet.collector">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.Chat\ThunderPropagator.Channels.Chat.csproj" />
+        <ProjectReference Include="..\..\..\src\Channels\ThunderPropagator.Channels.Chat.EntityFrameworkCore\ThunderPropagator.Channels.Chat.EntityFrameworkCore.csproj" />
+    </ItemGroup>
+
+</Project>
