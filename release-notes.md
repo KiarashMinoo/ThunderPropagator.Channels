@@ -1,5 +1,5 @@
-## [1.0.1-beta.37] — 2026-08-19
+## [1.0.1-beta.38] — 2026-08-19
 
 ### 🚀 Features
 
-- Move chat context migration/seeding to an async host lifecycle `(7721b80)` — Kiarash Minoo
+- Query distinct user contacts at the database level `(f3bd435)` — Kiarash Minoo
