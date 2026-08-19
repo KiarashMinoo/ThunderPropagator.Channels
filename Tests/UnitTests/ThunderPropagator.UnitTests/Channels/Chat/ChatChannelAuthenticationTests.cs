@@ -6,7 +6,7 @@ using NSubstitute;
 using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Chat;
-using ThunderPropagator.Channels.Chat.Pipelines.Messages.Send;
+using ThunderPropagator.Channels.Chat.Pipelines;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat
 {
@@ -18,6 +18,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
     /// three states (missing, removed, valid session) directly, since the pipeline's own Invoke
     /// method can't be exercised in isolation (ChannelInfo's constructor is internal to a
     /// closed-source assembly, the same limitation noted for Notifications' receive pipelines).
+    /// Issue #109 generalized the pipeline-specific unauthorized exception this originally covered
+    /// into the shared ChatChannelUnauthorizedException used by every authenticated pipeline; see
+    /// ChatChannelPipelineAuthenticationTests for the guard's cross-pipeline enforcement.
     /// </summary>
     public sealed class ChatChannelAuthenticationTests
     {
@@ -87,23 +90,23 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
         }
 
         [Fact]
-        public void ChatChannelSendMessageReceiverPipelineUnauthorizedException_IsException()
+        public void ChatChannelUnauthorizedException_IsException()
         {
-            var type = typeof(ChatChannelSendMessageReceiverPipelineUnauthorizedException);
+            var type = typeof(ChatChannelUnauthorizedException);
             Assert.True(typeof(Exception).IsAssignableFrom(type));
         }
 
         [Fact]
-        public void ChatChannelSendMessageReceiverPipelineUnauthorizedException_IsInternal()
+        public void ChatChannelUnauthorizedException_IsInternal()
         {
-            var type = typeof(ChatChannelSendMessageReceiverPipelineUnauthorizedException);
+            var type = typeof(ChatChannelUnauthorizedException);
             Assert.True(type.IsNotPublic);
         }
 
         [Fact]
-        public void ChatChannelSendMessageReceiverPipelineUnauthorizedException_MessageCarriesNoSessionDetails()
+        public void ChatChannelUnauthorizedException_MessageCarriesNoSessionDetails()
         {
-            var exception = new ChatChannelSendMessageReceiverPipelineUnauthorizedException();
+            var exception = new ChatChannelUnauthorizedException();
 
             Assert.DoesNotContain("connection-1", exception.Message, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(Guid.Empty.ToString(), exception.Message, StringComparison.OrdinalIgnoreCase);
