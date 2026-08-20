@@ -51,13 +51,15 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
         [Fact]
         public void Group_RoundTripsThroughBson()
         {
-            var group = Group.Create("Test Group");
+            var group = Group.Create("Test Group", Guid.NewGuid());
 
             var document = group.ToBsonDocument();
             var deserialized = BsonSerializer.Deserialize<Group>(document);
 
             Assert.Equal(group.Id, deserialized.Id);
             Assert.Equal("Test Group", deserialized.Name);
+            Assert.Equal(group.CreatedByUserId, deserialized.CreatedByUserId);
+            Assert.False(deserialized.IsDeleted);
         }
 
         [Fact]

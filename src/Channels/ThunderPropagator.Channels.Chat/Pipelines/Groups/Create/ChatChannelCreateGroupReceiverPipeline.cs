@@ -29,7 +29,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.Create
             context.Response.ResponseCode = (int)HttpStatusCode.OK;
             context.Response.ResponseContent = new ChatChannelCreateGroupReceiverPipelineResponseDto
             {
-                Group = await groupService.CreateAsync(createGroupRequest.Name, cancellationToken, createGroupRequest.Users)
+                Group = await groupService.CreateAsync(createGroupRequest.Name, currentUserId, cancellationToken, createGroupRequest.Users)
             };
         }
     }

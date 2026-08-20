@@ -34,17 +34,17 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
         }
 
         [Fact]
-        public void ChannelProgramsDescriptors_HasExactlyNineEntries()
+        public void ChannelProgramsDescriptors_HasExactlyTenEntries()
         {
             var channel = CreateChannel();
 
             var descriptors = channel.Metadata.ChannelProgramsDescriptors.ToArray();
 
-            Assert.Equal(9, descriptors.Length);
+            Assert.Equal(10, descriptors.Length);
         }
 
         [Fact]
-        public void ChannelProgramsDescriptors_IndicesAreContiguousFromZeroThroughEight()
+        public void ChannelProgramsDescriptors_IndicesAreContiguousFromZeroThroughNine()
         {
             var channel = CreateChannel();
 
@@ -53,7 +53,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
                 .OrderBy(index => index)
                 .ToArray();
 
-            Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7, 8], indices);
+            Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], indices);
         }
 
         [Fact]
@@ -86,6 +86,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
         [InlineData(6, nameof(ChatChannelFeederMessage.IsDeleted), DataType.Boolean)]
         [InlineData(7, nameof(ChatChannelFeederMessage.IsEdited), DataType.Boolean)]
         [InlineData(8, nameof(ChatChannelFeederMessage.IsOffline), DataType.Boolean)]
+        [InlineData(9, nameof(ChatChannelFeederMessage.IsGroupDeleted), DataType.Boolean)]
         public void ChannelProgramsDescriptors_EachFieldIsRegisteredAtItsExpectedIndexWithItsExpectedType(int expectedIndex, string fieldName, DataType expectedType)
         {
             var channel = CreateChannel();
@@ -132,6 +133,16 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             var channel = CreateChannel();
 
             var descriptor = channel.Metadata.ChannelProgramsDescriptors[nameof(ChatChannelFeederMessage.IsOffline)];
+
+            Assert.IsType<ThunderPropagator.Application.Channels.ChannelProgramsDescriptors.DataTypes.BooleanChannelProgramsDescriptor>(descriptor);
+        }
+
+        [Fact]
+        public void IsGroupDeleted_UsesABooleanDescriptor()
+        {
+            var channel = CreateChannel();
+
+            var descriptor = channel.Metadata.ChannelProgramsDescriptors[nameof(ChatChannelFeederMessage.IsGroupDeleted)];
 
             Assert.IsType<ThunderPropagator.Application.Channels.ChannelProgramsDescriptors.DataTypes.BooleanChannelProgramsDescriptor>(descriptor);
         }

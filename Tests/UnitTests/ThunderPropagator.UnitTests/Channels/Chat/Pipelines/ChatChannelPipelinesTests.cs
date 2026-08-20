@@ -129,6 +129,20 @@
         }
 
         [Fact]
+        public void ChatChannelDeleteGroupReceiverPipeline_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Groups.Delete.ChatChannelDeleteGroupReceiverPipeline);
+            Assert.True(type.IsNotPublic);
+        }
+
+        [Fact]
+        public void ChatChannelDeleteGroupReceiverPipelineRequestDto_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Groups.Delete.ChatChannelDeleteGroupReceiverPipelineRequestDto);
+            Assert.True(type.IsNotPublic);
+        }
+
+        [Fact]
         public void ChatChannelGetGroupsReceiverPipeline_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Groups.GetAll.ChatChannelGetGroupsReceiverPipeline);
