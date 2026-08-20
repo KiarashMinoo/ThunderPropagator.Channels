@@ -32,6 +32,19 @@ namespace ThunderPropagator.Channels.Chat
             IsEdited = isEdited;
         }
 
+        // Issue #121: a presence event has no backing Message at all, so it gets its own
+        // constructor rather than reusing the one above — recipientUserId is who this specific
+        // notification is addressed to (the subscribing key, same role UserId plays for a sent
+        // message), and offlineUserId (carried in SenderUserId, the same "whose event is this" role
+        // it plays for Send/Delete/Edit) is who just logged out. MessageId/GroupId/Message/DateTime
+        // don't apply to presence and are left at their defaults.
+        internal ChatChannelFeederMessage(Guid recipientUserId, Guid offlineUserId)
+        {
+            UserId = recipientUserId.ToString();
+            SenderUserId = offlineUserId;
+            IsOffline = true;
+        }
+
         public Guid MessageId
         {
             get => GetValueOrDefault(Guid.Empty);
@@ -75,6 +88,12 @@ namespace ThunderPropagator.Channels.Chat
         }
 
         public bool IsEdited
+        {
+            get => GetValueOrDefault(false);
+            private set => SetValue(value);
+        }
+
+        public bool IsOffline
         {
             get => GetValueOrDefault(false);
             private set => SetValue(value);

@@ -89,6 +89,93 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             Assert.False(found);
         }
 
+        // Issue #121: contract coverage for ChatChannel.TryLogOut — the state-transition logic
+        // ChatChannelLogoutReceiverPipeline relies on, tested directly for the same reason
+        // TryGetLoggedInUserId is above (the pipeline's own Invoke can't be exercised in isolation).
+        [Fact]
+        public void TryLogOut_ForAConnectionThatNeverLoggedIn_ReturnsFalse()
+        {
+            var channel = CreateChannel();
+
+            var loggedOut = channel.TryLogOut("never-logged-in", out var userId);
+
+            Assert.False(loggedOut);
+            Assert.Equal(Guid.Empty, userId);
+        }
+
+        [Fact]
+        public void TryLogOut_ForALoggedInConnection_RemovesTheSessionAndReturnsTrueWithTheUserId()
+        {
+            var channel = CreateChannel();
+            var expectedUserId = Guid.NewGuid();
+            channel.LoggedInUsers["connection-1"] = expectedUserId;
+
+            var loggedOut = channel.TryLogOut("connection-1", out var userId);
+
+            Assert.True(loggedOut);
+            Assert.Equal(expectedUserId, userId);
+        }
+
+        [Fact]
+        public void TryLogOut_ThenTryGetLoggedInUserId_ReturnsFalse()
+        {
+            // The AC's "the connection cannot call protected pipelines after logout" — protected
+            // pipelines authenticate via TryGetLoggedInUserId, so this is the same guarantee
+            // TryGetLoggedInUserId_ForARemovedSession_ReturnsFalse already proves for disconnect,
+            // proven again for the explicit-logout path.
+            var channel = CreateChannel();
+            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
+            channel.TryLogOut("connection-1", out _);
+
+            var found = channel.TryGetLoggedInUserId("connection-1", out _);
+
+            Assert.False(found);
+        }
+
+        [Fact]
+        public void TryLogOut_CalledTwiceForTheSameConnection_TheSecondCallReturnsFalseAndDoesNotThrow()
+        {
+            var channel = CreateChannel();
+            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
+            channel.TryLogOut("connection-1", out _);
+
+            var secondLogOut = channel.TryLogOut("connection-1", out var userId);
+
+            Assert.False(secondLogOut);
+            Assert.Equal(Guid.Empty, userId);
+        }
+
+        [Fact]
+        public void TryLogOut_AfterDisconnectCleanupAlreadyRemovedTheSession_ReturnsFalse()
+        {
+            // One direction of the AC's "disconnect races": the connection drops (or its cleanup
+            // simply wins the race) before an in-flight explicit Logout call reaches TryLogOut.
+            var channel = CreateChannel();
+            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
+            var subscription = CreateSubscription(channel, "connection-1");
+            InvokeOnSubscriptionRemoved(channel, subscription);
+
+            var loggedOut = channel.TryLogOut("connection-1", out _);
+
+            Assert.False(loggedOut);
+        }
+
+        [Fact]
+        public void OnSubscriptionRemoved_AfterLogoutAlreadyRemovedTheSession_DoesNotThrow()
+        {
+            // The other direction: an explicit Logout call wins the race, and disconnect cleanup for
+            // the same connection runs afterward — TryRemove on an already-removed key is a no-op,
+            // not an exception.
+            var channel = CreateChannel();
+            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
+            channel.TryLogOut("connection-1", out _);
+            var subscription = CreateSubscription(channel, "connection-1");
+
+            var exception = Record.Exception(() => InvokeOnSubscriptionRemoved(channel, subscription));
+
+            Assert.Null(exception);
+        }
+
         [Fact]
         public void ChatChannelUnauthorizedException_IsException()
         {

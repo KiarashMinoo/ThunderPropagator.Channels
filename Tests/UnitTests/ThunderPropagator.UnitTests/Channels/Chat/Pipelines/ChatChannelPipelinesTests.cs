@@ -31,6 +31,13 @@
         }
 
         [Fact]
+        public void ChatChannelLogoutReceiverPipeline_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Users.Logout.ChatChannelLogoutReceiverPipeline);
+            Assert.True(type.IsNotPublic);
+        }
+
+        [Fact]
         public void ChatChannelRegisterReceiverPipeline_IsInternal()
         {
             var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Users.Register.ChatChannelRegisterReceiverPipeline);

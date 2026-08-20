@@ -24,7 +24,10 @@ namespace ThunderPropagator.Channels.Chat
             // the revised body).
             new ChannelProgramsDescriptor(5, nameof(ChatChannelFeederMessage.MessageId), DataType.String),
             new BooleanChannelProgramsDescriptor(6, nameof(ChatChannelFeederMessage.IsDeleted), "Whether this event is a message deletion rather than a new message"),
-            new BooleanChannelProgramsDescriptor(7, nameof(ChatChannelFeederMessage.IsEdited), "Whether this event is a message edit rather than a new message")
+            new BooleanChannelProgramsDescriptor(7, nameof(ChatChannelFeederMessage.IsEdited), "Whether this event is a message edit rather than a new message"),
+            // Issue #121: a presence event (SenderUserId went offline) has no backing message at
+            // all — MessageId/GroupId/Message/DateTime are left at their defaults for it.
+            new BooleanChannelProgramsDescriptor(8, nameof(ChatChannelFeederMessage.IsOffline), "Whether this event is a presence notification rather than a message")
         };
     }
 }
