@@ -68,10 +68,10 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
         private static void ValidatePaging(int page, int pageSize)
         {
             if (page < 1)
-                throw new ArgumentOutOfRangeException(nameof(page), page, "Page must be 1 or greater.");
+                throw new InvalidMessageHistoryPageRequestException("Page must be 1 or greater.");
 
             if (pageSize is < 1 or > MaxPageSize)
-                throw new ArgumentOutOfRangeException(nameof(pageSize), pageSize, $"PageSize must be between 1 and {MaxPageSize}.");
+                throw new InvalidMessageHistoryPageRequestException($"PageSize must be between 1 and {MaxPageSize}.");
         }
     }
 }
