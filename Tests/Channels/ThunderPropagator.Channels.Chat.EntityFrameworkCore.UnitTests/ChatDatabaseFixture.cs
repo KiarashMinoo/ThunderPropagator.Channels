@@ -13,7 +13,10 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
     /// Awaiting InitializeAsync() here (issue #114 moved Migrate/Seed off the constructor and onto
     /// this explicit, cancellable, awaited method) runs the real migration — against the scaffolded
     /// SQLite migration in this project's own Migrations folder — exactly once, and every test then
-    /// opens its own ChatDbContext against the same already-migrated connection.
+    /// opens its own ChatDbContext against the same already-migrated connection. See
+    /// ChatDbContextTestMigrationsConfiguration for where the migrations assembly below actually
+    /// comes from — the same source ChatDbContextDesignTimeFactory reads at design time, so the two
+    /// can never disagree about which assembly the scaffolded migrations live in.
     /// </summary>
     public sealed class ChatDatabaseFixture : IAsyncLifetime
     {
@@ -31,7 +34,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
         {
             var optionsBuilder = new DbContextOptionsBuilder<ChatDbContext>();
             optionsBuilder.UseSqlite(_connection,
-                sqlite => sqlite.MigrationsAssembly(typeof(ChatDbContextDesignTimeFactory).Assembly.GetName().Name));
+                sqlite => sqlite.MigrationsAssembly(ChatDbContextTestMigrationsConfiguration.MigrationsAssembly));
             return new ChatDbContext(optionsBuilder.Options);
         }
 

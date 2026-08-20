@@ -6,7 +6,7 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
 #if !DEBUG
         sealed
 #endif
-        class MessageService(IChatContext chatContext)
+        class MessageService(IChatContext chatContext, ChatChannelConfiguration configuration)
     {
         // Issue #117: shared page-size defaults/bounds every history caller validates against —
         // MaxPageSize keeps a single page cheap to serve regardless of how large a conversation's
@@ -87,6 +87,38 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
                 message.MarkDeleted();
                 await chatContext.UpdateAsync(message, cancellationToken);
             }
+
+            return message;
+        }
+
+        // Issue #120: a soft-deleted message is treated as not found rather than editable-but-blank
+        // — #119 excludes deleted messages from history entirely, and letting anyone "edit" one back
+        // into existence would undermine that. Ownership is checked before the window, so a
+        // non-sender always gets Forbidden regardless of how stale the message is, never a timing
+        // hint. "Same rules as new messages" (the AC) is, today, just presence: SendMessageAsync
+        // itself enforces no content rules beyond Body being non-null (see Message's constructor) —
+        // there is nothing stricter to reuse, so this only rejects a null/blank body, matching that
+        // baseline rather than inventing new restrictions send doesn't have. Like DeleteMessageAsync,
+        // a genuine concurrent race between two edits (or an edit racing a delete) is accepted:
+        // whichever write commits last wins, consistent with this domain having no concurrency-token
+        // infrastructure anywhere else (#116).
+        public async Task<Message> EditMessageAsync(Guid currentUserId, Guid messageId, string body, CancellationToken cancellationToken = default)
+        {
+            var message = await chatContext.GetAsync<Message, Guid>(messageId, cancellationToken);
+            if (message is null || message.IsDeleted)
+                throw new MessageNotFoundException();
+
+            if (message.SenderId != currentUserId)
+                throw new MessageEditForbiddenException();
+
+            if (DateTimeOffset.UtcNow - message.Created > configuration.MessageEditWindow)
+                throw new MessageEditWindowExpiredException();
+
+            if (string.IsNullOrWhiteSpace(body))
+                throw new InvalidMessageEditException("Body cannot be empty.");
+
+            message.Edit(body);
+            await chatContext.UpdateAsync(message, cancellationToken);
 
             return message;
         }

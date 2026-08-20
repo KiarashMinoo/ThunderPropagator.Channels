@@ -155,6 +155,20 @@
             var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Messages.Delete.ChatChannelDeleteMessageReceiverPipelineRequestDto);
             Assert.True(type.IsNotPublic);
         }
+
+        [Fact]
+        public void ChatChannelEditMessageReceiverPipeline_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Messages.Edit.ChatChannelEditMessageReceiverPipeline);
+            Assert.True(type.IsNotPublic);
+        }
+
+        [Fact]
+        public void ChatChannelEditMessageReceiverPipelineRequestDto_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Messages.Edit.ChatChannelEditMessageReceiverPipelineRequestDto);
+            Assert.True(type.IsNotPublic);
+        }
     }
 }
 

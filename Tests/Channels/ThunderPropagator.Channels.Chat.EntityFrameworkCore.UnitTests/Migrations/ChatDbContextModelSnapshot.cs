@@ -71,10 +71,16 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests.Migratio
                     b.Property<long?>("DeletedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("EditedAt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEdited")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("ReceiverId")

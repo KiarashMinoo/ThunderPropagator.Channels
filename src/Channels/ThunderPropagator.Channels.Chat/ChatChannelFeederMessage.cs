@@ -17,8 +17,10 @@ namespace ThunderPropagator.Channels.Chat
         // through this same feeder-message shape (a channel has exactly one feeder-message type, see
         // CLAUDE.md's mandatory unit structure) rather than a separate type — recipients tell a
         // deletion apart from a new message by this flag, and MessageId (added alongside it, for both
-        // cases) by which message it refers to.
-        internal ChatChannelFeederMessage(Message message, bool isDeleted = false)
+        // cases) by which message it refers to. Issue #120: isEdited does the same for
+        // ChatChannelEditMessageReceiverPipeline — Message already carries the revised Body, so
+        // recipients just need to know this event is a revision rather than a brand-new message.
+        internal ChatChannelFeederMessage(Message message, bool isDeleted = false, bool isEdited = false)
         {
             MessageId = message.Id;
             UserId = message.ReceiverId.ToString();
@@ -27,6 +29,7 @@ namespace ThunderPropagator.Channels.Chat
             Message = message.Body;
             DateTime = message.Created;
             IsDeleted = isDeleted;
+            IsEdited = isEdited;
         }
 
         public Guid MessageId
@@ -66,6 +69,12 @@ namespace ThunderPropagator.Channels.Chat
         }
 
         public bool IsDeleted
+        {
+            get => GetValueOrDefault(false);
+            private set => SetValue(value);
+        }
+
+        public bool IsEdited
         {
             get => GetValueOrDefault(false);
             private set => SetValue(value);

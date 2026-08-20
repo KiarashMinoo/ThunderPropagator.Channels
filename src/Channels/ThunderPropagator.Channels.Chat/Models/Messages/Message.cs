@@ -31,6 +31,11 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
         public bool IsDeleted { get; private set; }
         public DateTimeOffset? DeletedAt { get; private set; }
 
+        // Issue #120: edit metadata. EditedAt is set on every edit (not just the first), so it always
+        // reflects the most recent revision.
+        public bool IsEdited { get; private set; }
+        public DateTimeOffset? EditedAt { get; private set; }
+
         private Message()
         {
             Id = Guid.NewGuid();
@@ -61,6 +66,16 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             IsDeleted = true;
             DeletedAt = DateTimeOffset.UtcNow;
             Body = string.Empty;
+            return this;
+        }
+
+        // Unlike MarkDeleted, not idempotent by design — every call legitimately revises content, so
+        // a second edit within the window is expected to update EditedAt again.
+        internal Message Edit(string body)
+        {
+            Body = body;
+            IsEdited = true;
+            EditedAt = DateTimeOffset.UtcNow;
             return this;
         }
 

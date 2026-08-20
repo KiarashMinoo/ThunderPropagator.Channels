@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.EntityFrameworkCore;
 using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Groups;
@@ -20,13 +21,13 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
     /// </summary>
     public sealed class ChatEntityFrameworkCoreIntegrationTests(ChatDatabaseFixture fixture) : IClassFixture<ChatDatabaseFixture>
     {
-        private static (UserService Users, GroupService Groups, MessageService Messages, ChatDbContext DbContext) CreateServices(ChatDatabaseFixture fixture)
+        private static (UserService Users, GroupService Groups, MessageService Messages, ChatDbContext DbContext) CreateServices(ChatDatabaseFixture fixture, ChatChannelConfiguration? configuration = null)
         {
             var dbContext = fixture.CreateDbContext();
             var chatContext = new EntityFrameworkCoreChatContext(dbContext);
             var passwordHasher = new PasswordHasher<User>();
 
-            return (new UserService(chatContext, passwordHasher), new GroupService(chatContext), new MessageService(chatContext), dbContext);
+            return (new UserService(chatContext, passwordHasher), new GroupService(chatContext), new MessageService(chatContext, configuration ?? new ChatChannelConfiguration()), dbContext);
         }
 
         [Fact]
@@ -213,7 +214,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
         {
             var (users, groups, _, dbContext) = CreateServices(fixture);
             var spy = new UpdateCountingChatContext(new EntityFrameworkCoreChatContext(dbContext));
-            var messages = new MessageService(spy);
+            var messages = new MessageService(spy, new ChatChannelConfiguration());
             var sender = await users.RegisterAsync($"group-update-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"group-update-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
             var group = await groups.CreateAsync("Update Spy Group", CancellationToken.None, member.Id);
@@ -406,7 +407,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             // concurrent requests would be, one per scope) — dbContext alone isn't safe to share
             // across concurrent EF Core operations.
             var chatContext = new EntityFrameworkCoreChatContext(fixture.CreateDbContext());
-            var otherMessages = new MessageService(chatContext);
+            var otherMessages = new MessageService(chatContext, new ChatChannelConfiguration());
 
             await Task.WhenAll(
                 messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None),
@@ -414,6 +415,129 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 
             var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
             Assert.Empty(page.Messages);
+        }
+
+        // Issue #120: contract coverage for MessageService.EditMessageAsync against a real SQLite
+        // database — success, forbidden, missing, time-window boundaries, invalid content, and
+        // concurrent edits, mirroring the AC's coverage list and this file's own DeleteMessage_*
+        // coverage for #119.
+        [Fact]
+        public async Task EditMessage_BySenderWithinWindow_UpdatesBodyAndMarksItEditedAndHistoryReflectsIt()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"edit-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+
+            var edited = await messages.EditMessageAsync(sender.Id, sent.Id, "revised", CancellationToken.None);
+
+            Assert.True(edited.IsEdited);
+            Assert.NotNull(edited.EditedAt);
+            Assert.Equal("revised", edited.Body);
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.Single(page.Messages, m => m.Id == sent.Id && m.Body == "revised");
+        }
+
+        [Fact]
+        public async Task EditMessage_ByANonSender_ThrowsAndLeavesTheMessageUnaffected()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"edit-forbidden-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-forbidden-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var outsider = await users.RegisterAsync($"edit-forbidden-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+
+            await Assert.ThrowsAsync<MessageEditForbiddenException>(
+                () => messages.EditMessageAsync(outsider.Id, sent.Id, "revised", CancellationToken.None));
+
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.Single(page.Messages, m => m.Id == sent.Id && m.Body == "original");
+        }
+
+        [Fact]
+        public async Task EditMessage_ForAMissingMessage_ThrowsMessageNotFound()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var user = await users.RegisterAsync($"edit-missing-message-user-{Guid.NewGuid():N}", "password", "User", CancellationToken.None);
+
+            await Assert.ThrowsAsync<MessageNotFoundException>(
+                () => messages.EditMessageAsync(user.Id, Guid.NewGuid(), "revised", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task EditMessage_ForAnAlreadyDeletedMessage_ThrowsMessageNotFound()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"edit-deleted-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-deleted-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+            await messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None);
+
+            await Assert.ThrowsAsync<MessageNotFoundException>(
+                () => messages.EditMessageAsync(sender.Id, sent.Id, "revised", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task EditMessage_WithABlankBody_ThrowsInvalidMessageEdit()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"edit-blank-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-blank-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+
+            await Assert.ThrowsAsync<InvalidMessageEditException>(
+                () => messages.EditMessageAsync(sender.Id, sent.Id, "   ", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task EditMessage_AfterTheConfiguredWindowHasElapsed_ThrowsWindowExpired()
+        {
+            // A zero-length window means the real (tiny but nonzero) elapsed time between
+            // SendMessageAsync and EditMessageAsync already exceeds it — deterministic, no artificial
+            // delay needed to exercise the "expired" boundary.
+            var (users, _, messages, _) = CreateServices(fixture, new ChatChannelConfiguration { MessageEditWindow = TimeSpan.Zero });
+            var sender = await users.RegisterAsync($"edit-expired-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-expired-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+
+            await Assert.ThrowsAsync<MessageEditWindowExpiredException>(
+                () => messages.EditMessageAsync(sender.Id, sent.Id, "revised", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task EditMessage_WithinAGenerousWindow_Succeeds()
+        {
+            var (users, _, messages, _) = CreateServices(fixture, new ChatChannelConfiguration { MessageEditWindow = TimeSpan.FromMinutes(15) });
+            var sender = await users.RegisterAsync($"edit-window-ok-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-window-ok-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+
+            var edited = await messages.EditMessageAsync(sender.Id, sent.Id, "revised", CancellationToken.None);
+
+            Assert.Equal("revised", edited.Body);
+        }
+
+        [Fact]
+        public async Task EditMessage_CalledConcurrentlyBySender_DoesNotThrowAndOneRevisionWins()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"edit-concurrent-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"edit-concurrent-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "original", CancellationToken.None);
+
+            // Two independent MessageService instances, each against its own DbContext, mirroring
+            // DeleteMessage_CalledConcurrentlyBySender_DoesNotThrowAndEndsUpDeleted's own reasoning.
+            var chatContext = new EntityFrameworkCoreChatContext(fixture.CreateDbContext());
+            var otherMessages = new MessageService(chatContext, new ChatChannelConfiguration());
+
+            await Task.WhenAll(
+                messages.EditMessageAsync(sender.Id, sent.Id, "revision A", CancellationToken.None),
+                otherMessages.EditMessageAsync(sender.Id, sent.Id, "revision B", CancellationToken.None));
+
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            var stored = Assert.Single(page.Messages, m => m.Id == sent.Id);
+            Assert.True(stored.IsEdited);
+            Assert.True(stored.Body is "revision A" or "revision B", $"Expected either revision, got '{stored.Body}'.");
         }
     }
 

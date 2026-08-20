@@ -14,6 +14,7 @@ using ThunderPropagator.Channels.Chat.Pipelines.Groups.Rename;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.SetIcon;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.UserLeave;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.Delete;
+using ThunderPropagator.Channels.Chat.Pipelines.Messages.Edit;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.Send;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Login;
@@ -51,6 +52,7 @@ namespace ThunderPropagator.Channels.Chat
                 //Messages
                 .AddReceivePipeline<ChatChannel, ChatChannelSendMessageReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelDeleteMessageReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelEditMessageReceiverPipeline>()
                 // Issue #117/#118: ChatChannelGetMessageHistoryReceiverPipeline was implemented and
                 // covered by the authentication reflection sweep (which only checks the assembly, not
                 // DI) but was never actually registered here — a real consumer's AddChatChannel call
