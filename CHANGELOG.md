@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.44] — 2026-08-20
+
+### 🚀 Features
+
+- Implement logout and offline-presence propagation `(af234f7)` — Kiarash Minoo
+
 ## [1.0.1-beta.43] — 2026-08-20
 
 ### 🚀 Features

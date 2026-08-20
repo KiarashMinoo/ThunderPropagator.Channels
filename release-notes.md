@@ -1,5 +1,5 @@
-## [1.0.1-beta.43] — 2026-08-20
+## [1.0.1-beta.44] — 2026-08-20
 
 ### 🚀 Features
 
-- Implement sender-authorized message editing `(4e59607)` — Kiarash Minoo
+- Implement logout and offline-presence propagation `(af234f7)` — Kiarash Minoo
