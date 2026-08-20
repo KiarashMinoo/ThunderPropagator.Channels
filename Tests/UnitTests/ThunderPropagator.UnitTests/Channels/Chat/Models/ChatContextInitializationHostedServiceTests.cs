@@ -58,6 +58,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
 
             public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
+
+            public override Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
         }
 
         private sealed class SuccessContext(Func<CancellationToken, Task> onMigrate) : RecordingChatContext(onMigrate);

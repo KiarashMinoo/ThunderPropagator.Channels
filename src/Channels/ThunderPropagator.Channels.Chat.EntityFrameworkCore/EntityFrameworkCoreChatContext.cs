@@ -119,5 +119,25 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
 
             return new MessageHistoryPage { Messages = messages, TotalCount = totalCount, Page = page, PageSize = pageSize };
         }
+
+        // Issue #123: normalizedTerm is already lowercased by UserService, and .ToLower() on both
+        // sides of Contains (rather than relying on the column's collation) keeps the match
+        // case-insensitive consistently across whichever relational provider a consumer configures.
+        // Count, ordering, and paging all translate into the same SQL statement.
+        public override async Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var query = dbContext.Set<User>().Where(user =>
+                user.UserName.ToLower().Contains(normalizedTerm) || user.Name.ToLower().Contains(normalizedTerm));
+
+            var totalCount = await query.CountAsync(cancellationToken);
+            var users = await query
+                .OrderBy(user => user.UserName)
+                .ThenBy(user => user.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return new UserSearchPage { Users = users, TotalCount = totalCount, Page = page, PageSize = pageSize };
+        }
     }
 }

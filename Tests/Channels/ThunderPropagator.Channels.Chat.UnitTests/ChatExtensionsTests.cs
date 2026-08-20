@@ -24,6 +24,8 @@ namespace ThunderPropagator.Channels.Chat.UnitTests
                 => throw new NotSupportedException();
             public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
+            public override Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
         }
 
         [Fact]

@@ -539,6 +539,120 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             Assert.True(stored.IsEdited);
             Assert.True(stored.Body is "revision A" or "revision B", $"Expected either revision, got '{stored.Body}'.");
         }
+
+        // Issue #123: contract coverage for UserService.SearchUsersAsync against a real SQLite
+        // database — username/name matching, normalization, paging, term validation, and
+        // cancellation, mirroring the AC's coverage list.
+        [Fact]
+        public async Task SearchUsers_MatchesByUsernameSubstring_CaseInsensitively()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var suffix = Guid.NewGuid().ToString("N");
+            await users.RegisterAsync($"alice-wonder-{suffix}", "password", "Someone Else", CancellationToken.None);
+            await users.RegisterAsync($"bob-{suffix}", "password", "Bob", CancellationToken.None);
+
+            var page = await users.SearchUsersAsync($"WONDER-{suffix}".ToUpperInvariant(), page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Single(page.Users, u => u.UserName == $"alice-wonder-{suffix}");
+        }
+
+        [Fact]
+        public async Task SearchUsers_MatchesByNameSubstring_CaseInsensitively()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var suffix = Guid.NewGuid().ToString("N");
+            var username = $"carol-{suffix}";
+            await users.RegisterAsync(username, "password", $"Carol Danvers {suffix}", CancellationToken.None);
+            await users.RegisterAsync($"dave-{suffix}", "password", "Dave", CancellationToken.None);
+
+            var page = await users.SearchUsersAsync($"danvers {suffix}", page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Single(page.Users, u => u.UserName == username);
+        }
+
+        [Fact]
+        public async Task SearchUsers_TrimsSurroundingWhitespaceFromTheTerm()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var username = $"erin-{Guid.NewGuid():N}";
+            await users.RegisterAsync(username, "password", "Erin", CancellationToken.None);
+
+            var page = await users.SearchUsersAsync($"  {username}  ", page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Single(page.Users, u => u.UserName == username);
+        }
+
+        [Fact]
+        public async Task SearchUsers_ReturnsPagesWithoutDuplicatesOrGaps()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var suffix = Guid.NewGuid().ToString("N");
+            var term = $"search-target-{suffix}";
+            for (var i = 0; i < 5; i++)
+                await users.RegisterAsync($"{term}-{i}", "password", $"Target {i}", CancellationToken.None);
+
+            var firstPage = await users.SearchUsersAsync(term, page: 1, pageSize: 2, CancellationToken.None);
+            var secondPage = await users.SearchUsersAsync(term, page: 2, pageSize: 2, CancellationToken.None);
+            var thirdPage = await users.SearchUsersAsync(term, page: 3, pageSize: 2, CancellationToken.None);
+
+            Assert.Equal(5, firstPage.TotalCount);
+            Assert.Equal(2, firstPage.Users.Count);
+            Assert.Equal(2, secondPage.Users.Count);
+            Assert.Single(thirdPage.Users);
+            var allIds = firstPage.Users.Concat(secondPage.Users).Concat(thirdPage.Users).Select(u => u.Id).ToList();
+            Assert.Equal(5, allIds.Distinct().Count());
+        }
+
+        [Fact]
+        public async Task SearchUsers_WithAnEmptyTerm_ThrowsInvalidUserSearchRequest()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+
+            await Assert.ThrowsAsync<InvalidUserSearchRequestException>(
+                () => users.SearchUsersAsync(string.Empty, page: 1, pageSize: 10, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SearchUsers_WithATooShortTerm_ThrowsInvalidUserSearchRequest()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+
+            await Assert.ThrowsAsync<InvalidUserSearchRequestException>(
+                () => users.SearchUsersAsync("a", page: 1, pageSize: 10, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SearchUsers_WithAnOversizedTerm_ThrowsInvalidUserSearchRequest()
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var oversizedTerm = new string('a', UserService.MaxSearchTermLength + 1);
+
+            await Assert.ThrowsAsync<InvalidUserSearchRequestException>(
+                () => users.SearchUsersAsync(oversizedTerm, page: 1, pageSize: 10, CancellationToken.None));
+        }
+
+        [Theory]
+        [InlineData(0, 10)]
+        [InlineData(1, 0)]
+        [InlineData(1, UserService.MaxPageSize + 1)]
+        public async Task SearchUsers_WithOutOfBoundsPaging_ThrowsInvalidUserSearchRequest(int page, int pageSize)
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+
+            await Assert.ThrowsAsync<InvalidUserSearchRequestException>(
+                () => users.SearchUsersAsync("valid-term", page, pageSize, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task SearchUsers_WithAnAlreadyCancelledToken_Throws()
+        {
+            var chatContext = new EntityFrameworkCoreChatContext(fixture.CreateDbContext());
+            using var cts = new CancellationTokenSource();
+            await cts.CancelAsync();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                () => chatContext.SearchUsersAsync("term", 1, 10, cts.Token));
+        }
     }
 
     // Issue #116: forwards every IChatContext call to the wrapped context while recording which
@@ -582,5 +696,8 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 
         public Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
             => inner.GetGroupMessageHistoryAsync(groupId, page, pageSize, cancellationToken);
+
+        public Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+            => inner.SearchUsersAsync(normalizedTerm, page, pageSize, cancellationToken);
     }
 }

@@ -56,6 +56,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
 
             public Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
+
+            public Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
         }
 
         private static (UserService Service, FakeChatContext Context) CreateService()

@@ -33,6 +33,15 @@ namespace ThunderPropagator.Channels.Chat.Models
         // method is called, so providers can assume both are already in range.
         Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default);
         Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default);
+
+        // Issue #123: a server-side, paginated, deterministically-ordered (UserName, then Id as a
+        // tiebreaker) case-insensitive substring match against UserName or Name — same reasoning as
+        // GetContactsAsync/the message history queries above: routing this through GetAllAsync<User>
+        // would force every provider to load every user just to search or count them.
+        // normalizedTerm is already trimmed and bounds-checked by UserService before this is called,
+        // so providers can assume it's non-empty and within range; case-folding for matching is each
+        // provider's own concern (SQL collation, Mongo regex options, or plain string comparison).
+        Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default);
     }
 
     public abstract class BaseChatContext : IChatContext
@@ -99,5 +108,6 @@ namespace ThunderPropagator.Channels.Chat.Models
         public abstract Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default);
         public abstract Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default);
         public abstract Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default);
+        public abstract Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default);
     }
 }
