@@ -17,6 +17,7 @@ using ThunderPropagator.Channels.Chat.Pipelines.Messages.Delete;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.Edit;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.Send;
+using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Login;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Logout;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Register;
@@ -61,6 +62,7 @@ namespace ThunderPropagator.Channels.Chat
                 // file was already being touched for the Delete pipeline's own registration.
                 .AddReceivePipeline<ChatChannel, ChatChannelGetMessageHistoryReceiverPipeline>()
                 //Users
+                .AddReceivePipeline<ChatChannel, ChatChannelGetUserReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelLoginReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelLogoutReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelRegisterReceiverPipeline>()
