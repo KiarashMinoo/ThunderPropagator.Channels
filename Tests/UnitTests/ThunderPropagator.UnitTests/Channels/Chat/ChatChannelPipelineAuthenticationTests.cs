@@ -13,12 +13,18 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
     /// pipeline in the assembly via reflection: it fails the build if a new pipeline is added that
     /// neither derives from AuthenticatedChatChannelReceiverPipeline nor is explicitly allow-listed as
     /// anonymous, so the guard can't quietly be skipped for a new handler.
+    ///
+    /// Issue #121: Logout joins the allow-list too — AuthenticatedChatChannelReceiverPipeline throws
+    /// ChatChannelUnauthorizedException before any pipeline-specific code runs when the connection
+    /// isn't logged in, which would make a repeated logout throw instead of being the safe no-op its
+    /// own AC requires. See ChatChannelLogoutReceiverPipeline's own comment.
     /// </summary>
     public sealed class ChatChannelPipelineAuthenticationTests
     {
         private static readonly HashSet<string> AnonymousRequestKeys = new(StringComparer.Ordinal)
         {
             "Users/Login",
+            "Users/Logout",
             "Users/Register",
         };
 
@@ -66,7 +72,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
                 Assert.True(isAnonymous || isAuthenticated,
                     $"{type.Name} (RequestKey '{requestKey}') derives from AbstractReceivePipeline<ChatChannel> but is neither " +
                     $"in the anonymous allow-list nor derived from {nameof(AuthenticatedChatChannelReceiverPipeline)}. " +
-                    "Every pipeline except Login and Register must require an authenticated session.");
+                    "Every pipeline except Login, Logout, and Register must require an authenticated session.");
 
                 Assert.False(isAnonymous && isAuthenticated,
                     $"{type.Name} is both allow-listed as anonymous and derives from {nameof(AuthenticatedChatChannelReceiverPipeline)} — remove it from one.");
@@ -74,7 +80,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
         }
 
         [Fact]
-        public void OnlyLoginAndRegister_AreAnonymous()
+        public void OnlyLoginLogoutAndRegister_AreAnonymous()
         {
             var anonymousKeys = GetAllChatReceivePipelineTypes()
                 .Where(type => !typeof(AuthenticatedChatChannelReceiverPipeline).IsAssignableFrom(type))

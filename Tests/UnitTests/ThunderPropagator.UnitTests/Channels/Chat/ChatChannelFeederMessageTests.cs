@@ -63,5 +63,23 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
 
             Assert.Equal(receiverId.ToString(), feederMessage.UserId);
         }
+
+        // Issue #121: ChatChannelLogoutReceiverPipeline emits a presence event through this same
+        // shape via the (recipientUserId, offlineUserId) constructor — no backing Message exists for
+        // it at all, unlike Send/Delete/Edit.
+        [Fact]
+        public void PresenceConstructor_ProducesAnOfflineEvent()
+        {
+            var recipientId = Guid.NewGuid();
+            var offlineUserId = Guid.NewGuid();
+
+            var feederMessage = new ChatChannelFeederMessage(recipientId, offlineUserId);
+
+            Assert.True(feederMessage.IsOffline);
+            Assert.False(feederMessage.IsDeleted);
+            Assert.False(feederMessage.IsEdited);
+            Assert.Equal(recipientId.ToString(), feederMessage.UserId);
+            Assert.Equal(offlineUserId, feederMessage.SenderUserId);
+        }
     }
 }
