@@ -56,6 +56,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
 
             public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
+
+            public override Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
         }
 
         private static Func<CancellationToken, Task> Sync(Action action) => _ =>

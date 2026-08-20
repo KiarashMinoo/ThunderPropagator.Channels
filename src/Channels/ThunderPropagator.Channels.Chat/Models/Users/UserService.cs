@@ -10,6 +10,18 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
 #endif
         class UserService(IChatContext chatContext, IPasswordHasher<User> passwordHasher)
     {
+        // Issue #123: shared bounds SearchUsersAsync validates against — mirrors MessageService's
+        // own DefaultPageSize/MaxPageSize (#117) for consistency, kept as this service's own
+        // constants rather than a cross-service reference since the two concerns (message history
+        // vs. user search) have no reason to be tied to the same numbers going forward.
+        // MinSearchTermLength/MaxSearchTermLength bound the search term itself: too short (0-1 chars)
+        // matches too broadly to be a useful "search" and is needlessly expensive at scale; too long
+        // is just wasted/abusive input no legitimate username or display name would need.
+        public const int DefaultPageSize = 50;
+        public const int MaxPageSize = 100;
+        public const int MinSearchTermLength = 2;
+        public const int MaxSearchTermLength = 100;
+
         public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default)
             => chatContext.GetAsync<User, Guid>(userId, cancellationToken);
 
@@ -92,6 +104,30 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             user.SetAvatar(avatar);
 
             await chatContext.UpdateAsync(user, cancellationToken);
+        }
+
+        // Issue #123: term is trimmed and lowercased here — once, in the one place every provider's
+        // own case-insensitive match relies on — rather than each provider re-normalizing it its own
+        // way. Validated before the provider is ever called, so providers can assume the term is
+        // already non-empty and within bounds (the same division of responsibility #117's paging
+        // validation uses).
+        public Task<UserSearchPage> SearchUsersAsync(string term, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var normalizedTerm = (term ?? string.Empty).Trim().ToLowerInvariant();
+
+            if (normalizedTerm.Length < MinSearchTermLength)
+                throw new InvalidUserSearchRequestException($"Search term must be at least {MinSearchTermLength} characters.");
+
+            if (normalizedTerm.Length > MaxSearchTermLength)
+                throw new InvalidUserSearchRequestException($"Search term must be at most {MaxSearchTermLength} characters.");
+
+            if (page < 1)
+                throw new InvalidUserSearchRequestException("Page must be 1 or greater.");
+
+            if (pageSize is < 1 or > MaxPageSize)
+                throw new InvalidUserSearchRequestException($"PageSize must be between 1 and {MaxPageSize}.");
+
+            return chatContext.SearchUsersAsync(normalizedTerm, page, pageSize, cancellationToken);
         }
     }
 }

@@ -21,6 +21,7 @@ using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Login;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Logout;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Register;
+using ThunderPropagator.Channels.Chat.Pipelines.Users.Search;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.SetAvatar;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.SetName;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Update;
@@ -66,6 +67,7 @@ namespace ThunderPropagator.Channels.Chat
                 .AddReceivePipeline<ChatChannel, ChatChannelLoginReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelLogoutReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelRegisterReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelSearchUsersReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelUserSetAvatarReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelUserSetNameReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelUpdateUserReceiverPipeline>()

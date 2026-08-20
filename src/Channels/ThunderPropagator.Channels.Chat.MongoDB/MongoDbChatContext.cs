@@ -261,6 +261,37 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
             return new MessageHistoryPage { Messages = messages, TotalCount = totalCount, Page = page, PageSize = pageSize };
         }
 
+        // Issue #123: a case-insensitive substring match, mirroring GetDirectMessageHistoryFilter's
+        // testability shape above. Regex.Escape guards against normalizedTerm containing regex
+        // metacharacters — a search term is untrusted input, not a pattern the caller should be able
+        // to author. Raw field names ("UserName"/"Name") rather than member expressions: Filter.Regex
+        // has no strongly-typed overload, so this bypasses TryGetMemberSerializationInfo the same way
+        // ToIdFilterValue's _id lookups already do.
+        internal static FilterDefinition<User> GetUserSearchFilter(string normalizedTerm)
+        {
+            var regex = new BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(normalizedTerm), "i");
+
+            return Builders<User>.Filter.Or(
+                Builders<User>.Filter.Regex("UserName", regex),
+                Builders<User>.Filter.Regex("Name", regex));
+        }
+
+        public override async Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var filter = GetUserSearchFilter(normalizedTerm);
+            var collection = GetCollection<User>();
+            var totalCount = (int)await collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+
+            var users = await collection.Find(filter)
+                .SortBy(user => user.UserName)
+                .ThenBy(user => user.Id)
+                .Skip((page - 1) * pageSize)
+                .Limit(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return new UserSearchPage { Users = users, TotalCount = totalCount, Page = page, PageSize = pageSize };
+        }
+
         private async Task InsertInitialGroupUsersAsync(Group group, CancellationToken cancellationToken)
         {
             if (group.GroupUsers.Count == 0)

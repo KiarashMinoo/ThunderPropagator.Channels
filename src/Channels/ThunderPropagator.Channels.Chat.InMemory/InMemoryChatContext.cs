@@ -156,6 +156,29 @@ namespace ThunderPropagator.Channels.Chat.InMemory
             return new MessageHistoryPage { Messages = messages, TotalCount = ordered.Count, Page = page, PageSize = pageSize };
         }
 
+        // Issue #123: normalizedTerm is already lowercased by UserService — ToLowerInvariant on both
+        // UserName/Name keeps the match case-insensitive.
+        public override Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var matches = store.GetStore<User>().Values.Where(user =>
+                user.UserName.ToLowerInvariant().Contains(normalizedTerm) || user.Name.ToLowerInvariant().Contains(normalizedTerm));
+
+            var ordered = matches
+                .OrderBy(user => user.UserName, StringComparer.Ordinal)
+                .ThenBy(user => user.Id)
+                .ToList();
+
+            var users = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(CloneAndPopulate)
+                .ToList();
+
+            return Task.FromResult(new UserSearchPage { Users = users, TotalCount = ordered.Count, Page = page, PageSize = pageSize });
+        }
+
         private TEntity CloneAndPopulate<TEntity>(TEntity entity) where TEntity : class
         {
             var clone = InMemoryEntityCloner.Clone(entity);
