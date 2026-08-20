@@ -322,7 +322,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var alice = await users.RegisterAsync("bounds-alice", "password", "Alice", CancellationToken.None);
             var bob = await users.RegisterAsync("bounds-bob", "password", "Bob", CancellationToken.None);
 
-            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            await Assert.ThrowsAsync<InvalidMessageHistoryPageRequestException>(
                 () => messages.GetDirectMessageHistoryAsync(alice.Id, bob.Id, page, pageSize, CancellationToken.None));
         }
 

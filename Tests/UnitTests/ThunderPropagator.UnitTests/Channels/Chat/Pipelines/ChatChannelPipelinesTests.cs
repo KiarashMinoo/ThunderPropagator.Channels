@@ -120,6 +120,27 @@
             var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Groups.SetIcon.ChatChannelSetGroupIconReceiverPipeline);
             Assert.True(type.IsNotPublic);
         }
+
+        [Fact]
+        public void ChatChannelGetMessageHistoryReceiverPipeline_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Messages.History.ChatChannelGetMessageHistoryReceiverPipeline);
+            Assert.True(type.IsNotPublic);
+        }
+
+        [Fact]
+        public void ChatChannelGetMessageHistoryReceiverPipelineRequestDto_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Messages.History.ChatChannelGetMessageHistoryReceiverPipelineRequestDto);
+            Assert.True(type.IsNotPublic);
+        }
+
+        [Fact]
+        public void ChatChannelGetMessageHistoryReceiverPipelineResponseDto_IsInternal()
+        {
+            var type = typeof(ThunderPropagator.Channels.Chat.Pipelines.Messages.History.ChatChannelGetMessageHistoryReceiverPipelineResponseDto);
+            Assert.True(type.IsNotPublic);
+        }
     }
 }
 
