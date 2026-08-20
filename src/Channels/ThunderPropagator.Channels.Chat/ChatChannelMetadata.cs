@@ -17,7 +17,11 @@ namespace ThunderPropagator.Channels.Chat
             new ChannelProgramsDescriptor(1, nameof(ChatChannelFeederMessage.SenderUserId), DataType.String),
             new DateTimeChannelProgramsDescriptor(2, nameof(ChatChannelFeederMessage.DateTime), "The UTC timestamp the message was created"),
             new ChannelProgramsDescriptor(3, nameof(ChatChannelFeederMessage.GroupId), DataType.String),
-            new ChannelProgramsDescriptor(4, nameof(ChatChannelFeederMessage.Message), DataType.String)
+            new ChannelProgramsDescriptor(4, nameof(ChatChannelFeederMessage.Message), DataType.String),
+            // Issue #119: MessageId identifies which message a "send" or "delete" event refers to;
+            // IsDeleted tells the two apart — false for a newly sent message, true for a deletion.
+            new ChannelProgramsDescriptor(5, nameof(ChatChannelFeederMessage.MessageId), DataType.String),
+            new BooleanChannelProgramsDescriptor(6, nameof(ChatChannelFeederMessage.IsDeleted), "Whether this event is a message deletion rather than a new message")
         };
     }
 }

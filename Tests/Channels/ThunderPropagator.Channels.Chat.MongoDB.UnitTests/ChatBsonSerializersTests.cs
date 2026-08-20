@@ -100,5 +100,33 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
 
             Assert.Equal(groupId, deserialized.GroupId);
         }
+
+        [Fact]
+        public void Message_RoundTripsThroughBson_BeforeDeletion()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.False(deserialized.IsDeleted);
+            Assert.Null(deserialized.DeletedAt);
+        }
+
+        // Issue #119: soft-delete state round-trips too — a deleted message's redacted Body and
+        // DeletedAt must survive serialization the same way every other field does.
+        [Fact]
+        public void Message_RoundTripsThroughBson_AfterDeletion()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+            message.MarkDeleted();
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.True(deserialized.IsDeleted);
+            Assert.Equal(message.DeletedAt, deserialized.DeletedAt);
+            Assert.Equal(string.Empty, deserialized.Body);
+        }
     }
 }

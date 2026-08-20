@@ -13,6 +13,8 @@ using ThunderPropagator.Channels.Chat.Pipelines.Groups.RemoveUser;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.Rename;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.SetIcon;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.UserLeave;
+using ThunderPropagator.Channels.Chat.Pipelines.Messages.Delete;
+using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.Send;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Login;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Register;
@@ -48,6 +50,13 @@ namespace ThunderPropagator.Channels.Chat
                 .AddReceivePipeline<ChatChannel, ChatChannelUserLeaveFromGroupReceiverPipeline>()
                 //Messages
                 .AddReceivePipeline<ChatChannel, ChatChannelSendMessageReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelDeleteMessageReceiverPipeline>()
+                // Issue #117/#118: ChatChannelGetMessageHistoryReceiverPipeline was implemented and
+                // covered by the authentication reflection sweep (which only checks the assembly, not
+                // DI) but was never actually registered here — a real consumer's AddChatChannel call
+                // would never have this pipeline available at all. Fixed alongside #119 since this
+                // file was already being touched for the Delete pipeline's own registration.
+                .AddReceivePipeline<ChatChannel, ChatChannelGetMessageHistoryReceiverPipeline>()
                 //Users
                 .AddReceivePipeline<ChatChannel, ChatChannelLoginReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelRegisterReceiverPipeline>()

@@ -219,10 +219,12 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
 
         // Issue #117: extracted so the direct-conversation match filter — excluding group-fanned-out
         // rows, matching either sender/receiver direction — can be unit-tested by rendering it,
-        // mirroring GetContactsAsync's ContactMessagesFilter above.
+        // mirroring GetContactsAsync's ContactMessagesFilter above. Issue #119: also excludes
+        // soft-deleted messages from history entirely, rather than returning them redacted.
         internal static FilterDefinition<Message> GetDirectMessageHistoryFilter(Guid userId, Guid otherUserId)
             => Builders<Message>.Filter.And(
                 Builders<Message>.Filter.Eq(message => message.GroupId, null),
+                Builders<Message>.Filter.Eq(message => message.IsDeleted, false),
                 Builders<Message>.Filter.Or(
                     Builders<Message>.Filter.And(
                         Builders<Message>.Filter.Eq(message => message.SenderId, userId),
@@ -234,8 +236,13 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
         public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
             => GetMessageHistoryPageAsync(GetDirectMessageHistoryFilter(userId, otherUserId), page, pageSize, cancellationToken);
 
+        internal static FilterDefinition<Message> GetGroupMessageHistoryFilter(Guid groupId)
+            => Builders<Message>.Filter.And(
+                Builders<Message>.Filter.Eq(message => message.GroupId, groupId),
+                Builders<Message>.Filter.Eq(message => message.IsDeleted, false));
+
         public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
-            => GetMessageHistoryPageAsync(Builders<Message>.Filter.Eq(message => message.GroupId, groupId), page, pageSize, cancellationToken);
+            => GetMessageHistoryPageAsync(GetGroupMessageHistoryFilter(groupId), page, pageSize, cancellationToken);
 
         private async Task<MessageHistoryPage> GetMessageHistoryPageAsync(FilterDefinition<Message> filter, int page, int pageSize, CancellationToken cancellationToken)
         {

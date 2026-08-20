@@ -14,6 +14,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
         private static readonly FieldInfo GroupIdField = GetBackingField(nameof(Message.GroupId));
         private static readonly FieldInfo CreatedField = GetBackingField(nameof(Message.Created));
         private static readonly FieldInfo BodyField = GetBackingField(nameof(Message.Body));
+        private static readonly FieldInfo IsDeletedField = GetBackingField(nameof(Message.IsDeleted));
+        private static readonly FieldInfo DeletedAtField = GetBackingField(nameof(Message.DeletedAt));
 
         // Message.Sender/.Receiver/.Group are intentionally not serialized — Sender is populated by
         // MongoDbChatContext after a read, for any consumer that displays a message's sender directly
@@ -35,6 +37,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                     case "GroupId": GroupIdField.SetValue(message, ReadNullableGuid(reader)); break;
                     case "Created": CreatedField.SetValue(message, ReadDateTimeOffset(reader)); break;
                     case "Body": BodyField.SetValue(message, ReadString(reader)); break;
+                    case "IsDeleted": IsDeletedField.SetValue(message, ReadBool(reader)); break;
+                    case "DeletedAt": DeletedAtField.SetValue(message, ReadNullableDateTimeOffset(reader)); break;
                     default: reader.SkipValue(); break;
                 }
             }
@@ -53,6 +57,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
             WriteNullableGuid(writer, "GroupId", value.GroupId);
             WriteDateTimeOffset(writer, "Created", value.Created);
             WriteString(writer, "Body", value.Body);
+            WriteBool(writer, "IsDeleted", value.IsDeleted);
+            WriteNullableDateTimeOffset(writer, "DeletedAt", value.DeletedAt);
             writer.WriteEndDocument();
         }
 
@@ -65,6 +71,7 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                 nameof(Message.ReceiverId) => GuidMemberInfo("ReceiverId"),
                 nameof(Message.GroupId) => NullableGuidMemberInfo("GroupId"),
                 nameof(Message.Body) => StringMemberInfo("Body"),
+                nameof(Message.IsDeleted) => BoolMemberInfo("IsDeleted"),
                 _ => null!
             };
 
