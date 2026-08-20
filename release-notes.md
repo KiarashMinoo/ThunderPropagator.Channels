@@ -1,5 +1,5 @@
-## [1.0.1-beta.40] — 2026-08-20
+## [1.0.1-beta.41] — 2026-08-20
 
 ### 🚀 Features
 
-- Add paginated direct and group message history to the domain contract `(2c510e6)` — Kiarash Minoo
+- Implement paginated message history retrieval `(634587b)` — Kiarash Minoo
