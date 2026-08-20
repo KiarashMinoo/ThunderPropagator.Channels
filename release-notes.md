@@ -1,5 +1,5 @@
-## [1.0.1-beta.38] — 2026-08-19
+## [1.0.1-beta.39] — 2026-08-20
 
 ### 🚀 Features
 
-- Query distinct user contacts at the database level `(f3bd435)` — Kiarash Minoo
+- Remove the redundant group update after sending group messages `(2790770)` — Kiarash Minoo
