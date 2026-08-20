@@ -117,6 +117,44 @@ namespace ThunderPropagator.Channels.Chat.InMemory
             return Task.FromResult(results);
         }
 
+        // Issue #117: GroupId is null excludes group-fanned-out rows from a direct conversation, even
+        // when one happens to name the same two users as sender/receiver.
+        public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var matches = store.GetStore<Message>().Values.Where(message => message.GroupId is null &&
+                ((message.SenderId == userId && message.ReceiverId == otherUserId) ||
+                 (message.SenderId == otherUserId && message.ReceiverId == userId)));
+
+            return Task.FromResult(BuildHistoryPage(matches, page, pageSize));
+        }
+
+        public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var matches = store.GetStore<Message>().Values.Where(message => message.GroupId == groupId);
+
+            return Task.FromResult(BuildHistoryPage(matches, page, pageSize));
+        }
+
+        private MessageHistoryPage BuildHistoryPage(IEnumerable<Message> matches, int page, int pageSize)
+        {
+            var ordered = matches
+                .OrderByDescending(message => message.Created)
+                .ThenByDescending(message => message.Id)
+                .ToList();
+
+            var messages = ordered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(CloneAndPopulate)
+                .ToList();
+
+            return new MessageHistoryPage { Messages = messages, TotalCount = ordered.Count, Page = page, PageSize = pageSize };
+        }
+
         private TEntity CloneAndPopulate<TEntity>(TEntity entity) where TEntity : class
         {
             var clone = InMemoryEntityCloner.Clone(entity);

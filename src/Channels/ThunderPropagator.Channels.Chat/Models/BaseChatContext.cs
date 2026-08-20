@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Expressions;
+using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.Channels.Chat.Models
@@ -22,6 +23,16 @@ namespace ThunderPropagator.Channels.Chat.Models
         // methods. A "contact" is anyone the user has exchanged a direct or group-fanned-out message
         // with in EITHER direction (sent to or received from) — not received-only.
         Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+        // Issue #117: direct and group message history are each their own server-side, paginated,
+        // deterministically-ordered query — like GetContactsAsync above, routing this through the
+        // generic GetAllAsync<Message> would force every provider to load the complete conversation
+        // into memory just to page or count it. "Direct" excludes group-fanned-out rows (GroupId is
+        // null) so a 1:1 conversation never surfaces a group broadcast that happens to name the same
+        // two users. Page is 1-based; PageSize bounds are validated by MessageService before either
+        // method is called, so providers can assume both are already in range.
+        Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default);
+        Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default);
     }
 
     public abstract class BaseChatContext : IChatContext
@@ -86,5 +97,7 @@ namespace ThunderPropagator.Channels.Chat.Models
         public abstract Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class;
         public abstract Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class;
         public abstract Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default);
+        public abstract Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default);
+        public abstract Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default);
     }
 }

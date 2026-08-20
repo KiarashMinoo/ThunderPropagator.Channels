@@ -74,7 +74,7 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests.Migratio
                     SenderId = table.Column<Guid>(type: "TEXT", nullable: false),
                     ReceiverId = table.Column<Guid>(type: "TEXT", nullable: false),
                     GroupId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    Created = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
+                    Created = table.Column<long>(type: "INTEGER", nullable: false),
                     Body = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Models
@@ -48,6 +49,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
                 => throw new NotSupportedException();
 
             public override Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
         }
 

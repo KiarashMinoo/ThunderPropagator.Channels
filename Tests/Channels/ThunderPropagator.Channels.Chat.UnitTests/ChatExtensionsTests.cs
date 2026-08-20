@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.Channels.Chat.UnitTests
@@ -18,6 +19,10 @@ namespace ThunderPropagator.Channels.Chat.UnitTests
             public override Task<TEntity> UpdateAsync<TEntity>(TEntity entity, System.Threading.CancellationToken cancellationToken = default) where TEntity : class => Task.FromResult(entity);
             public override Task<bool> DeleteAsync<TEntity, TPk>(TPk id, System.Threading.CancellationToken cancellationToken = default) where TEntity : class => Task.FromResult(true);
             public override Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+            public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+            public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
         }
 

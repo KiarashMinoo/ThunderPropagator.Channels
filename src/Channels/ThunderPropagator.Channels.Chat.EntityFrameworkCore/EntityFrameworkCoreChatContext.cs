@@ -83,5 +83,40 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
                 .Where(user => otherUserIds.Contains(user.Id))
                 .ToListAsync(cancellationToken);
         }
+
+        // Issue #117: GroupId == null excludes group-fanned-out rows from a direct conversation, even
+        // when one happens to name the same two users as sender/receiver.
+        public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var query = dbContext.Set<Message>().Where(message => message.GroupId == null &&
+                ((message.SenderId == userId && message.ReceiverId == otherUserId) ||
+                 (message.SenderId == otherUserId && message.ReceiverId == userId)));
+
+            return GetMessageHistoryPageAsync(query, page, pageSize, cancellationToken);
+        }
+
+        public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            var query = dbContext.Set<Message>().Where(message => message.GroupId == groupId);
+
+            return GetMessageHistoryPageAsync(query, page, pageSize, cancellationToken);
+        }
+
+        // Count, ordering, and paging all translate into the same SQL statement — no message row,
+        // let alone its Body, is ever loaded beyond the requested page. Ordering by Created here
+        // relies on MessageConfiguration storing it as UTC ticks rather than the default formatted
+        // text — see that configuration's comment for why.
+        private static async Task<MessageHistoryPage> GetMessageHistoryPageAsync(IQueryable<Message> query, int page, int pageSize, CancellationToken cancellationToken)
+        {
+            var totalCount = await query.CountAsync(cancellationToken);
+            var messages = await query
+                .OrderByDescending(message => message.Created)
+                .ThenByDescending(message => message.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return new MessageHistoryPage { Messages = messages, TotalCount = totalCount, Page = page, PageSize = pageSize };
+        }
     }
 }

@@ -65,8 +65,8 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests.Migratio
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("Created")
-                        .HasColumnType("TEXT");
+                    b.Property<long>("Created")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("TEXT");
