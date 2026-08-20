@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.40] — 2026-08-20
+
+### 🚀 Features
+
+- Add paginated direct and group message history to the domain contract `(2c510e6)` — Kiarash Minoo
+
 ## [1.0.1-beta.39] — 2026-08-20
 
 ### 🚀 Features
