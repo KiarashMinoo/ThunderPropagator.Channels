@@ -16,6 +16,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
         private static readonly FieldInfo BodyField = GetBackingField(nameof(Message.Body));
         private static readonly FieldInfo IsDeletedField = GetBackingField(nameof(Message.IsDeleted));
         private static readonly FieldInfo DeletedAtField = GetBackingField(nameof(Message.DeletedAt));
+        private static readonly FieldInfo IsEditedField = GetBackingField(nameof(Message.IsEdited));
+        private static readonly FieldInfo EditedAtField = GetBackingField(nameof(Message.EditedAt));
 
         // Message.Sender/.Receiver/.Group are intentionally not serialized — Sender is populated by
         // MongoDbChatContext after a read, for any consumer that displays a message's sender directly
@@ -39,6 +41,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                     case "Body": BodyField.SetValue(message, ReadString(reader)); break;
                     case "IsDeleted": IsDeletedField.SetValue(message, ReadBool(reader)); break;
                     case "DeletedAt": DeletedAtField.SetValue(message, ReadNullableDateTimeOffset(reader)); break;
+                    case "IsEdited": IsEditedField.SetValue(message, ReadBool(reader)); break;
+                    case "EditedAt": EditedAtField.SetValue(message, ReadNullableDateTimeOffset(reader)); break;
                     default: reader.SkipValue(); break;
                 }
             }
@@ -59,6 +63,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
             WriteString(writer, "Body", value.Body);
             WriteBool(writer, "IsDeleted", value.IsDeleted);
             WriteNullableDateTimeOffset(writer, "DeletedAt", value.DeletedAt);
+            WriteBool(writer, "IsEdited", value.IsEdited);
+            WriteNullableDateTimeOffset(writer, "EditedAt", value.EditedAt);
             writer.WriteEndDocument();
         }
 

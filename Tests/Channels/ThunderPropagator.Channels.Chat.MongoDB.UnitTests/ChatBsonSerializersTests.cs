@@ -128,5 +128,33 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
             Assert.Equal(message.DeletedAt, deserialized.DeletedAt);
             Assert.Equal(string.Empty, deserialized.Body);
         }
+
+        [Fact]
+        public void Message_RoundTripsThroughBson_BeforeEditing()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.False(deserialized.IsEdited);
+            Assert.Null(deserialized.EditedAt);
+        }
+
+        // Issue #120: edit metadata round-trips too — a revised message's updated Body and EditedAt
+        // must survive serialization the same way every other field does.
+        [Fact]
+        public void Message_RoundTripsThroughBson_AfterEditing()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+            message.Edit("revised");
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.True(deserialized.IsEdited);
+            Assert.Equal(message.EditedAt, deserialized.EditedAt);
+            Assert.Equal("revised", deserialized.Body);
+        }
     }
 }

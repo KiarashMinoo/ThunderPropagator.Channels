@@ -9,17 +9,17 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
     /// integration tests run against. ChatDbContext itself ships with no migrations (see its own doc
     /// comment) since a migration's SQL is tied to whichever provider produced it — this factory, and
     /// the Migrations folder it generates, exist solely for this test project's own SQLite-backed
-    /// tests and are never referenced by the shipped package.
+    /// tests and are never referenced by the shipped package. See
+    /// ChatDbContextTestMigrationsConfiguration for where the connection string/migrations assembly
+    /// below actually come from.
     /// </summary>
     public sealed class ChatDbContextDesignTimeFactory : IDesignTimeDbContextFactory<ChatDbContext>
     {
         public ChatDbContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<ChatDbContext>();
-            // Keeps the scaffolded migrations in this test project's own assembly instead of the
-            // shipped ChatDbContext's assembly (EF's default) — see this class's doc comment.
-            optionsBuilder.UseSqlite("Data Source=design-time.db",
-                sqlite => sqlite.MigrationsAssembly(typeof(ChatDbContextDesignTimeFactory).Assembly.GetName().Name));
+            optionsBuilder.UseSqlite(ChatDbContextTestMigrationsConfiguration.DesignTimeConnectionString,
+                sqlite => sqlite.MigrationsAssembly(ChatDbContextTestMigrationsConfiguration.MigrationsAssembly));
             return new ChatDbContext(optionsBuilder.Options);
         }
     }

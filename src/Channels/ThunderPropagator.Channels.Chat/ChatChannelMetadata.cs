@@ -18,10 +18,13 @@ namespace ThunderPropagator.Channels.Chat
             new DateTimeChannelProgramsDescriptor(2, nameof(ChatChannelFeederMessage.DateTime), "The UTC timestamp the message was created"),
             new ChannelProgramsDescriptor(3, nameof(ChatChannelFeederMessage.GroupId), DataType.String),
             new ChannelProgramsDescriptor(4, nameof(ChatChannelFeederMessage.Message), DataType.String),
-            // Issue #119: MessageId identifies which message a "send" or "delete" event refers to;
-            // IsDeleted tells the two apart — false for a newly sent message, true for a deletion.
+            // Issue #119: MessageId identifies which message a "send", "delete", or "edit" event
+            // refers to; IsDeleted/IsEdited tell the three apart — both false for a newly sent
+            // message, IsDeleted for a deletion, IsEdited for a revision (Message already carries
+            // the revised body).
             new ChannelProgramsDescriptor(5, nameof(ChatChannelFeederMessage.MessageId), DataType.String),
-            new BooleanChannelProgramsDescriptor(6, nameof(ChatChannelFeederMessage.IsDeleted), "Whether this event is a message deletion rather than a new message")
+            new BooleanChannelProgramsDescriptor(6, nameof(ChatChannelFeederMessage.IsDeleted), "Whether this event is a message deletion rather than a new message"),
+            new BooleanChannelProgramsDescriptor(7, nameof(ChatChannelFeederMessage.IsEdited), "Whether this event is a message edit rather than a new message")
         };
     }
 }

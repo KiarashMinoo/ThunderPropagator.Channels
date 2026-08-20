@@ -12,5 +12,11 @@ namespace ThunderPropagator.Channels.Chat
         {
             IsEnabled = true;
         }
+
+        // Issue #120: how long after a message is sent its sender may still edit it —
+        // MessageService.EditMessageAsync rejects an edit request once this window has elapsed.
+        // 15 minutes is a common chat-app norm; a consumer can widen or narrow it via the
+        // channelConfigurator callback AddChatChannel already accepts.
+        public TimeSpan MessageEditWindow { get; set; } = TimeSpan.FromMinutes(15);
     }
 }
