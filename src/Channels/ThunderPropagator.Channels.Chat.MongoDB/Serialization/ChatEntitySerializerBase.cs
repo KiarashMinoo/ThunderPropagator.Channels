@@ -92,6 +92,22 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                 writer.WriteString(value.Value.ToString("O", CultureInfo.InvariantCulture));
         }
 
+        // Issue #119: Message.DeletedAt — same ISO 8601 string representation as Created/WriteDateTimeOffset.
+        protected static void WriteNullableDateTimeOffset(IBsonWriter writer, string name, DateTimeOffset? value)
+        {
+            writer.WriteName(name);
+            if (value is null)
+                writer.WriteNull();
+            else
+                writer.WriteString(value.Value.ToString("O", CultureInfo.InvariantCulture));
+        }
+
+        protected static void WriteBool(IBsonWriter writer, string name, bool value)
+        {
+            writer.WriteName(name);
+            writer.WriteBoolean(value);
+        }
+
         protected static Guid ReadGuid(IBsonReader reader) => reader.ReadBinaryData().AsGuid;
 
         protected static Guid? ReadNullableGuid(IBsonReader reader)
@@ -132,6 +148,19 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
             return DateOnly.Parse(reader.ReadString(), CultureInfo.InvariantCulture);
         }
 
+        protected static DateTimeOffset? ReadNullableDateTimeOffset(IBsonReader reader)
+        {
+            if (reader.CurrentBsonType == BsonType.Null)
+            {
+                reader.ReadNull();
+                return null;
+            }
+
+            return DateTimeOffset.Parse(reader.ReadString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        }
+
+        protected static bool ReadBool(IBsonReader reader) => reader.ReadBoolean();
+
         public abstract bool TryGetMemberSerializationInfo(string memberName, out BsonSerializationInfo serializationInfo);
 
         protected static BsonSerializationInfo GuidMemberInfo(string elementName)
@@ -142,5 +171,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
 
         protected static BsonSerializationInfo StringMemberInfo(string elementName)
             => new(elementName, new StringSerializer(), typeof(string));
+
+        protected static BsonSerializationInfo BoolMemberInfo(string elementName)
+            => new(elementName, new BooleanSerializer(), typeof(bool));
     }
 }

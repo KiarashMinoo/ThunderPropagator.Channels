@@ -75,7 +75,9 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests.Migratio
                     ReceiverId = table.Column<Guid>(type: "TEXT", nullable: false),
                     GroupId = table.Column<Guid>(type: "TEXT", nullable: true),
                     Created = table.Column<long>(type: "INTEGER", nullable: false),
-                    Body = table.Column<string>(type: "TEXT", nullable: false)
+                    Body = table.Column<string>(type: "TEXT", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
+                    DeletedAt = table.Column<long>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {

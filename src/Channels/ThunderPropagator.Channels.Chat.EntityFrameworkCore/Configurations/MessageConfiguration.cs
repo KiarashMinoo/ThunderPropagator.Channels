@@ -31,6 +31,16 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
                 .HasConversion(created => created.UtcTicks, ticks => new DateTimeOffset(ticks, TimeSpan.Zero))
                 .IsRequired();
 
+            // Issue #119: soft-delete state. DeletedAt uses the same UTC-ticks conversion as Created
+            // for consistency, even though nothing currently orders by it.
+            builder.Property(message => message.IsDeleted)
+                .IsRequired();
+
+            builder.Property(message => message.DeletedAt)
+                .HasConversion(
+                    deletedAt => deletedAt.HasValue ? deletedAt.Value.UtcTicks : (long?)null,
+                    ticks => ticks.HasValue ? new DateTimeOffset(ticks.Value, TimeSpan.Zero) : null);
+
             // Sender and Receiver both reference Users. SQL Server rejects Cascade on both (a
             // deleted user would reach the Messages table via two different paths), and there's
             // no existing delete-user operation that would need the cascade anyway, so both are

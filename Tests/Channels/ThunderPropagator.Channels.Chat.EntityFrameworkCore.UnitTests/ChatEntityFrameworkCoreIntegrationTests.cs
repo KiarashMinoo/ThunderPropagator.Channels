@@ -332,6 +332,89 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             await Assert.ThrowsAsync<GroupNotFoundException>(
                 () => messages.GetGroupMessageHistoryAsync(user.Id, Guid.NewGuid(), page: 1, pageSize: 10, CancellationToken.None));
         }
+
+        // Issue #119: contract coverage for MessageService.DeleteMessageAsync against a real SQLite
+        // database — success, forbidden, missing, repeated, and concurrent deletion, mirroring the
+        // AC's coverage list and this file's own GetGroupMessageHistory_* coverage for #117.
+        [Fact]
+        public async Task DeleteMessage_BySender_MarksItDeletedAndRedactsBodyAndExcludesItFromHistory()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"delete-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"delete-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "secret", CancellationToken.None);
+
+            var deleted = await messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None);
+
+            Assert.True(deleted.IsDeleted);
+            Assert.NotNull(deleted.DeletedAt);
+            Assert.Equal(string.Empty, deleted.Body);
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.Empty(page.Messages);
+        }
+
+        [Fact]
+        public async Task DeleteMessage_ByANonSender_ThrowsAndLeavesTheMessageUnaffected()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"forbidden-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"forbidden-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var outsider = await users.RegisterAsync($"forbidden-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "secret", CancellationToken.None);
+
+            await Assert.ThrowsAsync<MessageDeleteForbiddenException>(
+                () => messages.DeleteMessageAsync(outsider.Id, sent.Id, CancellationToken.None));
+
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.Single(page.Messages, m => m.Id == sent.Id && m.Body == "secret");
+        }
+
+        [Fact]
+        public async Task DeleteMessage_ForAMissingMessage_ThrowsMessageNotFound()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var user = await users.RegisterAsync($"missing-message-user-{Guid.NewGuid():N}", "password", "User", CancellationToken.None);
+
+            await Assert.ThrowsAsync<MessageNotFoundException>(
+                () => messages.DeleteMessageAsync(user.Id, Guid.NewGuid(), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task DeleteMessage_CalledTwiceBySender_IsIdempotent()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"repeat-delete-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"repeat-delete-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "secret", CancellationToken.None);
+            var firstDelete = await messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None);
+
+            var secondDelete = await messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None);
+
+            Assert.True(secondDelete.IsDeleted);
+            Assert.Equal(firstDelete.DeletedAt, secondDelete.DeletedAt);
+        }
+
+        [Fact]
+        public async Task DeleteMessage_CalledConcurrentlyBySender_DoesNotThrowAndEndsUpDeleted()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"concurrent-delete-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"concurrent-delete-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "secret", CancellationToken.None);
+
+            // Two independent MessageService instances, each against its own DbContext (as two real
+            // concurrent requests would be, one per scope) — dbContext alone isn't safe to share
+            // across concurrent EF Core operations.
+            var chatContext = new EntityFrameworkCoreChatContext(fixture.CreateDbContext());
+            var otherMessages = new MessageService(chatContext);
+
+            await Task.WhenAll(
+                messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None),
+                otherMessages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None));
+
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.Empty(page.Messages);
+        }
     }
 
     // Issue #116: forwards every IChatContext call to the wrapped context while recording which

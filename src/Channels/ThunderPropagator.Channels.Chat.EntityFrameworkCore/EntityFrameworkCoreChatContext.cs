@@ -85,10 +85,11 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
         }
 
         // Issue #117: GroupId == null excludes group-fanned-out rows from a direct conversation, even
-        // when one happens to name the same two users as sender/receiver.
+        // when one happens to name the same two users as sender/receiver. Issue #119: !IsDeleted
+        // excludes soft-deleted messages from history entirely, rather than returning them redacted.
         public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
         {
-            var query = dbContext.Set<Message>().Where(message => message.GroupId == null &&
+            var query = dbContext.Set<Message>().Where(message => message.GroupId == null && !message.IsDeleted &&
                 ((message.SenderId == userId && message.ReceiverId == otherUserId) ||
                  (message.SenderId == otherUserId && message.ReceiverId == userId)));
 
@@ -97,7 +98,7 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore
 
         public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
         {
-            var query = dbContext.Set<Message>().Where(message => message.GroupId == groupId);
+            var query = dbContext.Set<Message>().Where(message => message.GroupId == groupId && !message.IsDeleted);
 
             return GetMessageHistoryPageAsync(query, page, pageSize, cancellationToken);
         }

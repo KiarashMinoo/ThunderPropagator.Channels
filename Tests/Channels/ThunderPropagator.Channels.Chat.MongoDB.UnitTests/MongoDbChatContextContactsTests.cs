@@ -117,18 +117,34 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
             Assert.Contains(or, clause => clause.AsBsonDocument.Contains("SenderId") && clause["SenderId"].AsGuid == userId);
         }
 
+        // Issue #119: the direct-conversation filter also excludes soft-deleted messages entirely,
+        // rather than returning them redacted.
         [Fact]
-        public void GroupMessageHistoryFilter_MatchesOnGroupId()
+        public void DirectMessageHistoryFilter_ExcludesDeletedMessages()
+        {
+            var filter = MongoDbChatContext.GetDirectMessageHistoryFilter(Guid.NewGuid(), Guid.NewGuid());
+            var rendered = filter.Render(new RenderArgs<Message>(
+                BsonSerializer.LookupSerializer<Message>(),
+                BsonSerializer.SerializerRegistry));
+
+            Assert.True(rendered.Contains("IsDeleted"), $"Expected an 'IsDeleted' field in {rendered}, got none.");
+            Assert.False(rendered["IsDeleted"].AsBoolean);
+        }
+
+        [Fact]
+        public void GroupMessageHistoryFilter_MatchesOnGroupId_AndExcludesDeletedMessages()
         {
             var groupId = Guid.NewGuid();
-            FilterDefinition<Message> filter = Builders<Message>.Filter.Eq(message => message.GroupId, groupId);
 
+            var filter = MongoDbChatContext.GetGroupMessageHistoryFilter(groupId);
             var rendered = filter.Render(new RenderArgs<Message>(
                 BsonSerializer.LookupSerializer<Message>(),
                 BsonSerializer.SerializerRegistry));
 
             Assert.True(rendered.Contains("GroupId"), $"Expected a 'GroupId' field in {rendered}, got none.");
             Assert.Equal(groupId, rendered["GroupId"].AsGuid);
+            Assert.True(rendered.Contains("IsDeleted"), $"Expected an 'IsDeleted' field in {rendered}, got none.");
+            Assert.False(rendered["IsDeleted"].AsBoolean);
         }
     }
 }

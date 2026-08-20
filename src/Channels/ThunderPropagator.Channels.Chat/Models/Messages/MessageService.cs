@@ -65,6 +65,32 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             return await chatContext.GetGroupMessageHistoryAsync(groupId, page, pageSize, cancellationToken);
         }
 
+        // Issue #119: unknown ids and the wrong sender each map to their own exception (404 vs 403)
+        // so the pipeline can turn them into distinct, safe responses rather than one ambiguous
+        // failure. An already-deleted message short-circuits before the write, so a repeated delete
+        // request by the rightful sender is idempotent: no error, no redundant persistence, the same
+        // successful result as the first call. Under a genuine race — two concurrent calls both
+        // reading the not-yet-deleted row before either write commits — both would still pass this
+        // check and both call UpdateAsync/emit a notification; that's an accepted trade-off given
+        // this domain has no concurrency-token infrastructure anywhere else (see #116), and a
+        // redundant delete notification is harmless for a client that already treats deletion as
+        // idempotent.
+        public async Task<Message> DeleteMessageAsync(Guid currentUserId, Guid messageId, CancellationToken cancellationToken = default)
+        {
+            var message = await chatContext.GetAsync<Message, Guid>(messageId, cancellationToken) ?? throw new MessageNotFoundException();
+
+            if (message.SenderId != currentUserId)
+                throw new MessageDeleteForbiddenException();
+
+            if (!message.IsDeleted)
+            {
+                message.MarkDeleted();
+                await chatContext.UpdateAsync(message, cancellationToken);
+            }
+
+            return message;
+        }
+
         private static void ValidatePaging(int page, int pageSize)
         {
             if (page < 1)
