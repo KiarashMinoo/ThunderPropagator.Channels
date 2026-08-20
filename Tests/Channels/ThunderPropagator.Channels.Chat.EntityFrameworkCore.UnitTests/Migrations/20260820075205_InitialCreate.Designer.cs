@@ -11,7 +11,7 @@ using ThunderPropagator.Channels.Chat.EntityFrameworkCore;
 namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260819132608_InitialCreate")]
+    [Migration("20260820075205_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -68,8 +68,8 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.UnitTests.Migratio
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("Created")
-                        .HasColumnType("TEXT");
+                    b.Property<long>("Created")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("TEXT");

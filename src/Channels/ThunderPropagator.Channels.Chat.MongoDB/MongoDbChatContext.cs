@@ -217,6 +217,43 @@ namespace ThunderPropagator.Channels.Chat.MongoDB
                 .ToListAsync(cancellationToken);
         }
 
+        // Issue #117: extracted so the direct-conversation match filter — excluding group-fanned-out
+        // rows, matching either sender/receiver direction — can be unit-tested by rendering it,
+        // mirroring GetContactsAsync's ContactMessagesFilter above.
+        internal static FilterDefinition<Message> GetDirectMessageHistoryFilter(Guid userId, Guid otherUserId)
+            => Builders<Message>.Filter.And(
+                Builders<Message>.Filter.Eq(message => message.GroupId, null),
+                Builders<Message>.Filter.Or(
+                    Builders<Message>.Filter.And(
+                        Builders<Message>.Filter.Eq(message => message.SenderId, userId),
+                        Builders<Message>.Filter.Eq(message => message.ReceiverId, otherUserId)),
+                    Builders<Message>.Filter.And(
+                        Builders<Message>.Filter.Eq(message => message.SenderId, otherUserId),
+                        Builders<Message>.Filter.Eq(message => message.ReceiverId, userId))));
+
+        public override Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+            => GetMessageHistoryPageAsync(GetDirectMessageHistoryFilter(userId, otherUserId), page, pageSize, cancellationToken);
+
+        public override Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
+            => GetMessageHistoryPageAsync(Builders<Message>.Filter.Eq(message => message.GroupId, groupId), page, pageSize, cancellationToken);
+
+        private async Task<MessageHistoryPage> GetMessageHistoryPageAsync(FilterDefinition<Message> filter, int page, int pageSize, CancellationToken cancellationToken)
+        {
+            var collection = GetCollection<Message>();
+            var totalCount = (int)await collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+
+            var messages = await collection.Find(filter)
+                .SortByDescending(message => message.Created)
+                .ThenByDescending(message => message.Id)
+                .Skip((page - 1) * pageSize)
+                .Limit(pageSize)
+                .ToListAsync(cancellationToken);
+
+            await PopulateNavigationsAsync(messages, cancellationToken);
+
+            return new MessageHistoryPage { Messages = messages, TotalCount = totalCount, Page = page, PageSize = pageSize };
+        }
+
         private async Task InsertInitialGroupUsersAsync(Group group, CancellationToken cancellationToken)
         {
             if (group.GroupUsers.Count == 0)

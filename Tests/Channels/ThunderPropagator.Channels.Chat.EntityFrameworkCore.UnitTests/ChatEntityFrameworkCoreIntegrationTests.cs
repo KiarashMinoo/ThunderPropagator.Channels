@@ -222,6 +222,116 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 
             Assert.DoesNotContain(typeof(Group), spy.UpdatedTypes);
         }
+
+        // Issue #117: contract coverage for MessageService.GetDirectMessageHistoryAsync/
+        // GetGroupMessageHistoryAsync against a real SQLite database — boundaries, ordering, total
+        // count, empty pages, and authorization, mirroring the AC's coverage list and this file's own
+        // GetContacts_* coverage for #115.
+        [Fact]
+        public async Task GetDirectMessageHistory_ReturnsPagesNewestFirstWithoutDuplicatesOrGaps()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var alice = await users.RegisterAsync($"history-alice-{Guid.NewGuid():N}", "password", "Alice", CancellationToken.None);
+            var bob = await users.RegisterAsync($"history-bob-{Guid.NewGuid():N}", "password", "Bob", CancellationToken.None);
+            for (var i = 0; i < 5; i++)
+                await messages.SendMessageAsync(alice.Id, bob.Id, $"message {i}", CancellationToken.None);
+
+            var firstPage = await messages.GetDirectMessageHistoryAsync(alice.Id, bob.Id, page: 1, pageSize: 2, CancellationToken.None);
+            var secondPage = await messages.GetDirectMessageHistoryAsync(alice.Id, bob.Id, page: 2, pageSize: 2, CancellationToken.None);
+            var thirdPage = await messages.GetDirectMessageHistoryAsync(alice.Id, bob.Id, page: 3, pageSize: 2, CancellationToken.None);
+
+            Assert.Equal(5, firstPage.TotalCount);
+            Assert.Equal(2, firstPage.Messages.Count);
+            Assert.Equal(2, secondPage.Messages.Count);
+            Assert.Single(thirdPage.Messages);
+            var allMessages = firstPage.Messages.Concat(secondPage.Messages).Concat(thirdPage.Messages).ToList();
+            Assert.Equal(5, allMessages.Select(m => m.Id).Distinct().Count());
+            Assert.Equal(["message 4", "message 3", "message 2", "message 1", "message 0"], allMessages.Select(m => m.Body));
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistory_PageBeyondRange_ReturnsEmptyWithCorrectTotalCount()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var alice = await users.RegisterAsync($"beyond-alice-{Guid.NewGuid():N}", "password", "Alice", CancellationToken.None);
+            var bob = await users.RegisterAsync($"beyond-bob-{Guid.NewGuid():N}", "password", "Bob", CancellationToken.None);
+            await messages.SendMessageAsync(alice.Id, bob.Id, "only message", CancellationToken.None);
+
+            var page = await messages.GetDirectMessageHistoryAsync(alice.Id, bob.Id, page: 2, pageSize: 10, CancellationToken.None);
+
+            Assert.Empty(page.Messages);
+            Assert.Equal(1, page.TotalCount);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistory_ExcludesGroupFannedOutMessagesBetweenTheSamePair()
+        {
+            var (users, groups, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"exclude-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var member = await users.RegisterAsync($"exclude-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
+            var group = await groups.CreateAsync("Exclude Group", CancellationToken.None, member.Id);
+            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "group message", CancellationToken.None);
+            await messages.SendMessageAsync(sender.Id, member.Id, "direct message", CancellationToken.None);
+
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, member.Id, page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Single(page.Messages);
+            Assert.Equal("direct message", page.Messages.Single().Body);
+        }
+
+        [Theory]
+        [InlineData(0, 10)]
+        [InlineData(1, 0)]
+        [InlineData(1, MessageService.MaxPageSize + 1)]
+        public async Task GetDirectMessageHistory_WithOutOfBoundsPaging_Throws(int page, int pageSize)
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var alice = await users.RegisterAsync($"bounds-alice-{Guid.NewGuid():N}", "password", "Alice", CancellationToken.None);
+            var bob = await users.RegisterAsync($"bounds-bob-{Guid.NewGuid():N}", "password", "Bob", CancellationToken.None);
+
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+                () => messages.GetDirectMessageHistoryAsync(alice.Id, bob.Id, page, pageSize, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistory_ByAMember_ReturnsPagesNewestFirst()
+        {
+            var (users, groups, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"group-history-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var member = await users.RegisterAsync($"group-history-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
+            var group = await groups.CreateAsync("History Group", CancellationToken.None, member.Id);
+            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "first", CancellationToken.None);
+            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "second", CancellationToken.None);
+
+            var page = await messages.GetGroupMessageHistoryAsync(member.Id, group.Id, page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Equal(2, page.TotalCount);
+            Assert.Equal(2, page.Messages.Count);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistory_ByANonMember_Throws()
+        {
+            var (users, groups, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"nonmember-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var member = await users.RegisterAsync($"nonmember-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
+            var outsider = await users.RegisterAsync($"nonmember-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
+            var group = await groups.CreateAsync("Members Only Group", CancellationToken.None, member.Id);
+            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "secret", CancellationToken.None);
+
+            await Assert.ThrowsAsync<GroupAccessDeniedException>(
+                () => messages.GetGroupMessageHistoryAsync(outsider.Id, group.Id, page: 1, pageSize: 10, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistory_ForAMissingGroup_ThrowsGroupNotFound()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var user = await users.RegisterAsync($"missing-group-user-{Guid.NewGuid():N}", "password", "User", CancellationToken.None);
+
+            await Assert.ThrowsAsync<GroupNotFoundException>(
+                () => messages.GetGroupMessageHistoryAsync(user.Id, Guid.NewGuid(), page: 1, pageSize: 10, CancellationToken.None));
+        }
     }
 
     // Issue #116: forwards every IChatContext call to the wrapped context while recording which
@@ -259,5 +369,11 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 
         public Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
             => inner.GetContactsAsync(userId, cancellationToken);
+
+        public Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+            => inner.GetDirectMessageHistoryAsync(userId, otherUserId, page, pageSize, cancellationToken);
+
+        public Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
+            => inner.GetGroupMessageHistoryAsync(groupId, page, pageSize, cancellationToken);
     }
 }

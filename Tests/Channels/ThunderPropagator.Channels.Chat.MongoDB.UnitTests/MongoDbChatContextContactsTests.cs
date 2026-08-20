@@ -93,5 +93,42 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
             Assert.Contains(sentTo, result);
             Assert.Contains(receivedFrom, result);
         }
+
+        // Issue #117: mirrors the pattern above for GetDirectMessageHistoryAsync's match filter —
+        // extracted as the internal static GetDirectMessageHistoryFilter so the $and/$or shape and the
+        // GroupId exclusion (excluding group-fanned-out rows from a direct conversation) can be
+        // verified by rendering, with no live server needed.
+        [Fact]
+        public void DirectMessageHistoryFilter_ExcludesGroupMessages_AndMatchesEitherDirection()
+        {
+            var userId = Guid.NewGuid();
+            var otherUserId = Guid.NewGuid();
+
+            var filter = MongoDbChatContext.GetDirectMessageHistoryFilter(userId, otherUserId);
+            var rendered = filter.Render(new RenderArgs<Message>(
+                BsonSerializer.LookupSerializer<Message>(),
+                BsonSerializer.SerializerRegistry));
+
+            // The driver flattens Filter.And(Eq(...), Filter.Or(...)) into one document — an implicit
+            // AND of a top-level field and a sibling $or key — rather than an explicit $and array.
+            Assert.True(rendered.Contains("GroupId") && rendered["GroupId"].IsBsonNull, $"Expected GroupId: null in {rendered}.");
+            var or = rendered["$or"].AsBsonArray;
+            Assert.Equal(2, or.Count);
+            Assert.Contains(or, clause => clause.AsBsonDocument.Contains("SenderId") && clause["SenderId"].AsGuid == userId);
+        }
+
+        [Fact]
+        public void GroupMessageHistoryFilter_MatchesOnGroupId()
+        {
+            var groupId = Guid.NewGuid();
+            FilterDefinition<Message> filter = Builders<Message>.Filter.Eq(message => message.GroupId, groupId);
+
+            var rendered = filter.Render(new RenderArgs<Message>(
+                BsonSerializer.LookupSerializer<Message>(),
+                BsonSerializer.SerializerRegistry));
+
+            Assert.True(rendered.Contains("GroupId"), $"Expected a 'GroupId' field in {rendered}, got none.");
+            Assert.Equal(groupId, rendered["GroupId"].AsGuid);
+        }
     }
 }

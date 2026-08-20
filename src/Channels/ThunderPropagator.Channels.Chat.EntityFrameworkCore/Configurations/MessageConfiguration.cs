@@ -19,7 +19,16 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
             builder.Property(message => message.Body)
                 .IsRequired();
 
+            // Issue #117: stored as UTC ticks rather than the default formatted-text representation
+            // so GetDirectMessageHistoryAsync/GetGroupMessageHistoryAsync can order by it server-side
+            // on every relational provider — SQLite's EF Core provider outright refuses to translate
+            // an ORDER BY over a DateTimeOffset column, a limitation SQL Server/PostgreSQL don't have,
+            // but ticks sort correctly everywhere and this repo's own SQLite-backed integration tests
+            // need it too. Lossless: every Message.Created is already DateTimeOffset.UtcNow (see
+            // Message's constructor), so round-tripping through UTC ticks with a zero offset changes
+            // nothing observable.
             builder.Property(message => message.Created)
+                .HasConversion(created => created.UtcTicks, ticks => new DateTimeOffset(ticks, TimeSpan.Zero))
                 .IsRequired();
 
             // Sender and Receiver both reference Users. SQL Server rejects Cascade on both (a
