@@ -101,5 +101,26 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             Assert.Equal(groupId, feederMessage.GroupId);
             Assert.Equal(deletedByUserId, feederMessage.SenderUserId);
         }
+
+        // Issue #125: ChatChannelMarkMessageReadReceiverPipeline emits one of these per read message
+        // through the Message-based constructor, isRead: true — unlike isDeleted/isEdited, this
+        // addresses the event to the message's SENDER rather than its receiver (see the constructor's
+        // own comment), since it's the sender who wants to know their message was read.
+        [Fact]
+        public void Constructor_WithIsReadTrue_ProducesAReadReceiptEventAddressedToTheSender()
+        {
+            var senderId = Guid.NewGuid();
+            var receiverId = Guid.NewGuid();
+            var message = Message.Create(senderId, receiverId, "hello");
+
+            var feederMessage = new ChatChannelFeederMessage(message, isRead: true);
+
+            Assert.True(feederMessage.IsRead);
+            Assert.False(feederMessage.IsDeleted);
+            Assert.False(feederMessage.IsEdited);
+            Assert.Equal(senderId.ToString(), feederMessage.UserId);
+            Assert.Equal(receiverId, feederMessage.SenderUserId);
+            Assert.Equal(message.Id, feederMessage.MessageId);
+        }
     }
 }

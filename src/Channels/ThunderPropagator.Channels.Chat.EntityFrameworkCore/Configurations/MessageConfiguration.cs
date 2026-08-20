@@ -50,6 +50,15 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
                     editedAt => editedAt.HasValue ? editedAt.Value.UtcTicks : (long?)null,
                     ticks => ticks.HasValue ? new DateTimeOffset(ticks.Value, TimeSpan.Zero) : null);
 
+            // Issue #125: read-receipt state, same shape as the soft-delete/edit pairs above.
+            builder.Property(message => message.IsRead)
+                .IsRequired();
+
+            builder.Property(message => message.ReadAt)
+                .HasConversion(
+                    readAt => readAt.HasValue ? readAt.Value.UtcTicks : (long?)null,
+                    ticks => ticks.HasValue ? new DateTimeOffset(ticks.Value, TimeSpan.Zero) : null);
+
             // Sender and Receiver both reference Users. SQL Server rejects Cascade on both (a
             // deleted user would reach the Messages table via two different paths), and there's
             // no existing delete-user operation that would need the cascade anyway, so both are

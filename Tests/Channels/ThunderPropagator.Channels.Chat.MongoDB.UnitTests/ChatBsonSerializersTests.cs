@@ -158,5 +158,32 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
             Assert.Equal(message.EditedAt, deserialized.EditedAt);
             Assert.Equal("revised", deserialized.Body);
         }
+
+        [Fact]
+        public void Message_RoundTripsThroughBson_BeforeBeingRead()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.False(deserialized.IsRead);
+            Assert.Null(deserialized.ReadAt);
+        }
+
+        // Issue #125: read-receipt state round-trips too — IsRead/ReadAt must survive serialization
+        // the same way every other field does.
+        [Fact]
+        public void Message_RoundTripsThroughBson_AfterBeingRead()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+            message.MarkRead();
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.True(deserialized.IsRead);
+            Assert.Equal(message.ReadAt, deserialized.ReadAt);
+        }
     }
 }
