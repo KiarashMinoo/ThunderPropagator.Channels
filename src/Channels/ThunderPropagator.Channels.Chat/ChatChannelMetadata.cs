@@ -30,7 +30,10 @@ namespace ThunderPropagator.Channels.Chat
             new BooleanChannelProgramsDescriptor(8, nameof(ChatChannelFeederMessage.IsOffline), "Whether this event is a presence notification rather than a message"),
             // Issue #124: a group-deletion event has no backing message either — GroupId identifies
             // which group was deleted, SenderUserId who deleted it.
-            new BooleanChannelProgramsDescriptor(9, nameof(ChatChannelFeederMessage.IsGroupDeleted), "Whether this event is a group deletion notification rather than a message")
+            new BooleanChannelProgramsDescriptor(9, nameof(ChatChannelFeederMessage.IsGroupDeleted), "Whether this event is a group deletion notification rather than a message"),
+            // Issue #125: a read-receipt event reuses the Send/Delete/Edit shape, but UserId/
+            // SenderUserId are swapped — see ChatChannelFeederMessage's own constructor comment.
+            new BooleanChannelProgramsDescriptor(10, nameof(ChatChannelFeederMessage.IsRead), "Whether this event is a read receipt rather than a new message")
         };
     }
 }

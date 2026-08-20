@@ -20,16 +20,22 @@ namespace ThunderPropagator.Channels.Chat
         // cases) by which message it refers to. Issue #120: isEdited does the same for
         // ChatChannelEditMessageReceiverPipeline — Message already carries the revised Body, so
         // recipients just need to know this event is a revision rather than a brand-new message.
-        internal ChatChannelFeederMessage(Message message, bool isDeleted = false, bool isEdited = false)
+        // Issue #125: isRead does the same for read receipts, but — unlike a deletion or edit, which
+        // the original recipient needs to know about — a read receipt is addressed to the message's
+        // original sender, since they're the one who wants to know their message was read. UserId/
+        // SenderUserId are swapped accordingly only when isRead is set; every other field, and every
+        // existing Send/Delete/Edit call site (none of which pass isRead), is unaffected.
+        internal ChatChannelFeederMessage(Message message, bool isDeleted = false, bool isEdited = false, bool isRead = false)
         {
             MessageId = message.Id;
-            UserId = message.ReceiverId.ToString();
-            SenderUserId = message.SenderId;
+            UserId = (isRead ? message.SenderId : message.ReceiverId).ToString();
+            SenderUserId = isRead ? message.ReceiverId : message.SenderId;
             GroupId = message.GroupId ?? Guid.Empty;
             Message = message.Body;
             DateTime = message.Created;
             IsDeleted = isDeleted;
             IsEdited = isEdited;
+            IsRead = isRead;
         }
 
         // Issue #121: a presence event has no backing Message at all, so it gets its own
@@ -112,6 +118,12 @@ namespace ThunderPropagator.Channels.Chat
         }
 
         public bool IsGroupDeleted
+        {
+            get => GetValueOrDefault(false);
+            private set => SetValue(value);
+        }
+
+        public bool IsRead
         {
             get => GetValueOrDefault(false);
             private set => SetValue(value);

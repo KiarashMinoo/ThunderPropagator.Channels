@@ -139,6 +139,40 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             return message;
         }
 
+        // Issue #125: every id is resolved independently and never throws for an individual failure
+        // — an unknown id, a deleted message, and a message the caller isn't the recipient of are all
+        // folded into the same FailedMessageIds bucket without a distinguishing reason, so a caller
+        // can't use this to probe which ids exist versus who they belong to (the same "documented
+        // response contract" #109 already established). Already-read messages short-circuit before
+        // the write, so repeated (and concurrent) requests are idempotent and read state can never
+        // regress back to unread — the same accepted concurrency trade-off as
+        // DeleteMessageAsync/EditMessageAsync above (see #116).
+        public async Task<MarkMessagesReadResult> MarkMessagesReadAsync(Guid currentUserId, IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken = default)
+        {
+            List<Message> markedRead = [];
+            List<Guid> failedMessageIds = [];
+
+            foreach (var messageId in messageIds)
+            {
+                var message = await chatContext.GetAsync<Message, Guid>(messageId, cancellationToken);
+                if (message is null || message.IsDeleted || message.ReceiverId != currentUserId)
+                {
+                    failedMessageIds.Add(messageId);
+                    continue;
+                }
+
+                if (!message.IsRead)
+                {
+                    message.MarkRead();
+                    await chatContext.UpdateAsync(message, cancellationToken);
+                }
+
+                markedRead.Add(message);
+            }
+
+            return new MarkMessagesReadResult { MarkedRead = markedRead, FailedMessageIds = failedMessageIds };
+        }
+
         private static void ValidatePaging(int page, int pageSize)
         {
             if (page < 1)

@@ -667,6 +667,124 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             Assert.True(stored.Body is "revision A" or "revision B", $"Expected either revision, got '{stored.Body}'.");
         }
 
+        // Issue #125: contract coverage for MessageService.MarkMessagesReadAsync against a real
+        // SQLite database — recipient success, non-recipient/missing/deleted failures folded into the
+        // same partial-failure bucket, batch requests with a mix of valid and invalid ids, idempotent
+        // repeats, and concurrent calls, mirroring the InMemory project's own coverage.
+        [Fact]
+        public async Task MarkMessagesRead_ByTheRecipient_MarksItReadAndReturnsItAsSucceeded()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"mark-read-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"mark-read-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+
+            var result = await messages.MarkMessagesReadAsync(receiver.Id, [sent.Id], CancellationToken.None);
+
+            var marked = Assert.Single(result.MarkedRead);
+            Assert.Equal(sent.Id, marked.Id);
+            Assert.True(marked.IsRead);
+            Assert.NotNull(marked.ReadAt);
+            Assert.Empty(result.FailedMessageIds);
+        }
+
+        [Fact]
+        public async Task MarkMessagesRead_ByANonRecipient_FailsWithoutThrowingAndLeavesTheMessageUnread()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"mark-read-forbidden-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"mark-read-forbidden-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var outsider = await users.RegisterAsync($"mark-read-forbidden-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+
+            var result = await messages.MarkMessagesReadAsync(outsider.Id, [sent.Id], CancellationToken.None);
+
+            Assert.Empty(result.MarkedRead);
+            Assert.Equal([sent.Id], result.FailedMessageIds);
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.False(page.Messages.Single().IsRead);
+        }
+
+        [Fact]
+        public async Task MarkMessagesRead_ForAMissingMessageId_FailsWithoutThrowing()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var user = await users.RegisterAsync($"mark-read-missing-user-{Guid.NewGuid():N}", "password", "User", CancellationToken.None);
+
+            var result = await messages.MarkMessagesReadAsync(user.Id, [Guid.NewGuid()], CancellationToken.None);
+
+            Assert.Empty(result.MarkedRead);
+            Assert.Single(result.FailedMessageIds);
+        }
+
+        [Fact]
+        public async Task MarkMessagesRead_ForAnAlreadyDeletedMessage_FailsWithoutThrowing()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"mark-read-deleted-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"mark-read-deleted-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+            await messages.DeleteMessageAsync(sender.Id, sent.Id, CancellationToken.None);
+
+            var result = await messages.MarkMessagesReadAsync(receiver.Id, [sent.Id], CancellationToken.None);
+
+            Assert.Empty(result.MarkedRead);
+            Assert.Equal([sent.Id], result.FailedMessageIds);
+        }
+
+        [Fact]
+        public async Task MarkMessagesRead_WithAMixOfValidAndInvalidIds_ReturnsBothBucketsCorrectly()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"mark-read-batch-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"mark-read-batch-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var outsider = await users.RegisterAsync($"mark-read-batch-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
+            var ownMessage = await messages.SendMessageAsync(sender.Id, receiver.Id, "for receiver", CancellationToken.None);
+            var othersMessage = await messages.SendMessageAsync(sender.Id, outsider.Id, "for outsider", CancellationToken.None);
+            var missingId = Guid.NewGuid();
+
+            var result = await messages.MarkMessagesReadAsync(receiver.Id, [ownMessage.Id, othersMessage.Id, missingId], CancellationToken.None);
+
+            Assert.Equal([ownMessage.Id], result.MarkedRead.Select(m => m.Id));
+            Assert.Equal(
+                new[] { othersMessage.Id, missingId }.OrderBy(id => id),
+                result.FailedMessageIds.OrderBy(id => id));
+        }
+
+        [Fact]
+        public async Task MarkMessagesRead_CalledTwiceByRecipient_IsIdempotent()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"mark-read-repeat-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"mark-read-repeat-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+            var firstResult = await messages.MarkMessagesReadAsync(receiver.Id, [sent.Id], CancellationToken.None);
+
+            var secondResult = await messages.MarkMessagesReadAsync(receiver.Id, [sent.Id], CancellationToken.None);
+
+            Assert.Equal(firstResult.MarkedRead.Single().ReadAt, secondResult.MarkedRead.Single().ReadAt);
+        }
+
+        [Fact]
+        public async Task MarkMessagesRead_CalledConcurrentlyByRecipient_DoesNotThrowAndEndsUpRead()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"mark-read-concurrent-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"mark-read-concurrent-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+
+            // Two independent MessageService instances, each against its own DbContext, mirroring
+            // DeleteMessage_CalledConcurrentlyBySender_DoesNotThrowAndEndsUpDeleted's own reasoning.
+            var otherMessages = new MessageService(new EntityFrameworkCoreChatContext(fixture.CreateDbContext()), new ChatChannelConfiguration());
+
+            await Task.WhenAll(
+                messages.MarkMessagesReadAsync(receiver.Id, [sent.Id], CancellationToken.None),
+                otherMessages.MarkMessagesReadAsync(receiver.Id, [sent.Id], CancellationToken.None));
+
+            var page = await messages.GetDirectMessageHistoryAsync(sender.Id, receiver.Id, page: 1, pageSize: 10, CancellationToken.None);
+            Assert.True(page.Messages.Single().IsRead);
+        }
+
         // Issue #123: contract coverage for UserService.SearchUsersAsync against a real SQLite
         // database — username/name matching, normalization, paging, term validation, and
         // cancellation, mirroring the AC's coverage list.

@@ -36,6 +36,13 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
         public bool IsEdited { get; private set; }
         public DateTimeOffset? EditedAt { get; private set; }
 
+        // Issue #125: read-receipt state. Idempotent by design, same reasoning as MarkDeleted below
+        // — a second call is a no-op rather than overwriting ReadAt, so read state can never regress
+        // back to unread once set, including under a genuine concurrent race (see
+        // MessageService.MarkMessagesReadAsync's own comment).
+        public bool IsRead { get; private set; }
+        public DateTimeOffset? ReadAt { get; private set; }
+
         private Message()
         {
             Id = Guid.NewGuid();
@@ -76,6 +83,18 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             Body = body;
             IsEdited = true;
             EditedAt = DateTimeOffset.UtcNow;
+            return this;
+        }
+
+        // Idempotent by design, mirroring MarkDeleted: a second call is a no-op rather than
+        // overwriting ReadAt.
+        internal Message MarkRead()
+        {
+            if (IsRead)
+                return this;
+
+            IsRead = true;
+            ReadAt = DateTimeOffset.UtcNow;
             return this;
         }
 
