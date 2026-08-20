@@ -27,6 +27,8 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             List<Message> rtn = [];
 
             var group = await chatContext.GetAsync<Group, Guid>(groupId, cancellationToken) ?? throw new GroupNotFoundException();
+            if (group.IsDeleted)
+                throw new GroupNotFoundException();
 
             foreach (var groupUser in group.GroupUsers)
             {
@@ -59,6 +61,9 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             ValidatePaging(page, pageSize);
 
             var group = await chatContext.GetAsync<Group, Guid>(groupId, cancellationToken) ?? throw new GroupNotFoundException();
+            if (group.IsDeleted)
+                throw new GroupNotFoundException();
+
             if (group.GroupUsers.All(groupUser => groupUser.UserId != currentUserId))
                 throw new GroupAccessDeniedException();
 
@@ -74,12 +79,14 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
         // check and both call UpdateAsync/emit a notification; that's an accepted trade-off given
         // this domain has no concurrency-token infrastructure anywhere else (see #116), and a
         // redundant delete notification is harmless for a client that already treats deletion as
-        // idempotent.
+        // idempotent. Issue #124: a group's admin (its creator) may also delete any message sent to
+        // that group, not just their own — moderation within their own group only; a direct message
+        // still only its sender can ever delete.
         public async Task<Message> DeleteMessageAsync(Guid currentUserId, Guid messageId, CancellationToken cancellationToken = default)
         {
             var message = await chatContext.GetAsync<Message, Guid>(messageId, cancellationToken) ?? throw new MessageNotFoundException();
 
-            if (message.SenderId != currentUserId)
+            if (message.SenderId != currentUserId && !await IsGroupAdminAsync(message.GroupId, currentUserId, cancellationToken))
                 throw new MessageDeleteForbiddenException();
 
             if (!message.IsDeleted)
@@ -89,6 +96,15 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             }
 
             return message;
+        }
+
+        private async Task<bool> IsGroupAdminAsync(Guid? groupId, Guid currentUserId, CancellationToken cancellationToken)
+        {
+            if (groupId is null)
+                return false;
+
+            var group = await chatContext.GetAsync<Group, Guid>(groupId.Value, cancellationToken);
+            return group is not null && group.CreatedByUserId == currentUserId;
         }
 
         // Issue #120: a soft-deleted message is treated as not found rather than editable-but-blank

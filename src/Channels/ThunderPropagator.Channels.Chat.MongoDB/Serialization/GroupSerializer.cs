@@ -11,6 +11,9 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
         private static readonly FieldInfo IdField = GetBackingField(nameof(Group.Id));
         private static readonly FieldInfo NameField = GetBackingField(nameof(Group.Name));
         private static readonly FieldInfo GroupIconField = GetBackingField(nameof(Group.GroupIcon));
+        private static readonly FieldInfo CreatedByUserIdField = GetBackingField(nameof(Group.CreatedByUserId));
+        private static readonly FieldInfo IsDeletedField = GetBackingField(nameof(Group.IsDeleted));
+        private static readonly FieldInfo DeletedAtField = GetBackingField(nameof(Group.DeletedAt));
 
         // GroupUsers is intentionally not serialized here — GroupUser lives in its own collection
         // (see MongoDbChatContext), not embedded, so a real, globally-correct unique index on
@@ -28,6 +31,9 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                     case "_id": IdField.SetValue(group, ReadGuid(reader)); break;
                     case "Name": NameField.SetValue(group, ReadString(reader)); break;
                     case "GroupIcon": GroupIconField.SetValue(group, ReadNullableString(reader)); break;
+                    case "CreatedByUserId": CreatedByUserIdField.SetValue(group, ReadGuid(reader)); break;
+                    case "IsDeleted": IsDeletedField.SetValue(group, ReadBool(reader)); break;
+                    case "DeletedAt": DeletedAtField.SetValue(group, ReadNullableDateTimeOffset(reader)); break;
                     default: reader.SkipValue(); break;
                 }
             }
@@ -43,6 +49,9 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
             WriteGuid(writer, "_id", value.Id);
             WriteString(writer, "Name", value.Name);
             WriteNullableString(writer, "GroupIcon", value.GroupIcon);
+            WriteGuid(writer, "CreatedByUserId", value.CreatedByUserId);
+            WriteBool(writer, "IsDeleted", value.IsDeleted);
+            WriteNullableDateTimeOffset(writer, "DeletedAt", value.DeletedAt);
             writer.WriteEndDocument();
         }
 
@@ -53,6 +62,8 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                 nameof(Group.Id) => GuidMemberInfo("_id"),
                 nameof(Group.Name) => StringMemberInfo("Name"),
                 nameof(Group.GroupIcon) => StringMemberInfo("GroupIcon"),
+                nameof(Group.CreatedByUserId) => GuidMemberInfo("CreatedByUserId"),
+                nameof(Group.IsDeleted) => BoolMemberInfo("IsDeleted"),
                 _ => null!
             };
 

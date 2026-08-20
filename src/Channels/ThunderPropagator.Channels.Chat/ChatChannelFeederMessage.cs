@@ -45,6 +45,18 @@ namespace ThunderPropagator.Channels.Chat
             IsOffline = true;
         }
 
+        // Issue #124: a group-deletion event has no backing Message either — recipientUserId is
+        // each former member being notified, groupId is which group was deleted (the existing
+        // GroupId field), and deletedByUserId (carried in SenderUserId, the same role it plays
+        // above) is who deleted it — this domain's only admin concept, the group's creator.
+        internal ChatChannelFeederMessage(Guid recipientUserId, Guid groupId, Guid deletedByUserId)
+        {
+            UserId = recipientUserId.ToString();
+            SenderUserId = deletedByUserId;
+            GroupId = groupId;
+            IsGroupDeleted = true;
+        }
+
         public Guid MessageId
         {
             get => GetValueOrDefault(Guid.Empty);
@@ -94,6 +106,12 @@ namespace ThunderPropagator.Channels.Chat
         }
 
         public bool IsOffline
+        {
+            get => GetValueOrDefault(false);
+            private set => SetValue(value);
+        }
+
+        public bool IsGroupDeleted
         {
             get => GetValueOrDefault(false);
             private set => SetValue(value);

@@ -7,6 +7,7 @@ using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.AddUser;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.Create;
+using ThunderPropagator.Channels.Chat.Pipelines.Groups.Delete;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.GetAll;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.Join;
 using ThunderPropagator.Channels.Chat.Pipelines.Groups.RemoveUser;
@@ -46,6 +47,7 @@ namespace ThunderPropagator.Channels.Chat
                 //Groups
                 .AddReceivePipeline<ChatChannel, ChatChannelAddUserToGroupReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelCreateGroupReceiverPipeline>()
+                .AddReceivePipeline<ChatChannel, ChatChannelDeleteGroupReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelGetGroupsReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelJoinUserToGroupReceiverPipeline>()
                 .AddReceivePipeline<ChatChannel, ChatChannelRemoveUserToGroupReceiverPipeline>()

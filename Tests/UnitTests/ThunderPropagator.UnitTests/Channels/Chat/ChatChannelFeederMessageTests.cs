@@ -81,5 +81,25 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             Assert.Equal(recipientId.ToString(), feederMessage.UserId);
             Assert.Equal(offlineUserId, feederMessage.SenderUserId);
         }
+
+        // Issue #124: ChatChannelDeleteGroupReceiverPipeline emits one of these per former group
+        // member through this same shape — no backing Message exists for it either, like presence.
+        [Fact]
+        public void GroupDeletionConstructor_ProducesAGroupDeletedEvent()
+        {
+            var recipientId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+            var deletedByUserId = Guid.NewGuid();
+
+            var feederMessage = new ChatChannelFeederMessage(recipientId, groupId, deletedByUserId);
+
+            Assert.True(feederMessage.IsGroupDeleted);
+            Assert.False(feederMessage.IsDeleted);
+            Assert.False(feederMessage.IsEdited);
+            Assert.False(feederMessage.IsOffline);
+            Assert.Equal(recipientId.ToString(), feederMessage.UserId);
+            Assert.Equal(groupId, feederMessage.GroupId);
+            Assert.Equal(deletedByUserId, feederMessage.SenderUserId);
+        }
     }
 }
