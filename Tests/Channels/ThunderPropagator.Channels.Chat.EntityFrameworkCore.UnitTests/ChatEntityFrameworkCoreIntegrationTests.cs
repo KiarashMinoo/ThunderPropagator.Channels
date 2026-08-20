@@ -1,7 +1,9 @@
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Channels.Chat.EntityFrameworkCore;
+using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
@@ -200,5 +202,62 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 
             Assert.NotNull(chatContext);
         }
+
+        // Issue #116: SendMessageToGroupAsync used to call UpdateAsync(group) after fanning the
+        // message out to every member, even though nothing about the group itself had changed — an
+        // unnecessary write that could trip concurrency checks or change-tracking side effects. The
+        // spy wraps the real context rather than asserting on ChangeTracker/database internals, so it
+        // would catch any future write to Group, not just this specific regression.
+        [Fact]
+        public async Task SendMessageToGroup_PerformsNoGroupUpdate()
+        {
+            var (users, groups, _, dbContext) = CreateServices(fixture);
+            var spy = new UpdateCountingChatContext(new EntityFrameworkCoreChatContext(dbContext));
+            var messages = new MessageService(spy);
+            var sender = await users.RegisterAsync($"group-update-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var member = await users.RegisterAsync($"group-update-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
+            var group = await groups.CreateAsync("Update Spy Group", CancellationToken.None, member.Id);
+
+            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "hello group", CancellationToken.None);
+
+            Assert.DoesNotContain(typeof(Group), spy.UpdatedTypes);
+        }
+    }
+
+    // Issue #116: forwards every IChatContext call to the wrapped context while recording which
+    // entity types UpdateAsync was called with, so a test can assert an operation performed no write
+    // to a given entity type without depending on any one provider's internal storage.
+    internal sealed class UpdateCountingChatContext(IChatContext inner) : IChatContext
+    {
+        private readonly List<Type> _updatedTypes = [];
+
+        public IReadOnlyList<Type> UpdatedTypes => _updatedTypes;
+
+        public Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
+            => inner.GetAsync(expression, cancellationToken);
+
+        public Task<TEntity?> GetAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
+            => inner.GetAsync<TEntity, TPk>(id, cancellationToken);
+
+        public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
+            => inner.GetAllAsync(expression, cancellationToken);
+
+        public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellationToken = default) where TEntity : class
+            => inner.GetAllAsync<TEntity>(cancellationToken);
+
+        public Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
+            => inner.CreateAsync(entity, cancellationToken);
+
+        public Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
+        {
+            _updatedTypes.Add(typeof(TEntity));
+            return inner.UpdateAsync(entity, cancellationToken);
+        }
+
+        public Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
+            => inner.DeleteAsync<TEntity, TPk>(id, cancellationToken);
+
+        public Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+            => inner.GetContactsAsync(userId, cancellationToken);
     }
 }

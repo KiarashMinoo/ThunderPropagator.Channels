@@ -28,8 +28,6 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
                 rtn.Add(message);
             }
 
-            await chatContext.UpdateAsync(group, cancellationToken);
-
             return rtn.AsReadOnly();
         }
     }
