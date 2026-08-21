@@ -1,29 +1,34 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Endpoints;
 using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
+using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Search;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
 {
     /// <summary>
-    /// Issue #127/#128: covers each MapChatEndpoints handler's OpenAPI/HTTP contract directly against
-    /// the handler delegate (the same approach minimal-API route handlers are unit tested with
-    /// generally) rather than through a hosted TestServer, since this repo has no ASP.NET Core host
-    /// project at all — MapChatEndpoints is a library extension a downstream consumer's own host
-    /// calls.
+    /// Issue #127/#128/#129: covers each MapChatEndpoints handler's OpenAPI/HTTP contract directly
+    /// against the handler delegate (the same approach minimal-API route handlers are unit tested
+    /// with generally) rather than through a hosted TestServer, since this repo has no ASP.NET Core
+    /// host project at all — MapChatEndpoints is a library extension a downstream consumer's own
+    /// host calls.
     /// </summary>
     public sealed class ChatChannelEndpointsTests
     {
         private sealed class FakeChatContext : IChatContext
         {
             private readonly List<User> _users = [];
+            private readonly List<Message> _messages = [];
 
             public void Seed(User user) => _users.Add(user);
+            public void Seed(Message message) => _messages.Add(message);
 
             public Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
@@ -50,7 +55,22 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
                 => throw new NotSupportedException();
 
             public Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
-                => throw new NotSupportedException();
+            {
+                var matches = _messages
+                    .Where(message => message.GroupId is null
+                        && ((message.SenderId == userId && message.ReceiverId == otherUserId)
+                            || (message.SenderId == otherUserId && message.ReceiverId == userId)))
+                    .OrderByDescending(message => message.Created)
+                    .ToList();
+
+                return Task.FromResult(new MessageHistoryPage
+                {
+                    Messages = matches.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+                    TotalCount = matches.Count,
+                    Page = page,
+                    PageSize = pageSize
+                });
+            }
 
             public Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
@@ -78,6 +98,20 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
         {
             var context = new FakeChatContext();
             return (new UserService(context, new PasswordHasher<User>()), context);
+        }
+
+        private static (MessageService Service, FakeChatContext Context) CreateMessageService()
+        {
+            var context = new FakeChatContext();
+            return (new MessageService(context, new ChatChannelConfiguration()), context);
+        }
+
+        private static ClaimsPrincipal CreatePrincipal(Guid? userId = null)
+        {
+            var claims = userId is null
+                ? []
+                : new[] { new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString()) };
+            return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
         }
 
         [Fact]
@@ -211,6 +245,91 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var (service, _) = CreateService();
 
             var result = await ChatChannelEndpoints.SearchUsersAsync(service, "alice", page: 1, pageSize: UserService.MaxPageSize + 1);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_ReturnsOnlyMessagesBetweenTheCallerAndTheOtherParticipant()
+        {
+            var (service, context) = CreateMessageService();
+            var caller = Guid.NewGuid();
+            var other = Guid.NewGuid();
+            var stranger = Guid.NewGuid();
+            context.Seed(Message.Create(caller, other, "hi"));
+            context.Seed(Message.Create(other, caller, "hello back"));
+            context.Seed(Message.Create(caller, stranger, "unrelated"));
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(caller), other.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>>(result.Result);
+            Assert.Equal(2, ok.Value!.TotalCount);
+            Assert.All(ok.Value.Messages, message => Assert.True(
+                (message.SenderId == caller && message.ReceiverId == other)
+                || (message.SenderId == other && message.ReceiverId == caller)));
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_ForAConversationWithNoMessages_ReturnsOkWithZeroTotalCount()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>>(result.Result);
+            Assert.Equal(0, ok.Value!.TotalCount);
+            Assert.Empty(ok.Value.Messages);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(), Guid.NewGuid().ToString());
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("not-a-guid")]
+        [InlineData("")]
+        [InlineData(null)]
+        public async Task GetDirectMessageHistoryAsync_ForAMalformedWithParameter_ReturnsValidationProblem(string? with)
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), with);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_ForTheEmptyGuidWithParameter_ReturnsValidationProblem()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.Empty.ToString());
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_ForAnOutOfRangePage_ReturnsValidationProblem()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString(), page: 0);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_ForAnOutOfRangeSize_ReturnsValidationProblem()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString(), size: MessageService.MaxPageSize + 1);
 
             Assert.IsType<ValidationProblem>(result.Result);
         }

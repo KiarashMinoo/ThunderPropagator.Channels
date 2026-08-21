@@ -1,9 +1,12 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
+using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Search;
 
@@ -37,8 +40,25 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .ProducesValidationProblem()
                 .Produces(StatusCodes.Status401Unauthorized);
 
+            chat.MapGet("/messages", GetDirectMessageHistoryAsync)
+                .WithName("Chat_GetDirectMessageHistory")
+                .WithSummary("Retrieves paginated direct-message history with another user.")
+                .Produces<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized);
+
             return endpoints;
         }
+
+        // Issue #129: the caller's own id comes from the authenticated principal, never from a
+        // client-supplied parameter — every other REST issue that needs "who am I" (#130-#137) will
+        // share this same resolution rather than each reimplementing it. RequireAuthorization() on
+        // the group already guarantees an authenticated principal; this still fails closed (as
+        // Unauthorized, the same outcome as not being authenticated at all) if that principal somehow
+        // lacks a NameIdentifier claim shaped as a non-empty GUID, since every domain call downstream
+        // requires one.
+        private static bool TryGetCurrentUserId(ClaimsPrincipal principal, out Guid currentUserId)
+            => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out currentUserId) && currentUserId != Guid.Empty;
 
         // Issue #127: userId is bound as a plain string (rather than a {userId:guid} route
         // constraint) so a malformed value reaches this handler as the documented ValidationProblem
@@ -96,6 +116,51 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 return TypedResults.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["q"] = [exception.Message]
+                });
+            }
+        }
+
+        // Issue #129: "with" identifies the other participant; MessageService.GetDirectMessageHistoryAsync
+        // (the same call the WebSocket Messages/History pipeline (#118) makes for the direct case) is
+        // always scoped to a conversation between the caller and "with" — there is no way to pass any
+        // other user's id as "mine", so every caller can only ever read their own conversations. That
+        // makes "only conversation participants can retrieve history" true by construction rather than
+        // something this handler needs to check separately, and leaves no genuine forbidden case beyond
+        // TryGetCurrentUserId's own Unauthorized rejection.
+        internal static async Task<Results<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>, ValidationProblem, UnauthorizedHttpResult>> GetDirectMessageHistoryAsync(
+            [FromServices] MessageService messageService,
+            ClaimsPrincipal principal,
+            string? with,
+            int page = 1,
+            int size = MessageService.DefaultPageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (!Guid.TryParse(with, out var otherUserId) || otherUserId == Guid.Empty)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(with)] = ["with must be a valid, non-empty GUID identifying the other participant."]
+                });
+
+            try
+            {
+                var history = await messageService.GetDirectMessageHistoryAsync(currentUserId, otherUserId, page, size, cancellationToken);
+
+                return TypedResults.Ok(new ChatChannelGetMessageHistoryReceiverPipelineResponseDto
+                {
+                    Messages = history.Messages,
+                    TotalCount = history.TotalCount,
+                    Page = history.Page,
+                    PageSize = history.PageSize
+                });
+            }
+            catch (InvalidMessageHistoryPageRequestException exception)
+            {
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["page"] = [exception.Message]
                 });
             }
         }
