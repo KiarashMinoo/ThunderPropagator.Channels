@@ -2,6 +2,10 @@ using System.Linq.Expressions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Endpoints;
 using ThunderPropagator.Channels.Chat.Models;
@@ -33,6 +37,8 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             public void Seed(Message message) => _messages.Add(message);
             public void Seed(Group group) => _groups.Add(group);
 
+            public IReadOnlyCollection<Message> Messages => _messages;
+
             public Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
 
@@ -60,7 +66,15 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
                 => throw new NotSupportedException();
 
             public Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
-                => throw new NotSupportedException();
+            {
+                if (entity is Message message)
+                {
+                    _messages.Add(message);
+                    return Task.FromResult(entity);
+                }
+
+                throw new NotSupportedException();
+            }
 
             public Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
@@ -140,6 +154,29 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
         {
             var context = new FakeChatContext();
             return (new GroupService(context), new UserService(context, new PasswordHasher<User>()), context);
+        }
+
+        // Mirrors ChatChannelAuthenticationTests.CreateChannel — constructing the real ChatChannel
+        // with a faked IServiceProvider rather than substituting ChatChannel itself, since it's
+        // sealed in Release (the configuration these tests run under) and NSubstitute can't
+        // substitute a sealed class.
+        private static ChatChannel CreateChatChannel()
+        {
+            var serviceProvider = Substitute.For<IServiceProvider>();
+            serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
+            serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
+            serviceProvider.GetService(typeof(ChatChannelConfiguration)).Returns(new ChatChannelConfiguration());
+
+            var channel = new ChatChannel(serviceProvider);
+            channel.Initialize(CancellationToken.None);
+
+            return channel;
+        }
+
+        private static (MessageService MessageService, ChatChannel Channel, FakeChatContext Context) CreateMessageServiceAndChannel()
+        {
+            var context = new FakeChatContext();
+            return (new MessageService(context, new ChatChannelConfiguration()), CreateChatChannel(), context);
         }
 
         private static ClaimsPrincipal CreatePrincipal(Guid? userId = null)
@@ -701,6 +738,133 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(member), group.Id.ToString(), pageSize: UserService.MaxPageSize + 1);
 
             Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_ForADirectTarget_PersistsAndReturnsCreated()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var receiver = Guid.NewGuid();
+            var request = new ChatChannelSendMessageRequestDto { ReceiverId = receiver, Body = "hi there" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(sender), request);
+
+            var created = Assert.IsType<Created<ChatChannelSentMessageResponseDto>>(result.Result);
+            Assert.Equal(sender, created.Value!.SenderId);
+            Assert.Equal(receiver, created.Value.ReceiverId);
+            Assert.Null(created.Value.GroupId);
+            Assert.Equal("hi there", created.Value.Body);
+            Assert.Single(created.Value.MessageIds);
+            Assert.Single(context.Messages);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_ForAGroupTarget_FansOutToEveryMemberAndReturnsCreated()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var memberA = Guid.NewGuid();
+            var memberB = Guid.NewGuid();
+            var group = Group.Create("Team", sender).AddUser(sender).AddUser(memberA).AddUser(memberB);
+            context.Seed(group);
+            var request = new ChatChannelSendMessageRequestDto { GroupId = group.Id, Body = "hi team" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(sender), request);
+
+            var created = Assert.IsType<Created<ChatChannelSentMessageResponseDto>>(result.Result);
+            Assert.Equal(group.Id, created.Value!.GroupId);
+            Assert.Null(created.Value.ReceiverId);
+            Assert.Equal(3, created.Value.MessageIds.Count);
+            Assert.Equal(3, context.Messages.Count(message => message.GroupId == group.Id));
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_SendingTheSameContentTwice_CreatesTwoSeparateMessages()
+        {
+            // The AC's idempotency policy: sending is not deduplicated — two identical requests
+            // produce two distinct messages, not one.
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var receiver = Guid.NewGuid();
+            var request = new ChatChannelSendMessageRequestDto { ReceiverId = receiver, Body = "hi there" };
+
+            var firstResult = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(sender), request);
+            var secondResult = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(sender), request);
+
+            var firstId = Assert.IsType<Created<ChatChannelSentMessageResponseDto>>(firstResult.Result).Value!.MessageIds.Single();
+            var secondId = Assert.IsType<Created<ChatChannelSentMessageResponseDto>>(secondResult.Result).Value!.MessageIds.Single();
+            Assert.NotEqual(firstId, secondId);
+            Assert.Equal(2, context.Messages.Count);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_ForAMissingGroup_ReturnsNotFound()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelSendMessageRequestDto { GroupId = Guid.NewGuid(), Body = "hi team" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelSendMessageRequestDto { ReceiverId = Guid.NewGuid(), Body = "hi there" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(), request);
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_WithBothTargetsSet_ReturnsValidationProblem()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelSendMessageRequestDto { ReceiverId = Guid.NewGuid(), GroupId = Guid.NewGuid(), Body = "hi" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_WithNeitherTargetSet_ReturnsValidationProblem()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelSendMessageRequestDto { Body = "hi" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task SendMessageAsync_WithAnEmptyBody_ReturnsValidationProblem(string body)
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelSendMessageRequestDto { ReceiverId = Guid.NewGuid(), Body = body };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public void SendMessageAsync_TheRequestDtoHasNoSenderField()
+        {
+            // The AC's "clients cannot spoof the sender" — there is no field a client could set to
+            // claim a different sender at all; SendMessageAsync only ever uses the authenticated
+            // principal's resolved id.
+            var type = typeof(ChatChannelSendMessageRequestDto);
+
+            Assert.Null(type.GetProperty("SenderId"));
+            Assert.Null(type.GetProperty("Sender"));
         }
     }
 }
