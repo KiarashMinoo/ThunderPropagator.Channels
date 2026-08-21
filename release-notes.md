@@ -1,5 +1,5 @@
-## [1.0.1-beta.49] — 2026-08-21
+## [1.0.1-beta.50] — 2026-08-21
 
 ### 🚀 Features
 
-- Implement online-user listing with privacy controls `(32ab59a)` — Kiarash Minoo
+- Implement GET /api/chat/users/{userId} `(3f0b5f7)` — Kiarash Minoo
