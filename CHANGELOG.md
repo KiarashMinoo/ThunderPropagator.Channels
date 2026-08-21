@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.60] — 2026-08-21
+
+### 🚀 Features
+
+- Implement DELETE /api/chat/groups/{groupId} `(f2b4e4a)` — Kiarash Minoo
+
 ## [1.0.1-beta.59] — 2026-08-21
 
 ### 🚀 Features
