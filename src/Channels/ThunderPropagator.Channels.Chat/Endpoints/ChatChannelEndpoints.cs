@@ -81,6 +81,15 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces(StatusCodes.Status401Unauthorized)
                 .Produces(StatusCodes.Status404NotFound);
 
+            chat.MapDelete("/messages/{messageId}", DeleteMessageAsync)
+                .WithName("Chat_DeleteMessage")
+                .WithSummary("Deletes a sent message.")
+                .Produces<ChatChannelDeleteMessageResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
+                .Produces(StatusCodes.Status404NotFound);
+
             return endpoints;
         }
 
@@ -443,6 +452,52 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             catch (GroupNotFoundException)
             {
                 return TypedResults.NotFound();
+            }
+        }
+
+        // Issue #134: reuses MessageService.DeleteMessageAsync — the same call the WebSocket
+        // Messages/Delete pipeline makes, including its own sender-or-group-admin authorization rule
+        // and its idempotent "already deleted" short-circuit (a repeat call returns the same
+        // IsDeleted=true result rather than throwing or re-deleting). Emits through
+        // ChatChannel.EmitMessage unconditionally after the call, same as the pipeline does, so a
+        // WebSocket-connected recipient still learns of the deletion whether the original send or a
+        // repeat delete request is what emitted it — "persistence and real-time recipients observe
+        // the same deletion state" holds for REST exactly as it already does for the pipeline.
+        internal static async Task<Results<Ok<ChatChannelDeleteMessageResponseDto>, ValidationProblem, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> DeleteMessageAsync(
+            [FromServices] MessageService messageService,
+            [FromServices] ChatChannel chatChannel,
+            ClaimsPrincipal principal,
+            string messageId,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (!Guid.TryParse(messageId, out var parsedMessageId) || parsedMessageId == Guid.Empty)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(messageId)] = ["messageId must be a valid, non-empty GUID."]
+                });
+
+            try
+            {
+                var message = await messageService.DeleteMessageAsync(currentUserId, parsedMessageId, cancellationToken);
+                chatChannel.EmitMessage(new ChatChannelFeederMessage(message, isDeleted: true));
+
+                return TypedResults.Ok(new ChatChannelDeleteMessageResponseDto
+                {
+                    MessageId = message.Id,
+                    IsDeleted = message.IsDeleted,
+                    DeletedAt = message.DeletedAt
+                });
+            }
+            catch (MessageNotFoundException)
+            {
+                return TypedResults.NotFound();
+            }
+            catch (MessageDeleteForbiddenException)
+            {
+                return TypedResults.Forbid();
             }
         }
     }
