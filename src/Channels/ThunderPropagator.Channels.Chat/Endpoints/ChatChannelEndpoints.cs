@@ -106,6 +106,15 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .ProducesValidationProblem()
                 .Produces(StatusCodes.Status401Unauthorized);
 
+            chat.MapDelete("/groups/{groupId}", DeleteGroupAsync)
+                .WithName("Chat_DeleteGroup")
+                .WithSummary("Deletes a group; only its creator may do so.")
+                .Produces<ChatChannelDeleteGroupResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
+                .Produces(StatusCodes.Status404NotFound);
+
             return endpoints;
         }
 
@@ -608,6 +617,54 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 {
                     ["group"] = [exception.Message]
                 });
+            }
+        }
+
+        // Issue #137: reuses GroupService.DeleteGroupAsync — the same call the WebSocket
+        // Groups/Delete pipeline (#124) makes, including its creator-only authorization
+        // (GroupDeleteForbiddenException), its idempotent already-deleted short-circuit (a repeat
+        // delete by the creator returns the same IsDeleted=true/DeletedAt result rather than
+        // throwing or re-deleting), and its soft-delete/cascade behavior (GroupUsers cleared, the
+        // Group row retained so existing messages keep a valid GroupId). Emits a group-deleted
+        // ChatChannelFeederMessage to every affected former member exactly as the pipeline does, so
+        // "REST and WebSocket deletion produce equivalent state" holds for connected recipients too.
+        internal static async Task<Results<Ok<ChatChannelDeleteGroupResponseDto>, ValidationProblem, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> DeleteGroupAsync(
+            [FromServices] GroupService groupService,
+            [FromServices] ChatChannel chatChannel,
+            ClaimsPrincipal principal,
+            string groupId,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (!Guid.TryParse(groupId, out var parsedGroupId) || parsedGroupId == Guid.Empty)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(groupId)] = ["groupId must be a valid, non-empty GUID."]
+                });
+
+            try
+            {
+                var (group, affectedMemberIds) = await groupService.DeleteGroupAsync(currentUserId, parsedGroupId, cancellationToken);
+
+                foreach (var memberId in affectedMemberIds)
+                    chatChannel.EmitMessage(new ChatChannelFeederMessage(memberId, group.Id, currentUserId));
+
+                return TypedResults.Ok(new ChatChannelDeleteGroupResponseDto
+                {
+                    GroupId = group.Id,
+                    IsDeleted = group.IsDeleted,
+                    DeletedAt = group.DeletedAt
+                });
+            }
+            catch (GroupNotFoundException)
+            {
+                return TypedResults.NotFound();
+            }
+            catch (GroupDeleteForbiddenException)
+            {
+                return TypedResults.Forbid();
             }
         }
     }
