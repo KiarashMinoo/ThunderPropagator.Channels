@@ -1,5 +1,5 @@
-## [1.0.1-beta.56] — 2026-08-21
+## [1.0.1-beta.57] — 2026-08-21
 
 ### 🚀 Features
 
-- Implement POST /api/chat/messages `(6524f58)` — Kiarash Minoo
+- Implement DELETE /api/chat/messages/{messageId} `(2ca258d)` — Kiarash Minoo
