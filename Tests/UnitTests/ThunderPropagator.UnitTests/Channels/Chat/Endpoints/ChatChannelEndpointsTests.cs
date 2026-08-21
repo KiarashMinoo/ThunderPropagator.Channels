@@ -45,7 +45,16 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             }
 
             public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
-                => throw new NotSupportedException();
+            {
+                if (typeof(TEntity) == typeof(Group))
+                {
+                    var predicate = ((Expression<Func<Group, bool>>)(object)expression).Compile();
+                    IReadOnlyCollection<TEntity> matches = _groups.Where(predicate).Cast<TEntity>().ToList();
+                    return Task.FromResult(matches);
+                }
+
+                throw new NotSupportedException();
+            }
 
             public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
@@ -451,6 +460,109 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             context.Seed(group);
 
             var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(member), group.Id.ToString(), size: MessageService.MaxPageSize + 1);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_ReturnsOnlyGroupsTheCallerIsAMemberOf()
+        {
+            var (service, context) = CreateService();
+            var caller = Guid.NewGuid();
+            var stranger = Guid.NewGuid();
+            var myGroup = Group.Create("Mine", caller).AddUser(caller);
+            var otherGroup = Group.Create("Not Mine", stranger).AddUser(stranger);
+            context.Seed(myGroup);
+            context.Seed(otherGroup);
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(caller));
+
+            var ok = Assert.IsType<Ok<ChatChannelGetGroupsResponseDto>>(result.Result);
+            Assert.Equal(1, ok.Value!.TotalCount);
+            Assert.Equal(myGroup.Id, ok.Value.Groups.Single().Id);
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_ForDuplicateMembershipRows_DoesNotDuplicateTheGroup()
+        {
+            var (service, context) = CreateService();
+            var caller = Guid.NewGuid();
+            var group = Group.Create("Team", caller).AddUser(caller).AddUser(caller);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(caller));
+
+            var ok = Assert.IsType<Ok<ChatChannelGetGroupsResponseDto>>(result.Result);
+            Assert.Equal(1, ok.Value!.TotalCount);
+            Assert.Single(ok.Value.Groups);
+        }
+
+        [Fact]
+        public void GetGroupsAsync_ExcludesSensitiveMemberData()
+        {
+            var type = typeof(ChatChannelGroupSummaryDto);
+
+            Assert.Null(type.GetProperty("GroupUsers"));
+            Assert.Null(type.GetProperty(nameof(User.PasswordHash)));
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_WhenTheCallerHasNoGroups_ReturnsOkWithZeroTotalCount()
+        {
+            var (service, _) = CreateService();
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(Guid.NewGuid()));
+
+            var ok = Assert.IsType<Ok<ChatChannelGetGroupsResponseDto>>(result.Result);
+            Assert.Equal(0, ok.Value!.TotalCount);
+            Assert.Empty(ok.Value.Groups);
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_PaginatesDeterministically()
+        {
+            var (service, context) = CreateService();
+            var caller = Guid.NewGuid();
+            var alpha = Group.Create("Alpha", caller).AddUser(caller);
+            var bravo = Group.Create("Bravo", caller).AddUser(caller);
+            var charlie = Group.Create("Charlie", caller).AddUser(caller);
+            context.Seed(alpha);
+            context.Seed(bravo);
+            context.Seed(charlie);
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(caller), page: 2, pageSize: 1);
+
+            var ok = Assert.IsType<Ok<ChatChannelGetGroupsResponseDto>>(result.Result);
+            Assert.Equal(3, ok.Value!.TotalCount);
+            Assert.Equal("Bravo", ok.Value.Groups.Single().Name);
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (service, _) = CreateService();
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal());
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_ForAnOutOfRangePage_ReturnsValidationProblem()
+        {
+            var (service, _) = CreateService();
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(Guid.NewGuid()), page: 0);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupsAsync_ForAnOutOfRangePageSize_ReturnsValidationProblem()
+        {
+            var (service, _) = CreateService();
+
+            var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(Guid.NewGuid()), pageSize: UserService.MaxPageSize + 1);
 
             Assert.IsType<ValidationProblem>(result.Result);
         }
