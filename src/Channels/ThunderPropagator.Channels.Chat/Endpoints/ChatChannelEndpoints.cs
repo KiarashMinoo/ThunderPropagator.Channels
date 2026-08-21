@@ -90,6 +90,15 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces(StatusCodes.Status403Forbidden)
                 .Produces(StatusCodes.Status404NotFound);
 
+            chat.MapPut("/messages/{messageId}", EditMessageAsync)
+                .WithName("Chat_EditMessage")
+                .WithSummary("Edits a sent message within the allowed edit window.")
+                .Produces<ChatChannelEditMessageResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
+                .Produces(StatusCodes.Status404NotFound);
+
             return endpoints;
         }
 
@@ -496,6 +505,69 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 return TypedResults.NotFound();
             }
             catch (MessageDeleteForbiddenException)
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        // Issue #135: reuses MessageService.EditMessageAsync — the same call the WebSocket
+        // Messages/Edit pipeline makes, including its check order (not-found, then sender ownership,
+        // then the edit window, then body presence) and its two distinct Forbidden causes
+        // (MessageEditForbiddenException for a non-sender, MessageEditWindowExpiredException for a
+        // stale edit) rather than folding them into one generic rejection. Emits through
+        // ChatChannel.EmitMessage(isEdited: true) after the call, same as the pipeline, so a
+        // WebSocket-connected recipient sees the same revised Body the REST caller does — "HTTP and
+        // WebSocket edits produce equivalent domain state".
+        internal static async Task<Results<Ok<ChatChannelEditMessageResponseDto>, ValidationProblem, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> EditMessageAsync(
+            [FromServices] MessageService messageService,
+            [FromServices] ChatChannel chatChannel,
+            ClaimsPrincipal principal,
+            string messageId,
+            [FromBody] ChatChannelEditMessageRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (!Guid.TryParse(messageId, out var parsedMessageId) || parsedMessageId == Guid.Empty)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(messageId)] = ["messageId must be a valid, non-empty GUID."]
+                });
+
+            try
+            {
+                var message = await messageService.EditMessageAsync(currentUserId, parsedMessageId, request.Body, cancellationToken);
+                chatChannel.EmitMessage(new ChatChannelFeederMessage(message, isEdited: true));
+
+                return TypedResults.Ok(new ChatChannelEditMessageResponseDto
+                {
+                    MessageId = message.Id,
+                    SenderId = message.SenderId,
+                    ReceiverId = message.GroupId is null ? message.ReceiverId : null,
+                    GroupId = message.GroupId,
+                    Body = message.Body,
+                    Created = message.Created,
+                    IsEdited = message.IsEdited,
+                    EditedAt = message.EditedAt
+                });
+            }
+            catch (InvalidMessageEditException exception)
+            {
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.Body)] = [exception.Message]
+                });
+            }
+            catch (MessageNotFoundException)
+            {
+                return TypedResults.NotFound();
+            }
+            catch (MessageEditForbiddenException)
+            {
+                return TypedResults.Forbid();
+            }
+            catch (MessageEditWindowExpiredException)
             {
                 return TypedResults.Forbid();
             }

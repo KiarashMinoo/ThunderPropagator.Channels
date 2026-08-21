@@ -181,10 +181,14 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             return channel;
         }
 
-        private static (MessageService MessageService, ChatChannel Channel, FakeChatContext Context) CreateMessageServiceAndChannel()
+        private static (MessageService MessageService, ChatChannel Channel, FakeChatContext Context) CreateMessageServiceAndChannel(TimeSpan? messageEditWindow = null)
         {
             var context = new FakeChatContext();
-            return (new MessageService(context, new ChatChannelConfiguration()), CreateChatChannel(), context);
+            var configuration = new ChatChannelConfiguration();
+            if (messageEditWindow is not null)
+                configuration.MessageEditWindow = messageEditWindow.Value;
+
+            return (new MessageService(context, configuration), CreateChatChannel(), context);
         }
 
         private static ClaimsPrincipal CreatePrincipal(Guid? userId = null)
@@ -970,6 +974,120 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var (messageService, channel, _) = CreateMessageServiceAndChannel();
 
             var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), messageId);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_ForTheSenderWithinTheWindow_UpdatesTheBodyAndReturnsOk()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "original");
+            context.Seed(message);
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString(), request);
+
+            var ok = Assert.IsType<Ok<ChatChannelEditMessageResponseDto>>(result.Result);
+            Assert.Equal("revised", ok.Value!.Body);
+            Assert.True(ok.Value.IsEdited);
+            Assert.NotNull(ok.Value.EditedAt);
+            Assert.Equal("revised", message.Body);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_ForANonSender_ReturnsForbidden()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var outsider = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "original");
+            context.Seed(message);
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(outsider), message.Id.ToString(), request);
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+            Assert.Equal("original", message.Body);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_AfterTheEditWindowExpires_ReturnsForbidden()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel(messageEditWindow: TimeSpan.Zero);
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "original");
+            context.Seed(message);
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString(), request);
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+            Assert.Equal("original", message.Body);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_ForADeletedMessage_ReturnsNotFound()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "original").MarkDeleted();
+            context.Seed(message);
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString(), request);
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_ForAMissingMessage_ReturnsNotFound()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString(), request);
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task EditMessageAsync_WithAnEmptyBody_ReturnsValidationProblem(string body)
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "original");
+            context.Seed(message);
+            var request = new ChatChannelEditMessageRequestDto { Body = body };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString(), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(), Guid.NewGuid().ToString(), request);
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("not-a-guid")]
+        [InlineData("")]
+        public async Task EditMessageAsync_ForAMalformedMessageId_ReturnsValidationProblem(string messageId)
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+            var request = new ChatChannelEditMessageRequestDto { Body = "revised" };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), messageId, request);
 
             Assert.IsType<ValidationProblem>(result.Result);
         }
