@@ -136,6 +136,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             return (new MessageService(context, new ChatChannelConfiguration()), context);
         }
 
+        private static (GroupService GroupService, UserService UserService, FakeChatContext Context) CreateGroupAndUserServices()
+        {
+            var context = new FakeChatContext();
+            return (new GroupService(context), new UserService(context, new PasswordHasher<User>()), context);
+        }
+
         private static ClaimsPrincipal CreatePrincipal(Guid? userId = null)
         {
             var claims = userId is null
@@ -563,6 +569,136 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var (service, _) = CreateService();
 
             var result = await ChatChannelEndpoints.GetGroupsAsync(service, CreatePrincipal(Guid.NewGuid()), pageSize: UserService.MaxPageSize + 1);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForAMember_ReturnsOkWithDetailsAndMembers()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var member = User.Create("alice", "Alice");
+            context.Seed(member);
+            var group = Group.Create("Team", member.Id).AddUser(member.Id).SetGroupIcon("icon.png");
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(member.Id), group.Id.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelGroupDetailsResponseDto>>(result.Result);
+            Assert.Equal(group.Id, ok.Value!.Id);
+            Assert.Equal("Team", ok.Value.Name);
+            Assert.Equal("icon.png", ok.Value.GroupIcon);
+            Assert.Equal(1, ok.Value.MemberCount);
+            Assert.Equal(member.Id, ok.Value.Members.Single().Id);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForTheAdministratorWhoIsAlsoAMember_ReturnsOkWithDetails()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var admin = User.Create("admin", "Admin");
+            context.Seed(admin);
+            var group = Group.Create("Team", admin.Id).AddUser(admin.Id);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(admin.Id), group.Id.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelGroupDetailsResponseDto>>(result.Result);
+            Assert.Equal(admin.Id, ok.Value!.CreatedByUserId);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForAnOutsider_ReturnsForbidden()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var member = Guid.NewGuid();
+            var outsider = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(outsider), group.Id.ToString());
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForAMissingGroup_ReturnsNotFound()
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString());
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForALargeMembership_BoundsTheReturnedMembersByPageSize()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var caller = User.Create("caller", "Caller");
+            context.Seed(caller);
+            var group = Group.Create("Big Team", caller.Id).AddUser(caller.Id);
+            for (var i = 0; i < 149; i++)
+            {
+                var member = User.Create($"member{i}", $"Member {i}");
+                context.Seed(member);
+                group.AddUser(member.Id);
+            }
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(caller.Id), group.Id.ToString(), page: 1, pageSize: 50);
+
+            var ok = Assert.IsType<Ok<ChatChannelGroupDetailsResponseDto>>(result.Result);
+            Assert.Equal(150, ok.Value!.MemberCount);
+            Assert.Equal(50, ok.Value.Members.Count);
+            Assert.Equal(1, ok.Value.MembersPage);
+            Assert.Equal(50, ok.Value.MembersPageSize);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(), Guid.NewGuid().ToString());
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("not-a-guid")]
+        [InlineData("")]
+        public async Task GetGroupDetailsAsync_ForAMalformedGroupId_ReturnsValidationProblem(string groupId)
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(Guid.NewGuid()), groupId);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForAnOutOfRangeMembersPage_ReturnsValidationProblem()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(member), group.Id.ToString(), page: 0);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupDetailsAsync_ForAnOutOfRangeMembersPageSize_ReturnsValidationProblem()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupDetailsAsync(groupService, userService, CreatePrincipal(member), group.Id.ToString(), pageSize: UserService.MaxPageSize + 1);
 
             Assert.IsType<ValidationProblem>(result.Result);
         }
