@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.58] — 2026-08-21
+
+### 🚀 Features
+
+- Implement PUT /api/chat/messages/{messageId} `(2f4d3a0)` — Kiarash Minoo
+
 ## [1.0.1-beta.57] — 2026-08-21
 
 ### 🚀 Features
