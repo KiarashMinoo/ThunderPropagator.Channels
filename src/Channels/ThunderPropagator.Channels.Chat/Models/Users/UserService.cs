@@ -129,5 +129,37 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
 
             return chatContext.SearchUsersAsync(normalizedTerm, page, pageSize, cancellationToken);
         }
+
+        // Issue #126: "online" is presence state ChatChannel tracks in memory (see its own
+        // LoggedInUsers), not something any provider's persistence can query — onlineUserIds is
+        // that snapshot's distinct set of currently logged-in user ids, already deduplicated by the
+        // caller regardless of how many connections a user has open (see
+        // ChatChannelGetOnlineUsersReceiverPipeline). Visibility is restricted to the caller's own
+        // contacts (#115's GetUserContactsAsync) rather than every online user — this codebase has
+        // no broader friends/blocking model to scope it any other way, and an unscoped list would
+        // leak who else is using the system to any authenticated caller. Both the contact list and
+        // the online set are already fully materialized (a DB round trip and an in-memory
+        // dictionary snapshot respectively) rather than two ends of one queryable source, so their
+        // intersection and paging both happen here rather than being pushed down to a provider.
+        public async Task<OnlineUsersPage> GetOnlineContactsAsync(Guid currentUserId, IReadOnlyCollection<Guid> onlineUserIds, int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            if (page < 1)
+                throw new InvalidOnlineUsersRequestException("Page must be 1 or greater.");
+
+            if (pageSize is < 1 or > MaxPageSize)
+                throw new InvalidOnlineUsersRequestException($"PageSize must be between 1 and {MaxPageSize}.");
+
+            var onlineUserIdSet = onlineUserIds.ToHashSet();
+            var contacts = await GetUserContactsAsync(currentUserId, cancellationToken);
+            var onlineContacts = contacts.Where(contact => onlineUserIdSet.Contains(contact.Id)).ToList();
+
+            return new OnlineUsersPage
+            {
+                Users = onlineContacts.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+                TotalCount = onlineContacts.Count,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
     }
 }
