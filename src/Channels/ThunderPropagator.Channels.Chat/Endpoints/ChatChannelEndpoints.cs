@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
@@ -46,6 +47,15 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>(StatusCodes.Status200OK)
                 .ProducesValidationProblem()
                 .Produces(StatusCodes.Status401Unauthorized);
+
+            chat.MapGet("/groups/{groupId}/messages", GetGroupMessageHistoryAsync)
+                .WithName("Chat_GetGroupMessageHistory")
+                .WithSummary("Retrieves paginated message history for a group.")
+                .Produces<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
+                .Produces(StatusCodes.Status404NotFound);
 
             return endpoints;
         }
@@ -162,6 +172,59 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 {
                     ["page"] = [exception.Message]
                 });
+            }
+        }
+
+        // Issue #130: unlike the direct case, group membership isn't implied by asking — reused
+        // MessageService.GetGroupMessageHistoryAsync (the same call the WebSocket Messages/History
+        // pipeline makes for the group case) checks the group exists and that the caller is a
+        // *current* member of its GroupUsers, which is also this codebase's documented former-member
+        // policy: leaving (or being removed from) a group's GroupUsers revokes access to its history
+        // the same way never having joined does — there is no grandfather clause for messages seen
+        // before leaving.
+        internal static async Task<Results<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>, ValidationProblem, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> GetGroupMessageHistoryAsync(
+            [FromServices] MessageService messageService,
+            ClaimsPrincipal principal,
+            string groupId,
+            int page = 1,
+            int size = MessageService.DefaultPageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (!Guid.TryParse(groupId, out var parsedGroupId) || parsedGroupId == Guid.Empty)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(groupId)] = ["groupId must be a valid, non-empty GUID."]
+                });
+
+            try
+            {
+                var history = await messageService.GetGroupMessageHistoryAsync(currentUserId, parsedGroupId, page, size, cancellationToken);
+
+                return TypedResults.Ok(new ChatChannelGetMessageHistoryReceiverPipelineResponseDto
+                {
+                    Messages = history.Messages,
+                    TotalCount = history.TotalCount,
+                    Page = history.Page,
+                    PageSize = history.PageSize
+                });
+            }
+            catch (InvalidMessageHistoryPageRequestException exception)
+            {
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["page"] = [exception.Message]
+                });
+            }
+            catch (GroupNotFoundException)
+            {
+                return TypedResults.NotFound();
+            }
+            catch (GroupAccessDeniedException)
+            {
+                return TypedResults.Forbid();
             }
         }
     }
