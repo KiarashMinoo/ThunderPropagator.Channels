@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.59] — 2026-08-21
+
+### 🚀 Features
+
+- Implement POST /api/chat/groups `(2f28376)` — Kiarash Minoo
+
 ## [1.0.1-beta.58] — 2026-08-21
 
 ### 🚀 Features
