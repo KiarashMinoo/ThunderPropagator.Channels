@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.52] — 2026-08-21
+
+### 🚀 Features
+
+- Implement GET /api/chat/messages `(74e3345)` — Kiarash Minoo
+
 ## [1.0.1-beta.51] — 2026-08-21
 
 ### 🚀 Features
