@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.49] — 2026-08-21
+
+### 🚀 Features
+
+- Implement online-user listing with privacy controls `(32ab59a)` — Kiarash Minoo
+
 ## [1.0.1-beta.48] — 2026-08-20
 
 ### 🚀 Features
