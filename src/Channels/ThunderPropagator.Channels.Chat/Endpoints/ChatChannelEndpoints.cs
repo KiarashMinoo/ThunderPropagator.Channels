@@ -99,6 +99,13 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces(StatusCodes.Status403Forbidden)
                 .Produces(StatusCodes.Status404NotFound);
 
+            chat.MapPost("/groups", CreateGroupAsync)
+                .WithName("Chat_CreateGroup")
+                .WithSummary("Creates a group with the authenticated caller as its administrator.")
+                .Produces<ChatChannelGroupSummaryDto>(StatusCodes.Status201Created)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized);
+
             return endpoints;
         }
 
@@ -570,6 +577,37 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             catch (MessageEditWindowExpiredException)
             {
                 return TypedResults.Forbid();
+            }
+        }
+
+        // Issue #136: reuses GroupService.CreateAsync — the same call the WebSocket Groups/Create
+        // pipeline makes — including the size/duplicate/existence validation that method now enforces
+        // for both transports identically (see its own comment). The caller becomes CreatedByUserId
+        // (the documented owner/admin) but, matching that method's existing contract, isn't
+        // automatically a member of GroupUsers — include the caller's own id in UserIds to also join
+        // the group being created. UserIds defaults to none rather than being required, since creating
+        // an empty group is a valid request, not an error.
+        internal static async Task<Results<Created<ChatChannelGroupSummaryDto>, ValidationProblem, UnauthorizedHttpResult>> CreateGroupAsync(
+            [FromServices] GroupService groupService,
+            ClaimsPrincipal principal,
+            [FromBody] ChatChannelCreateGroupRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            try
+            {
+                var group = await groupService.CreateAsync(request.Name, currentUserId, cancellationToken, request.UserIds ?? []);
+
+                return TypedResults.Created((string?)null, ChatChannelGroupSummaryDto.FromGroup(group));
+            }
+            catch (InvalidGroupCreateRequestException exception)
+            {
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["group"] = [exception.Message]
+                });
             }
         }
     }

@@ -26,8 +26,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var dbContext = fixture.CreateDbContext();
             var chatContext = new EntityFrameworkCoreChatContext(dbContext);
             var passwordHasher = new PasswordHasher<User>();
+            var resolvedConfiguration = configuration ?? new ChatChannelConfiguration();
 
-            return (new UserService(chatContext, passwordHasher), new GroupService(chatContext), new MessageService(chatContext, configuration ?? new ChatChannelConfiguration()), dbContext);
+            return (new UserService(chatContext, passwordHasher), new GroupService(chatContext, resolvedConfiguration), new MessageService(chatContext, resolvedConfiguration), dbContext);
         }
 
         [Fact]
@@ -492,7 +493,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 
             // Two independent GroupService instances, each against its own DbContext — see
             // DeleteMessage_CalledConcurrentlyBySender_DoesNotThrowAndEndsUpDeleted's own reasoning.
-            var otherGroups = new GroupService(new EntityFrameworkCoreChatContext(fixture.CreateDbContext()));
+            var otherGroups = new GroupService(new EntityFrameworkCoreChatContext(fixture.CreateDbContext()), new ChatChannelConfiguration());
 
             await Task.WhenAll(
                 groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None),

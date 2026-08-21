@@ -76,6 +76,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
                     return Task.FromResult(entity);
                 }
 
+                if (entity is Group group)
+                {
+                    _groups.Add(group);
+                    return Task.FromResult(entity);
+                }
+
                 throw new NotSupportedException();
             }
 
@@ -158,10 +164,14 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             return (new MessageService(context, new ChatChannelConfiguration()), context);
         }
 
-        private static (GroupService GroupService, UserService UserService, FakeChatContext Context) CreateGroupAndUserServices()
+        private static (GroupService GroupService, UserService UserService, FakeChatContext Context) CreateGroupAndUserServices(int? maxGroupMembers = null)
         {
             var context = new FakeChatContext();
-            return (new GroupService(context), new UserService(context, new PasswordHasher<User>()), context);
+            var configuration = new ChatChannelConfiguration();
+            if (maxGroupMembers is not null)
+                configuration.MaxGroupMembers = maxGroupMembers.Value;
+
+            return (new GroupService(context, configuration), new UserService(context, new PasswordHasher<User>()), context);
         }
 
         // Mirrors ChatChannelAuthenticationTests.CreateChannel — constructing the real ChatChannel
@@ -1090,6 +1100,106 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), messageId, request);
 
             Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task CreateGroupAsync_SetsTheAuthenticatedCallerAsCreatedByUserId_ReturnsCreated()
+        {
+            // The creator becomes CreatedByUserId (the AC's "documented owner/admin") but is not
+            // implicitly added to GroupUsers — GroupService.CreateAsync's own comment explains why
+            // that stays the caller's choice via UserIds rather than an automatic side effect.
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var creator = Guid.NewGuid();
+            var invitee = User.Create("bob", "Bob");
+            context.Seed(invitee);
+            var request = new ChatChannelCreateGroupRequestDto { Name = "Team", UserIds = [invitee.Id] };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(creator), request);
+
+            var created = Assert.IsType<Created<ChatChannelGroupSummaryDto>>(result.Result);
+            Assert.Equal("Team", created.Value!.Name);
+            Assert.Equal(creator, created.Value.CreatedByUserId);
+            Assert.Equal(1, created.Value.MemberCount);
+        }
+
+        [Fact]
+        public async Task CreateGroupAsync_DeduplicatesRepeatedUserIds()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices();
+            var creatorUser = User.Create("creator", "Creator");
+            context.Seed(creatorUser);
+            var invitee = User.Create("bob", "Bob");
+            context.Seed(invitee);
+            var request = new ChatChannelCreateGroupRequestDto { Name = "Team", UserIds = [invitee.Id, invitee.Id, creatorUser.Id] };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(creatorUser.Id), request);
+
+            var created = Assert.IsType<Created<ChatChannelGroupSummaryDto>>(result.Result);
+            Assert.Equal(2, created.Value!.MemberCount);
+        }
+
+        [Fact]
+        public async Task CreateGroupAsync_WithoutAnyInvitees_CreatesAGroupWithNoMembers()
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+            var creator = Guid.NewGuid();
+            var request = new ChatChannelCreateGroupRequestDto { Name = "Solo" };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(creator), request);
+
+            var created = Assert.IsType<Created<ChatChannelGroupSummaryDto>>(result.Result);
+            Assert.Equal(0, created.Value!.MemberCount);
+        }
+
+        [Fact]
+        public async Task CreateGroupAsync_ForANonexistentInvitee_ReturnsValidationProblem()
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+            var request = new ChatChannelCreateGroupRequestDto { Name = "Team", UserIds = [Guid.NewGuid()] };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task CreateGroupAsync_ExceedingMaxGroupMembers_ReturnsValidationProblem()
+        {
+            var (groupService, userService, context) = CreateGroupAndUserServices(maxGroupMembers: 1);
+            var creator = Guid.NewGuid();
+            var inviteeA = User.Create("bob", "Bob");
+            var inviteeB = User.Create("carol", "Carol");
+            context.Seed(inviteeA);
+            context.Seed(inviteeB);
+            var request = new ChatChannelCreateGroupRequestDto { Name = "Team", UserIds = [inviteeA.Id, inviteeB.Id] };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(creator), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public async Task CreateGroupAsync_WithAnEmptyName_ReturnsValidationProblem(string name)
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+            var request = new ChatChannelCreateGroupRequestDto { Name = name };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task CreateGroupAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (groupService, userService, _) = CreateGroupAndUserServices();
+            var request = new ChatChannelCreateGroupRequestDto { Name = "Team" };
+
+            var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(), request);
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
         }
     }
 }

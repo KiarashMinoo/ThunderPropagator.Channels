@@ -1,10 +1,12 @@
+using ThunderPropagator.Channels.Chat.Models.Users;
+
 namespace ThunderPropagator.Channels.Chat.Models.Groups
 {
     internal
 #if !DEBUG
         sealed
 #endif
-        class GroupService(IChatContext chatContext)
+        class GroupService(IChatContext chatContext, ChatChannelConfiguration configuration)
     {
         public Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken = default)
             => chatContext.GetAsync<Group, Guid>(groupId, cancellationToken);
@@ -30,14 +32,40 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
             return group;
         }
 
-        public Task<Group> CreateAsync(string name, Guid createdByUserId, CancellationToken cancellationToken = default, params Guid[] users)
+        // Issue #136: users used to be added exactly as given — a duplicate id created two distinct
+        // GroupUser rows for the same membership (GroupUser has no value equality, so the HashSet
+        // Group.GroupUsers uses never deduplicated them), and neither group size nor invited-user
+        // existence was checked. This dedupes users, validates the resulting size against
+        // MaxGroupMembers, and confirms every invited id resolves to an existing user before creating
+        // anything — all as one atomic pre-check, so a request that fails validation never partially
+        // persists a group. The creator is deliberately NOT folded into membership here: existing
+        // coverage (InMemoryChatContextTests/ChatEntityFrameworkCoreIntegrationTests) already
+        // establishes group creation as leaving the creator's own membership to whatever the caller's
+        // users array does or doesn't include, and this is the WebSocket Groups/Create pipeline's only
+        // call site too, so changing that default would have silently changed already-tested behavior
+        // for both transports rather than just adding the missing validation this issue asks for.
+        public async Task<Group> CreateAsync(string name, Guid createdByUserId, CancellationToken cancellationToken = default, params Guid[] users)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidGroupCreateRequestException("Name cannot be empty.");
+
+            var memberIds = users.Distinct().ToArray();
+
+            if (memberIds.Length > configuration.MaxGroupMembers)
+                throw new InvalidGroupCreateRequestException($"A group cannot have more than {configuration.MaxGroupMembers} members.");
+
+            foreach (var userId in memberIds)
+            {
+                if (await chatContext.GetAsync<User, Guid>(userId, cancellationToken) is null)
+                    throw new InvalidGroupCreateRequestException($"User '{userId}' does not exist.");
+            }
+
             var group = Group.Create(name, createdByUserId);
 
-            foreach (var user in users)
-                group.AddUser(user);
+            foreach (var userId in memberIds)
+                group.AddUser(userId);
 
-            return chatContext.CreateAsync(group, cancellationToken);
+            return await chatContext.CreateAsync(group, cancellationToken);
         }
 
         // Issue #124: excludes soft-deleted groups — GetAllAsync<Group>(CancellationToken) has no
