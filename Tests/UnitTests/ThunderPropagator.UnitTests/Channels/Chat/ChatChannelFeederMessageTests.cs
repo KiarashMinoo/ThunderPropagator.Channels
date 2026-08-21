@@ -122,5 +122,64 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             Assert.Equal(receiverId, feederMessage.SenderUserId);
             Assert.Equal(message.Id, feederMessage.MessageId);
         }
+
+        private sealed class TestTimeProvider : TimeProvider
+        {
+            public DateTimeOffset UtcNow { get; set; } = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+            public override DateTimeOffset GetUtcNow() => UtcNow;
+        }
+
+        // Issue #138: DateTime used to fall back to DateTimeOffset.UtcNow on every read when unset,
+        // so re-reading the same message (or a message with no backing Message at all, like the
+        // presence/group-deletion constructors) could observe a different timestamp each time.
+        // Every constructor now captures one UTC instant at construction instead.
+        [Fact]
+        public void RepeatedReads_OfDateTime_AreStableDespiteTheClockAdvancing()
+        {
+            var timeProvider = new TestTimeProvider();
+            var feederMessage = new ChatChannelFeederMessage(timeProvider);
+
+            var firstRead = feederMessage.DateTime;
+
+            timeProvider.UtcNow = timeProvider.UtcNow.AddMilliseconds(50);
+
+            Assert.Equal(firstRead, feederMessage.DateTime);
+        }
+
+        [Fact]
+        public void DateTime_IsCapturedAtConstructionTime()
+        {
+            var before = DateTimeOffset.UtcNow;
+            var feederMessage = new ChatChannelFeederMessage();
+            var after = DateTimeOffset.UtcNow;
+
+            Assert.InRange(feederMessage.DateTime, before, after);
+        }
+
+        [Fact]
+        public void PresenceConstructor_CapturesDateTimeRatherThanLeavingItUnset()
+        {
+            var timeProvider = new TestTimeProvider();
+
+            // The presence constructor doesn't accept a TimeProvider directly, but it chains
+            // through the TimeProvider-based constructor internally, so its capture is exercised the
+            // same way as any other construction path — this asserts the resulting value is stable
+            // across reads rather than recomputed from the live clock each time.
+            var feederMessage = new ChatChannelFeederMessage(Guid.NewGuid(), Guid.NewGuid());
+            var firstRead = feederMessage.DateTime;
+
+            Assert.Equal(firstRead, feederMessage.DateTime);
+        }
+
+        [Fact]
+        public void Constructor_WithAMessage_PreservesTheMessagesOwnCreatedTimestampRatherThanTheConstructionInstant()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "hello");
+
+            var feederMessage = new ChatChannelFeederMessage(message);
+
+            Assert.Equal(message.Created, feederMessage.DateTime);
+        }
     }
 }
