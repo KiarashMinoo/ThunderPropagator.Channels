@@ -47,6 +47,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
                 if (typeof(TEntity) == typeof(Group))
                     return Task.FromResult(_groups.OfType<TEntity>().FirstOrDefault(group => ((Group)(object)group).Id.Equals(id)));
 
+                if (typeof(TEntity) == typeof(Message))
+                    return Task.FromResult(_messages.OfType<TEntity>().FirstOrDefault(message => ((Message)(object)message).Id.Equals(id)));
+
                 return Task.FromResult(_users.OfType<TEntity>().FirstOrDefault(user => ((User)(object)user).Id.Equals(id)));
             }
 
@@ -77,7 +80,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             }
 
             public Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
-                => throw new NotSupportedException();
+            {
+                if (entity is Message)
+                    return Task.FromResult(entity);
+
+                throw new NotSupportedException();
+            }
 
             public Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
@@ -865,6 +873,105 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
 
             Assert.Null(type.GetProperty("SenderId"));
             Assert.Null(type.GetProperty("Sender"));
+        }
+
+        [Fact]
+        public async Task DeleteMessageAsync_ForTheSender_MarksDeletedAndReturnsOk()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "hi");
+            context.Seed(message);
+
+            var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelDeleteMessageResponseDto>>(result.Result);
+            Assert.Equal(message.Id, ok.Value!.MessageId);
+            Assert.True(ok.Value.IsDeleted);
+            Assert.NotNull(ok.Value.DeletedAt);
+            Assert.True(message.IsDeleted);
+        }
+
+        [Fact]
+        public async Task DeleteMessageAsync_ForAGroupAdminDeletingAnotherMembersMessage_ReturnsOk()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var admin = Guid.NewGuid();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", admin).AddUser(admin).AddUser(member);
+            context.Seed(group);
+            var message = Message.Create(member, admin, group.Id, "hi team");
+            context.Seed(message);
+
+            var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(admin), message.Id.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelDeleteMessageResponseDto>>(result.Result);
+            Assert.True(ok.Value!.IsDeleted);
+        }
+
+        [Fact]
+        public async Task DeleteMessageAsync_ForANonSenderNonAdmin_ReturnsForbidden()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var outsider = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "hi");
+            context.Seed(message);
+
+            var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(outsider), message.Id.ToString());
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+            Assert.False(message.IsDeleted);
+        }
+
+        [Fact]
+        public async Task DeleteMessageAsync_ForAnAlreadyDeletedMessage_RepeatDeleteReturnsTheSameResult()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "hi");
+            context.Seed(message);
+
+            var firstResult = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString());
+            var secondResult = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString());
+
+            var firstOk = Assert.IsType<Ok<ChatChannelDeleteMessageResponseDto>>(firstResult.Result);
+            var secondOk = Assert.IsType<Ok<ChatChannelDeleteMessageResponseDto>>(secondResult.Result);
+            Assert.True(firstOk.Value!.IsDeleted);
+            Assert.True(secondOk.Value!.IsDeleted);
+            Assert.Equal(firstOk.Value.MessageId, secondOk.Value.MessageId);
+        }
+
+        [Fact]
+        public async Task DeleteMessageAsync_ForAMissingMessage_ReturnsNotFound()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+
+            var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString());
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Fact]
+        public async Task DeleteMessageAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+
+            var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(), Guid.NewGuid().ToString());
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("not-a-guid")]
+        [InlineData("")]
+        public async Task DeleteMessageAsync_ForAMalformedMessageId_ReturnsValidationProblem(string messageId)
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel();
+
+            var result = await ChatChannelEndpoints.DeleteMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), messageId);
+
+            Assert.IsType<ValidationProblem>(result.Result);
         }
     }
 }
