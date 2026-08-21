@@ -57,6 +57,13 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces(StatusCodes.Status403Forbidden)
                 .Produces(StatusCodes.Status404NotFound);
 
+            chat.MapGet("/groups", GetGroupsAsync)
+                .WithName("Chat_GetGroups")
+                .WithSummary("Lists the authenticated caller's groups.")
+                .Produces<ChatChannelGetGroupsResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized);
+
             return endpoints;
         }
 
@@ -226,6 +233,53 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             {
                 return TypedResults.Forbid();
             }
+        }
+
+        // Issue #131: deliberately calls UserService.GetUserGroupsAsync — the membership-scoped query
+        // (#115) — rather than GroupService.GetAllAsync, which the WebSocket Groups/GetAll pipeline
+        // uses and which returns every non-deleted group in the system with no membership filter at
+        // all. That pipeline answers a different question ("what groups exist") than this endpoint's
+        // own AC ("groups visible to the current user"), so reusing it here would violate this
+        // issue's own "do not accept a user id that could bypass the authenticated identity" and
+        // "returns only groups visible to the current user" requirements. GetUserGroupsAsync's
+        // membership predicate (GroupUsers.Any(gu => gu.UserId == id)) returns each matching Group
+        // entity once regardless of how many GroupUser rows reference it, so a duplicate membership
+        // row can never duplicate a group in the result. Paging happens here rather than in the
+        // service/provider: unlike message history, a single user's own group count is bounded, and
+        // no persistence method for it exists yet to push this into; the envelope shape still matches
+        // every other paginated response in this surface.
+        internal static async Task<Results<Ok<ChatChannelGetGroupsResponseDto>, ValidationProblem, UnauthorizedHttpResult>> GetGroupsAsync(
+            [FromServices] UserService userService,
+            ClaimsPrincipal principal,
+            int page = 1,
+            int pageSize = UserService.DefaultPageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (page < 1)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(page)] = ["Page must be 1 or greater."]
+                });
+
+            if (pageSize is < 1 or > UserService.MaxPageSize)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(pageSize)] = [$"PageSize must be between 1 and {UserService.MaxPageSize}."]
+                });
+
+            var groups = await userService.GetUserGroupsAsync(currentUserId, cancellationToken);
+            var ordered = groups.OrderBy(group => group.Name, StringComparer.Ordinal).ThenBy(group => group.Id).ToList();
+
+            return TypedResults.Ok(new ChatChannelGetGroupsResponseDto
+            {
+                Groups = ordered.Skip((page - 1) * pageSize).Take(pageSize).Select(ChatChannelGroupSummaryDto.FromGroup).ToList(),
+                TotalCount = ordered.Count,
+                Page = page,
+                PageSize = pageSize
+            });
         }
     }
 }
