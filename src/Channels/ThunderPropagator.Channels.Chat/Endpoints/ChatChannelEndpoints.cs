@@ -73,6 +73,14 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces(StatusCodes.Status403Forbidden)
                 .Produces(StatusCodes.Status404NotFound);
 
+            chat.MapPost("/messages", SendMessageAsync)
+                .WithName("Chat_SendMessage")
+                .WithSummary("Sends a direct or group message.")
+                .Produces<ChatChannelSentMessageResponseDto>(StatusCodes.Status201Created)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status404NotFound);
+
             return endpoints;
         }
 
@@ -362,6 +370,79 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             catch (GroupAccessDeniedException)
             {
                 return TypedResults.Forbid();
+            }
+        }
+
+        // Issue #133: reuses MessageService.SendMessageAsync/SendMessageToGroupAsync — the same calls
+        // the WebSocket Messages/Send pipeline makes — including that pipeline's own lack of a
+        // group-membership check on send (SendMessageToGroupAsync fans out to every current member
+        // without verifying the sender is one); adding that check here only for REST would give the
+        // two transports different rules for the exact case this issue's AC says must match. Emits
+        // through ChatChannel.EmitMessage for every persisted row, same as the pipeline, so a message
+        // sent over REST still reaches WebSocket-connected recipients in real time — the parent
+        // issue's "WebSocket and REST transports ... produce equivalent state" requirement. The
+        // sender is only ever TryGetCurrentUserId's resolved identity; there is no field on the
+        // request body a client could set instead.
+        internal static async Task<Results<Created<ChatChannelSentMessageResponseDto>, ValidationProblem, UnauthorizedHttpResult, NotFound>> SendMessageAsync(
+            [FromServices] MessageService messageService,
+            [FromServices] ChatChannel chatChannel,
+            ClaimsPrincipal principal,
+            [FromBody] ChatChannelSendMessageRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            var hasReceiver = request.ReceiverId is not null && request.ReceiverId != Guid.Empty;
+            var hasGroup = request.GroupId is not null && request.GroupId != Guid.Empty;
+
+            if (hasReceiver == hasGroup)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["target"] = ["Exactly one of receiverId or groupId must be specified."]
+                });
+
+            if (string.IsNullOrWhiteSpace(request.Body))
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.Body)] = ["Body must not be empty."]
+                });
+
+            if (hasReceiver)
+            {
+                var message = await messageService.SendMessageAsync(currentUserId, request.ReceiverId!.Value, request.Body, cancellationToken);
+                chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
+
+                return TypedResults.Created((string?)null, new ChatChannelSentMessageResponseDto
+                {
+                    MessageIds = [message.Id],
+                    SenderId = currentUserId,
+                    ReceiverId = request.ReceiverId,
+                    GroupId = null,
+                    Body = request.Body,
+                    Created = message.Created
+                });
+            }
+
+            try
+            {
+                var messages = await messageService.SendMessageToGroupAsync(currentUserId, request.GroupId!.Value, request.Body, cancellationToken);
+                foreach (var message in messages)
+                    chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
+
+                return TypedResults.Created((string?)null, new ChatChannelSentMessageResponseDto
+                {
+                    MessageIds = messages.Select(message => message.Id).ToList(),
+                    SenderId = currentUserId,
+                    ReceiverId = null,
+                    GroupId = request.GroupId,
+                    Body = request.Body,
+                    Created = messages.FirstOrDefault()?.Created ?? DateTimeOffset.UtcNow
+                });
+            }
+            catch (GroupNotFoundException)
+            {
+                return TypedResults.NotFound();
             }
         }
     }
