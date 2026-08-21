@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Endpoints;
 using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
@@ -26,15 +27,22 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
         {
             private readonly List<User> _users = [];
             private readonly List<Message> _messages = [];
+            private readonly List<Group> _groups = [];
 
             public void Seed(User user) => _users.Add(user);
             public void Seed(Message message) => _messages.Add(message);
+            public void Seed(Group group) => _groups.Add(group);
 
             public Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
 
             public Task<TEntity?> GetAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
-                => Task.FromResult(_users.OfType<TEntity>().FirstOrDefault(user => ((User)(object)user).Id.Equals(id)));
+            {
+                if (typeof(TEntity) == typeof(Group))
+                    return Task.FromResult(_groups.OfType<TEntity>().FirstOrDefault(group => ((Group)(object)group).Id.Equals(id)));
+
+                return Task.FromResult(_users.OfType<TEntity>().FirstOrDefault(user => ((User)(object)user).Id.Equals(id)));
+            }
 
             public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
                 => throw new NotSupportedException();
@@ -73,7 +81,20 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             }
 
             public Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
-                => throw new NotSupportedException();
+            {
+                var matches = _messages
+                    .Where(message => message.GroupId == groupId)
+                    .OrderByDescending(message => message.Created)
+                    .ToList();
+
+                return Task.FromResult(new MessageHistoryPage
+                {
+                    Messages = matches.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+                    TotalCount = matches.Count,
+                    Page = page,
+                    PageSize = pageSize
+                });
+            }
 
             public Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
             {
@@ -330,6 +351,106 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var (service, _) = CreateMessageService();
 
             var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString(), size: MessageService.MaxPageSize + 1);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_ForACurrentMember_ReturnsOkWithTheGroupsMessages()
+        {
+            var (service, context) = CreateMessageService();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+            context.Seed(Message.Create(member, Guid.NewGuid(), group.Id, "hello team"));
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(member), group.Id.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>>(result.Result);
+            Assert.Equal(1, ok.Value!.TotalCount);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_ForANonMember_ReturnsForbidden()
+        {
+            var (service, context) = CreateMessageService();
+            var member = Guid.NewGuid();
+            var nonMember = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(nonMember), group.Id.ToString());
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_ForAFormerMember_ReturnsForbidden()
+        {
+            var (service, context) = CreateMessageService();
+            var formerMember = Guid.NewGuid();
+            var group = Group.Create("Team", formerMember).AddUser(formerMember).RemoveUser(formerMember);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(formerMember), group.Id.ToString());
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_ForAMissingGroup_ReturnsNotFound()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString());
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(), Guid.NewGuid().ToString());
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("not-a-guid")]
+        [InlineData("")]
+        public async Task GetGroupMessageHistoryAsync_ForAMalformedGroupId_ReturnsValidationProblem(string groupId)
+        {
+            var (service, _) = CreateMessageService();
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), groupId);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_ForAnOutOfRangePage_ReturnsValidationProblem()
+        {
+            var (service, context) = CreateMessageService();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(member), group.Id.ToString(), page: 0);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task GetGroupMessageHistoryAsync_ForAnOutOfRangeSize_ReturnsValidationProblem()
+        {
+            var (service, context) = CreateMessageService();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", member).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.GetGroupMessageHistoryAsync(service, CreatePrincipal(member), group.Id.ToString(), size: MessageService.MaxPageSize + 1);
 
             Assert.IsType<ValidationProblem>(result.Result);
         }
