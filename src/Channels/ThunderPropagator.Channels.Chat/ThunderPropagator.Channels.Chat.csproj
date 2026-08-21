@@ -3,7 +3,18 @@
     <ItemGroup>
         <PackageReference Include="$(ThunderPropagatorPackageId)"/>
         <PackageReference Include="JetBrains.Annotations" />
-        <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Issue #127: MapChatEndpoints exposes minimal-API routes (IEndpointRouteBuilder,
+             TypedResults) alongside the existing WebSocket pipelines, so consuming hosts get both
+             transports from one package. This project stays Sdk="Microsoft.NET.Sdk" rather than
+             Sdk="Microsoft.NET.Sdk.Web" (it's a library, not a host); this FrameworkReference is the
+             standard way for a class library to use ASP.NET Core types without becoming a web app
+             itself. It also brings in Microsoft.Extensions.Identity.Core transitively, so the
+             explicit PackageReference for it (used by IPasswordHasher<User>) was removed as
+             redundant. -->
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
     <ItemGroup>
