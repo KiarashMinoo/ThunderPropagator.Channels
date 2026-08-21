@@ -898,6 +898,78 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             await Assert.ThrowsAsync<OperationCanceledException>(
                 () => chatContext.SearchUsersAsync("term", 1, 10, cts.Token));
         }
+
+        // Issue #126: contract coverage for UserService.GetOnlineContactsAsync against a real SQLite
+        // database — privacy, duplicate connection ids, pagination, and paging validation, mirroring
+        // the InMemory project's own coverage.
+        [Fact]
+        public async Task GetOnlineContacts_OnlyReturnsContactsWhoAreOnline_NeverAnOnlineStranger()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var currentUser = await users.RegisterAsync($"online-current-{Guid.NewGuid():N}", "password", "Current", CancellationToken.None);
+            var onlineContact = await users.RegisterAsync($"online-contact-{Guid.NewGuid():N}", "password", "OnlineContact", CancellationToken.None);
+            var offlineContact = await users.RegisterAsync($"offline-contact-{Guid.NewGuid():N}", "password", "OfflineContact", CancellationToken.None);
+            var onlineStranger = await users.RegisterAsync($"online-stranger-{Guid.NewGuid():N}", "password", "OnlineStranger", CancellationToken.None);
+            await messages.SendMessageAsync(currentUser.Id, onlineContact.Id, "hi", CancellationToken.None);
+            await messages.SendMessageAsync(currentUser.Id, offlineContact.Id, "hi", CancellationToken.None);
+
+            var page = await users.GetOnlineContactsAsync(currentUser.Id, [onlineContact.Id, onlineStranger.Id], page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Equal(1, page.TotalCount);
+            Assert.Equal(onlineContact.Id, page.Users.Single().Id);
+        }
+
+        [Fact]
+        public async Task GetOnlineContacts_WithDuplicateConnectionIdsForTheSameUser_ReturnsThatUserOnce()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var currentUser = await users.RegisterAsync($"dedupe-current-{Guid.NewGuid():N}", "password", "Current", CancellationToken.None);
+            var contact = await users.RegisterAsync($"dedupe-contact-{Guid.NewGuid():N}", "password", "Contact", CancellationToken.None);
+            await messages.SendMessageAsync(currentUser.Id, contact.Id, "hi", CancellationToken.None);
+
+            var page = await users.GetOnlineContactsAsync(currentUser.Id, [contact.Id, contact.Id], page: 1, pageSize: 10, CancellationToken.None);
+
+            Assert.Equal(1, page.TotalCount);
+            Assert.Equal(contact.Id, page.Users.Single().Id);
+        }
+
+        [Fact]
+        public async Task GetOnlineContacts_PaginatesResults()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var currentUser = await users.RegisterAsync($"online-page-current-{Guid.NewGuid():N}", "password", "Current", CancellationToken.None);
+            var contactIds = new List<Guid>();
+            for (var i = 0; i < 5; i++)
+            {
+                var contact = await users.RegisterAsync($"online-page-contact-{i}-{Guid.NewGuid():N}", "password", $"Contact{i}", CancellationToken.None);
+                await messages.SendMessageAsync(currentUser.Id, contact.Id, "hi", CancellationToken.None);
+                contactIds.Add(contact.Id);
+            }
+
+            var firstPage = await users.GetOnlineContactsAsync(currentUser.Id, contactIds, page: 1, pageSize: 2, CancellationToken.None);
+            var secondPage = await users.GetOnlineContactsAsync(currentUser.Id, contactIds, page: 2, pageSize: 2, CancellationToken.None);
+            var thirdPage = await users.GetOnlineContactsAsync(currentUser.Id, contactIds, page: 3, pageSize: 2, CancellationToken.None);
+
+            Assert.Equal(5, firstPage.TotalCount);
+            Assert.Equal(2, firstPage.Users.Count);
+            Assert.Equal(2, secondPage.Users.Count);
+            Assert.Single(thirdPage.Users);
+            var allIds = firstPage.Users.Concat(secondPage.Users).Concat(thirdPage.Users).Select(u => u.Id).ToList();
+            Assert.Equal(5, allIds.Distinct().Count());
+        }
+
+        [Theory]
+        [InlineData(0, 10)]
+        [InlineData(1, 0)]
+        [InlineData(1, UserService.MaxPageSize + 1)]
+        public async Task GetOnlineContacts_WithOutOfBoundsPaging_ThrowsInvalidOnlineUsersRequest(int page, int pageSize)
+        {
+            var (users, _, _, _) = CreateServices(fixture);
+            var currentUser = await users.RegisterAsync($"online-bounds-current-{Guid.NewGuid():N}", "password", "Current", CancellationToken.None);
+
+            await Assert.ThrowsAsync<InvalidOnlineUsersRequestException>(
+                () => users.GetOnlineContactsAsync(currentUser.Id, [], page, pageSize, CancellationToken.None));
+        }
     }
 
     // Issue #116: forwards every IChatContext call to the wrapped context while recording which
