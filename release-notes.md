@@ -1,5 +1,5 @@
-## [1.0.1-beta.55] — 2026-08-21
+## [1.0.1-beta.56] — 2026-08-21
 
 ### 🚀 Features
 
-- Implement GET /api/chat/groups/{groupId} `(3b4d601)` — Kiarash Minoo
+- Implement POST /api/chat/messages `(6524f58)` — Kiarash Minoo

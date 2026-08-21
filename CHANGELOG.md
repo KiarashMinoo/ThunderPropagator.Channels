@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.56] — 2026-08-21
+
+### 🚀 Features
+
+- Implement POST /api/chat/messages `(6524f58)` — Kiarash Minoo
+
 ## [1.0.1-beta.55] — 2026-08-21
 
 ### 🚀 Features
