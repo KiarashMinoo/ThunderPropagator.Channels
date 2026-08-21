@@ -9,6 +9,27 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
         public Task<Group?> GetByIdAsync(Guid groupId, CancellationToken cancellationToken = default)
             => chatContext.GetAsync<Group, Guid>(groupId, cancellationToken);
 
+        // Issue #132: no WebSocket pipeline retrieves a single group's details today (Groups/GetAll
+        // lists every non-deleted group system-wide, unscoped by membership — see the REST
+        // GetGroupsAsync endpoint's own comment on why that pipeline isn't reused for a
+        // membership-scoped listing either), so this mirrors the exact membership-check shape
+        // MessageService.GetGroupMessageHistoryAsync already established for the group case: the
+        // group must exist and not be soft-deleted (GroupNotFoundException), and the caller must be a
+        // *current* member of its GroupUsers (GroupAccessDeniedException) — the same former-member
+        // policy, no separate creator/administrator bypass, since #124 only ever grants the creator
+        // delete/moderation authority, not blanket visibility into a group they've left.
+        public async Task<Group> GetGroupDetailsAsync(Guid currentUserId, Guid groupId, CancellationToken cancellationToken = default)
+        {
+            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
+            if (group.IsDeleted)
+                throw new GroupNotFoundException();
+
+            if (group.GroupUsers.All(groupUser => groupUser.UserId != currentUserId))
+                throw new GroupAccessDeniedException();
+
+            return group;
+        }
+
         public Task<Group> CreateAsync(string name, Guid createdByUserId, CancellationToken cancellationToken = default, params Guid[] users)
         {
             var group = Group.Create(name, createdByUserId);

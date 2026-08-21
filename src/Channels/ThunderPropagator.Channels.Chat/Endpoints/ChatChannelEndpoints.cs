@@ -64,6 +64,15 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .ProducesValidationProblem()
                 .Produces(StatusCodes.Status401Unauthorized);
 
+            chat.MapGet("/groups/{groupId}", GetGroupDetailsAsync)
+                .WithName("Chat_GetGroupDetails")
+                .WithSummary("Retrieves a group's details and a page of its members.")
+                .Produces<ChatChannelGroupDetailsResponseDto>(StatusCodes.Status200OK)
+                .ProducesValidationProblem()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
+                .Produces(StatusCodes.Status404NotFound);
+
             return endpoints;
         }
 
@@ -280,6 +289,80 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 Page = page,
                 PageSize = pageSize
             });
+        }
+
+        // Issue #132: no WebSocket pipeline retrieves a single group's details, so this calls the new
+        // GroupService.GetGroupDetailsAsync (added for this issue — see its own comment for why),
+        // which owns the same membership check #130 already established for group message history.
+        // Member ids are paginated before any User is looked up, so a large group's cost stays bounded
+        // by pageSize member lookups rather than scaling with total membership; ordering by UserId
+        // keeps that paging deterministic across calls without needing every member's profile loaded
+        // first just to sort by name.
+        internal static async Task<Results<Ok<ChatChannelGroupDetailsResponseDto>, ValidationProblem, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> GetGroupDetailsAsync(
+            [FromServices] GroupService groupService,
+            [FromServices] UserService userService,
+            ClaimsPrincipal principal,
+            string groupId,
+            int page = 1,
+            int pageSize = UserService.DefaultPageSize,
+            CancellationToken cancellationToken = default)
+        {
+            if (!TryGetCurrentUserId(principal, out var currentUserId))
+                return TypedResults.Unauthorized();
+
+            if (!Guid.TryParse(groupId, out var parsedGroupId) || parsedGroupId == Guid.Empty)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(groupId)] = ["groupId must be a valid, non-empty GUID."]
+                });
+
+            if (page < 1)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(page)] = ["Page must be 1 or greater."]
+                });
+
+            if (pageSize is < 1 or > UserService.MaxPageSize)
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(pageSize)] = [$"PageSize must be between 1 and {UserService.MaxPageSize}."]
+                });
+
+            try
+            {
+                var group = await groupService.GetGroupDetailsAsync(currentUserId, parsedGroupId, cancellationToken);
+
+                var orderedMemberIds = group.GroupUsers.Select(groupUser => groupUser.UserId).OrderBy(id => id).ToList();
+                var pagedMemberIds = orderedMemberIds.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+                var members = new List<ChatChannelGetUserReceiverPipelineResponseDto>();
+                foreach (var memberId in pagedMemberIds)
+                {
+                    var member = await userService.GetByIdAsync(memberId, cancellationToken);
+                    if (member is not null)
+                        members.Add(ChatChannelGetUserReceiverPipelineResponseDto.FromUser(member));
+                }
+
+                return TypedResults.Ok(new ChatChannelGroupDetailsResponseDto
+                {
+                    Id = group.Id,
+                    Name = group.Name,
+                    GroupIcon = group.GroupIcon,
+                    CreatedByUserId = group.CreatedByUserId,
+                    MemberCount = orderedMemberIds.Count,
+                    Members = members,
+                    MembersPage = page,
+                    MembersPageSize = pageSize
+                });
+            }
+            catch (GroupNotFoundException)
+            {
+                return TypedResults.NotFound();
+            }
+            catch (GroupAccessDeniedException)
+            {
+                return TypedResults.Forbid();
+            }
         }
     }
 }
