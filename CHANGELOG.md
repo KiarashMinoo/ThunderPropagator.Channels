@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.61] — 2026-08-21
+
+### 🚀 Features
+
+- Capture feeder-message DateTime once during construction `(a4fd711)` — Kiarash Minoo
+
 ## [1.0.1-beta.60] — 2026-08-21
 
 ### 🚀 Features
