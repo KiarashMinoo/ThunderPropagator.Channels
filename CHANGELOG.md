@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.55] — 2026-08-21
+
+### 🚀 Features
+
+- Implement GET /api/chat/groups/{groupId} `(3b4d601)` — Kiarash Minoo
+
 ## [1.0.1-beta.54] — 2026-08-21
 
 ### 🚀 Features
