@@ -23,8 +23,9 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var store = new InMemoryChatStore();
             var context = new InMemoryChatContext(store);
             var passwordHasher = new PasswordHasher<User>();
+            var resolvedConfiguration = configuration ?? new ChatChannelConfiguration();
 
-            return (new UserService(context, passwordHasher), new GroupService(context), new MessageService(context, configuration ?? new ChatChannelConfiguration()), store);
+            return (new UserService(context, passwordHasher), new GroupService(context, resolvedConfiguration), new MessageService(context, resolvedConfiguration), store);
         }
 
         [Fact]
@@ -243,7 +244,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
         {
             var store = new InMemoryChatStore();
             var users = new UserService(new InMemoryChatContext(store), new PasswordHasher<User>());
-            var groups = new GroupService(new InMemoryChatContext(store));
+            var groups = new GroupService(new InMemoryChatContext(store), new ChatChannelConfiguration());
             var spy = new UpdateCountingChatContext(new InMemoryChatContext(store));
             var messages = new MessageService(spy, new ChatChannelConfiguration());
             var sender = await users.RegisterAsync("group-update-sender", "password", "Sender", CancellationToken.None);

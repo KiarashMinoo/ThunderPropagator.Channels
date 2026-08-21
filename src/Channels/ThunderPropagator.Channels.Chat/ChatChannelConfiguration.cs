@@ -23,5 +23,12 @@ namespace ThunderPropagator.Channels.Chat
         // channel-wide switch, same pattern as MessageEditWindow above; a consumer can turn it off
         // via the channelConfigurator callback AddChatChannel already accepts.
         public bool ReadReceiptsEnabled { get; set; } = true;
+
+        // Issue #136: GroupService.CreateAsync enforces this against the resulting membership
+        // (creator included) so a group can't grow unbounded at creation time — same
+        // channelConfigurator override pattern as MessageEditWindow/ReadReceiptsEnabled above. 250 is
+        // a generous default for a chat group; a consumer with different needs can widen or narrow
+        // it.
+        public int MaxGroupMembers { get; set; } = 250;
     }
 }
