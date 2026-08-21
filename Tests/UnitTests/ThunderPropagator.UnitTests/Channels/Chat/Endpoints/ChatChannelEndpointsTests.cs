@@ -87,7 +87,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
 
             public Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
             {
-                if (entity is Message)
+                if (entity is Message or Group)
                     return Task.FromResult(entity);
 
                 throw new NotSupportedException();
@@ -172,6 +172,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
                 configuration.MaxGroupMembers = maxGroupMembers.Value;
 
             return (new GroupService(context, configuration), new UserService(context, new PasswordHasher<User>()), context);
+        }
+
+        private static (GroupService GroupService, ChatChannel Channel, FakeChatContext Context) CreateGroupServiceAndChannel()
+        {
+            var context = new FakeChatContext();
+            return (new GroupService(context, new ChatChannelConfiguration()), CreateChatChannel(), context);
         }
 
         // Mirrors ChatChannelAuthenticationTests.CreateChannel — constructing the real ChatChannel
@@ -1200,6 +1206,91 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var result = await ChatChannelEndpoints.CreateGroupAsync(groupService, CreatePrincipal(), request);
 
             Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Fact]
+        public async Task DeleteGroupAsync_ForTheCreator_MarksDeletedAndReturnsOk()
+        {
+            var (groupService, channel, context) = CreateGroupServiceAndChannel();
+            var creator = Guid.NewGuid();
+            var member = Guid.NewGuid();
+            var group = Group.Create("Team", creator).AddUser(creator).AddUser(member);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(creator), group.Id.ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelDeleteGroupResponseDto>>(result.Result);
+            Assert.Equal(group.Id, ok.Value!.GroupId);
+            Assert.True(ok.Value.IsDeleted);
+            Assert.NotNull(ok.Value.DeletedAt);
+            Assert.True(group.IsDeleted);
+            Assert.Empty(group.GroupUsers);
+        }
+
+        [Fact]
+        public async Task DeleteGroupAsync_ForANonCreator_ReturnsForbidden()
+        {
+            var (groupService, channel, context) = CreateGroupServiceAndChannel();
+            var creator = Guid.NewGuid();
+            var outsider = Guid.NewGuid();
+            var group = Group.Create("Team", creator);
+            context.Seed(group);
+
+            var result = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(outsider), group.Id.ToString());
+
+            Assert.IsType<ForbidHttpResult>(result.Result);
+            Assert.False(group.IsDeleted);
+        }
+
+        [Fact]
+        public async Task DeleteGroupAsync_ForAnAlreadyDeletedGroup_RepeatDeleteReturnsTheSameResult()
+        {
+            var (groupService, channel, context) = CreateGroupServiceAndChannel();
+            var creator = Guid.NewGuid();
+            var group = Group.Create("Team", creator);
+            context.Seed(group);
+
+            var firstResult = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(creator), group.Id.ToString());
+            var secondResult = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(creator), group.Id.ToString());
+
+            var firstOk = Assert.IsType<Ok<ChatChannelDeleteGroupResponseDto>>(firstResult.Result);
+            var secondOk = Assert.IsType<Ok<ChatChannelDeleteGroupResponseDto>>(secondResult.Result);
+            Assert.True(firstOk.Value!.IsDeleted);
+            Assert.True(secondOk.Value!.IsDeleted);
+            Assert.Equal(firstOk.Value.GroupId, secondOk.Value.GroupId);
+            Assert.Equal(firstOk.Value.DeletedAt, secondOk.Value.DeletedAt);
+        }
+
+        [Fact]
+        public async Task DeleteGroupAsync_ForAMissingGroup_ReturnsNotFound()
+        {
+            var (groupService, channel, _) = CreateGroupServiceAndChannel();
+
+            var result = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString());
+
+            Assert.IsType<NotFound>(result.Result);
+        }
+
+        [Fact]
+        public async Task DeleteGroupAsync_WithoutAResolvableCallerIdentity_ReturnsUnauthorized()
+        {
+            var (groupService, channel, _) = CreateGroupServiceAndChannel();
+
+            var result = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(), Guid.NewGuid().ToString());
+
+            Assert.IsType<UnauthorizedHttpResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("not-a-guid")]
+        [InlineData("")]
+        public async Task DeleteGroupAsync_ForAMalformedGroupId_ReturnsValidationProblem(string groupId)
+        {
+            var (groupService, channel, _) = CreateGroupServiceAndChannel();
+
+            var result = await ChatChannelEndpoints.DeleteGroupAsync(groupService, channel, CreatePrincipal(Guid.NewGuid()), groupId);
+
+            Assert.IsType<ValidationProblem>(result.Result);
         }
     }
 }
