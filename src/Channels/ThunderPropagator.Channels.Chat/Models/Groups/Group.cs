@@ -23,6 +23,14 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
         public bool IsDeleted { get; private set; }
         public DateTimeOffset? DeletedAt { get; private set; }
 
+        // Issue #142: the one Group navigation every IChatContext provider guarantees populated
+        // after any read — EntityFrameworkCore's GroupConfiguration (AutoInclude),
+        // MongoDB's MongoDbChatContext.PopulateGroupUsersAsync, and InMemory's
+        // InMemoryChatStore.PopulateNavigations all resolve it by GroupId the same way.
+        // MessageService.SendMessageToGroupAsync enumerates this in memory after loading a Group by
+        // id, so it must always be populated for every provider. Each element's own GroupUser.Group/
+        // GroupUser.User back-references are, by contrast, never populated — see GroupUser's own doc
+        // comments.
         private readonly HashSet<GroupUser> _groupUsers = [];
         public IReadOnlyCollection<GroupUser> GroupUsers => _groupUsers;
 

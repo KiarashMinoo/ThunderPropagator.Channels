@@ -24,9 +24,15 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
             builder.HasIndex(groupUser => new { groupUser.GroupId, groupUser.UserId })
                 .IsUnique();
 
+            // Issue #142: .IsRequired() makes explicit what UserId being a non-nullable Guid column
+            // already implied by convention. Never AutoInclude'd — GroupUser.User is never populated
+            // by any provider; see its own doc comment. A user's memberships are always reached
+            // through Group.GroupUsers (which every provider does guarantee populated) or by
+            // UserId/GroupId directly, not through this back-reference.
             builder.HasOne(groupUser => groupUser.User)
                 .WithMany()
                 .HasForeignKey(groupUser => groupUser.UserId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
