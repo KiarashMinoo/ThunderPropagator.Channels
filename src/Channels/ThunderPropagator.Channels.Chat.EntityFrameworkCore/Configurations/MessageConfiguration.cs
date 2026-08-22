@@ -62,20 +62,31 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
             // Sender and Receiver both reference Users. SQL Server rejects Cascade on both (a
             // deleted user would reach the Messages table via two different paths), and there's
             // no existing delete-user operation that would need the cascade anyway, so both are
-            // Restrict.
+            // Restrict. Issue #142: .IsRequired() on both makes explicit what SenderId/ReceiverId
+            // being non-nullable Guid columns already implied by convention — every message has
+            // exactly one sender and one receiver, never optional.
             builder.HasOne(message => message.Sender)
                 .WithMany()
                 .HasForeignKey(message => message.SenderId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Issue #142: Receiver is configured (FK/delete behavior) the same as Sender for
+            // referential integrity, but — unlike Sender — is never AutoInclude'd: no consumer
+            // displays "who received this" the way Sender's "who sent this" is displayed, so eagerly
+            // loading it on every read would be pure overhead. See Message.Receiver's own doc comment.
             builder.HasOne(message => message.Receiver)
                 .WithMany()
                 .HasForeignKey(message => message.ReceiverId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Issue #142: optional (GroupId is a nullable Guid — a direct message has none) and,
+            // like Receiver, never AutoInclude'd — see Message.Group's own doc comment.
             builder.HasOne(message => message.Group)
                 .WithMany()
                 .HasForeignKey(message => message.GroupId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Message.Sender is public API — keep it populated for any consumer that reads a Message

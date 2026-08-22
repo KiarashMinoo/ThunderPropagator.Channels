@@ -11,12 +11,33 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
     {
         public Guid Id { get; }
         public Guid SenderId { get; }
+
+        // Issue #142: the one navigation property every IChatContext provider guarantees populated
+        // after any read (GetAsync/GetAllAsync) — see EntityFrameworkCore's MessageConfiguration
+        // (AutoInclude), MongoDB's MongoDbChatContext.PopulateSendersAsync, and InMemory's
+        // InMemoryChatStore.PopulateNavigations, all three of which resolve it from SenderId the same
+        // way. Kept populated for any consumer that reads a Message directly and displays its sender;
+        // GetContactsAsync (#115) doesn't rely on this — it projects SenderId/ReceiverId server-side
+        // instead, without touching this navigation at all.
         public User Sender { get; private set; } = null!;
 
         public Guid ReceiverId { get; }
-        public User Receiver { get; private set; } = null!;
+
+        // Issue #142: not part of any provider's loading contract, unlike Sender — no provider
+        // intentionally populates it (there's no equivalent consumer need; nothing displays "who
+        // received this" the way Sender's "who sent this" is displayed), so it's null in the common
+        // case. EntityFrameworkCore's change-tracking could in principle fix this reference up if the
+        // matching User happened to already be tracked in the same DbContext for an unrelated reason,
+        // the same incidental mechanism documented on GroupUser.Group — never rely on this being
+        // either null or populated; resolve the receiver via ReceiverId
+        // (e.g. IChatContext.GetAsync<User, Guid>) if actually needed.
+        public User? Receiver { get; private set; }
 
         public Guid? GroupId { get; }
+
+        // Issue #142: same "not part of the contract" status as Receiver above, independently of
+        // GroupId being set — a direct message (GroupId null) obviously can't have one, but a group
+        // message's Group is null in the common case too. Resolve it via GroupId if needed.
         public Group? Group { get; private set; }
 
         public DateTimeOffset Created { get; }

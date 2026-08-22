@@ -40,10 +40,13 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Configurations
 
             // Group.AddUser/RemoveUser mutate the private _groupUsers field directly, so the
             // navigation must be configured to read/write through that field rather than the
-            // read-only GroupUsers property.
+            // read-only GroupUsers property. Issue #142: .IsRequired() on the GroupUser side makes
+            // explicit what GroupId being a non-nullable Guid column already implied by convention —
+            // a GroupUser always belongs to exactly one Group.
             builder.HasMany(group => group.GroupUsers)
                 .WithOne(groupUser => groupUser.Group)
                 .HasForeignKey(groupUser => groupUser.GroupId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Navigation(group => group.GroupUsers)

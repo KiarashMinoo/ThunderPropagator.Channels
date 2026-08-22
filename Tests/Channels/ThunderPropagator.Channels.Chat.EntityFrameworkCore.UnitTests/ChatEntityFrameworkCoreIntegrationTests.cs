@@ -91,6 +91,53 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             Assert.Contains(sent, message => message.ReceiverId == memberB.Id);
         }
 
+        // Issue #142: the navigation-loading contract every IChatContext provider follows — Message.
+        // Sender is always populated after a read (MessageConfiguration's AutoInclude), Receiver/
+        // Group never are — proven here for EntityFrameworkCore specifically, mirroring the
+        // equivalent InMemory/MongoDB coverage. A fresh DbContext forces a real query rather than
+        // returning the already-tracked instance CreateAsync handed back, which never touched Sender
+        // at all.
+        [Fact]
+        public async Task Message_AfterARead_HasSenderPopulatedButNotReceiverOrGroup()
+        {
+            var (users, _, messages, _) = CreateServices(fixture);
+            var sender = await users.RegisterAsync($"nav-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync($"nav-receiver-{Guid.NewGuid():N}", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+
+            var freshContext = new EntityFrameworkCoreChatContext(fixture.CreateDbContext());
+            var fetched = await freshContext.GetAsync<Message, Guid>(sent.Id, CancellationToken.None);
+
+            Assert.NotNull(fetched!.Sender);
+            Assert.Equal(sender.Id, fetched.Sender.Id);
+            Assert.Null(fetched.Receiver);
+            Assert.Null(fetched.Group);
+        }
+
+        // Issue #142: the other half of the contract — Group.GroupUsers is always populated after a
+        // read, and GroupUser.User is never populated (not loaded by this query at all, so there's
+        // nothing for EF to fix up). GroupUser.Group is deliberately NOT asserted null here — see its
+        // own doc comment: EntityFrameworkCore's change-tracking incidentally fixes it up whenever a
+        // Group and its GroupUsers are loaded together in the same tracked context, which is exactly
+        // what happens via GroupConfiguration's AutoInclude. That's provider-specific incidental
+        // behavior, not a contract guarantee either way, so no test should assert a particular value
+        // for it — InMemory/MongoDB's equivalent coverage does assert null, since neither provider
+        // has this tracking mechanism at all.
+        [Fact]
+        public async Task GroupUser_AfterARead_DoesNotHaveItsUserPopulated()
+        {
+            var (users, groups, _, _) = CreateServices(fixture);
+            var creator = await users.RegisterAsync($"nav-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
+            var member = await users.RegisterAsync($"nav-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
+            var group = await groups.CreateAsync("Nav Group", creator.Id, [member.Id], CancellationToken.None);
+
+            var freshContext = new EntityFrameworkCoreChatContext(fixture.CreateDbContext());
+            var fetched = await freshContext.GetAsync<Group, Guid>(group.Id, CancellationToken.None);
+
+            var groupUser = Assert.Single(fetched!.GroupUsers);
+            Assert.Null(groupUser.User);
+        }
+
         // Issue #115: GetContactsAsync composes a single server-side query (a Message subquery feeding
         // an IN filter on Users) rather than loading Messages and projecting Sender in memory, so it no
         // longer depends on MessageConfiguration's AutoInclude at all. These five cases are this

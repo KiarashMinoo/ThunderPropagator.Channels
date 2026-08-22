@@ -107,6 +107,44 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             Assert.Contains(sent, message => message.ReceiverId == memberB.Id);
         }
 
+        // Issue #142: the navigation-loading contract every IChatContext provider follows — Message.
+        // Sender is always populated after a read, Receiver/Group never are — proven here for
+        // InMemory specifically, mirroring the equivalent EF Core/MongoDB coverage.
+        [Fact]
+        public async Task Message_AfterARead_HasSenderPopulatedButNotReceiverOrGroup()
+        {
+            var (users, _, messages, store) = CreateServices();
+            var sender = await users.RegisterAsync("nav-sender", "password", "Sender", CancellationToken.None);
+            var receiver = await users.RegisterAsync("nav-receiver", "password", "Receiver", CancellationToken.None);
+            var sent = await messages.SendMessageAsync(sender.Id, receiver.Id, "hello", CancellationToken.None);
+            var context = new InMemoryChatContext(store);
+
+            var fetched = await context.GetAsync<Message, Guid>(sent.Id, CancellationToken.None);
+
+            Assert.NotNull(fetched!.Sender);
+            Assert.Equal(sender.Id, fetched.Sender.Id);
+            Assert.Null(fetched.Receiver);
+            Assert.Null(fetched.Group);
+        }
+
+        // Issue #142: the other half of the contract — Group.GroupUsers is always populated after a
+        // read, but each element's own GroupUser.User/GroupUser.Group back-references never are.
+        [Fact]
+        public async Task GroupUser_AfterARead_DoesNotHaveItsUserOrGroupBackReferencePopulated()
+        {
+            var (users, groups, _, store) = CreateServices();
+            var creator = await users.RegisterAsync("nav-creator", "password", "Creator", CancellationToken.None);
+            var member = await users.RegisterAsync("nav-member", "password", "Member", CancellationToken.None);
+            var group = await groups.CreateAsync("Nav Group", creator.Id, [member.Id], CancellationToken.None);
+            var context = new InMemoryChatContext(store);
+
+            var fetched = await context.GetAsync<Group, Guid>(group.Id, CancellationToken.None);
+
+            var groupUser = Assert.Single(fetched!.GroupUsers);
+            Assert.Null(groupUser.User);
+            Assert.Null(groupUser.Group);
+        }
+
         // Issue #115: GetContactsAsync reads SenderId/ReceiverId straight off the stored Message
         // entries rather than the populated Sender navigation. These five cases are this provider's
         // share of the AC's "empty, duplicate, sent-only, received-only, and bidirectional" contract

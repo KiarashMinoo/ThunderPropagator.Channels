@@ -75,6 +75,45 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.MongoDB
             Assert.Equal(groupUser.UserId, deserialized.UserId);
         }
 
+        // Issue #142: the navigation-loading contract every IChatContext provider follows —
+        // GroupUser.Group/.User are never part of the stored document at all, deliberately (see
+        // GroupUserSerializer's own comment); MongoDbChatContext is the one that would populate a
+        // navigation after a read (for Message.Sender/Group.GroupUsers, see the matching Message
+        // test below), and it never touches GroupUser.Group/.User either. Proven here at the
+        // serializer level, since a pure BSON round-trip is what this test file already covers
+        // without needing a live MongoDB server.
+        [Fact]
+        public void GroupUser_RoundTripsThroughBson_WithoutItsGroupOrUserNavigationsPopulated()
+        {
+            var groupUser = GroupUser.Create(Guid.NewGuid(), Guid.NewGuid());
+
+            var document = groupUser.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<GroupUser>(document);
+
+            Assert.Null(deserialized.Group);
+            Assert.Null(deserialized.User);
+        }
+
+        // Issue #142: MessageSerializer.Deserialize never sets Sender/Receiver/Group either — see its
+        // own comment. Sender is instead populated by MongoDbChatContext.PopulateSendersAsync as a
+        // separate step after the driver deserializes the document, mirroring EntityFrameworkCore's
+        // AutoInclude and InMemory's InMemoryChatStore.PopulateNavigations; Receiver/Group are never
+        // populated by any of the three. This proves the serializer's half of that split — a pure BSON
+        // round-trip never reaches MongoDbChatContext's populate step, so a fresh deserialize must
+        // leave all three at their unset default regardless of what the real read path does afterward.
+        [Fact]
+        public void Message_RoundTripsThroughBson_WithoutItsSenderReceiverOrGroupNavigationsPopulated()
+        {
+            var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "hello group");
+
+            var document = message.ToBsonDocument();
+            var deserialized = BsonSerializer.Deserialize<Message>(document);
+
+            Assert.Null(deserialized.Sender);
+            Assert.Null(deserialized.Receiver);
+            Assert.Null(deserialized.Group);
+        }
+
         [Fact]
         public void Message_RoundTripsThroughBson_WithoutAGroup()
         {
