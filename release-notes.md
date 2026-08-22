@@ -1,5 +1,5 @@
-## [1.0.1-beta.71] — 2026-08-22
+## [1.0.1-beta.72] — 2026-08-22
 
 ### 🚀 Features
 
-- Add and validate the built-in quiz question bank `(7ccc84f)` — Kiarash Minoo
+- Implement quiz game sessions, lobby membership, and reconnect snapshots `(e7c1259)` — Kiarash Minoo

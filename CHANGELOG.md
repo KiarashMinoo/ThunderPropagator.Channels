@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.72] — 2026-08-22
+
+### 🚀 Features
+
+- Implement quiz game sessions, lobby membership, and reconnect snapshots `(e7c1259)` — Kiarash Minoo
+
 ## [1.0.1-beta.71] — 2026-08-22
 
 ### 🚀 Features
