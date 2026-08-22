@@ -1,6 +1,5 @@
 using ThunderPropagator.Application.Collections;
 using ThunderPropagator.BuildingBlocks.Application.Collections;
-using ThunderPropagator.Channels.Chat.Models.Messages;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.History
 {
@@ -28,9 +27,12 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.History
             set => this[nameof(Page)] = value;
         }
 
-        public int PageSize
+        // Issue #141: null when the caller doesn't specify one, rather than defaulting here to the
+        // old hardcoded MessageService.DefaultPageSize constant — MessageService itself now resolves
+        // an unset PageSize against the configurable ChatChannelConfiguration.MessageHistoryPageSize.
+        public int? PageSize
         {
-            get => (int)GetValueOrDefault(nameof(PageSize), MessageService.DefaultPageSize)!;
+            get => (int?)this[nameof(PageSize)];
             set => this[nameof(PageSize)] = value;
         }
 

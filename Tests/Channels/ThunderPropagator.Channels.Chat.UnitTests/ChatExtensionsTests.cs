@@ -35,5 +35,45 @@ namespace ThunderPropagator.Channels.Chat.UnitTests
             services.AddChatChannel<DummyChatContext>();
             Assert.NotNull(services);
         }
+
+        // Issue #141: Validate() runs immediately after the consumer's channelConfigurator callback,
+        // inside AddChatChannel itself, so an out-of-range value fails host startup rather than
+        // surfacing later as a confusing runtime failure.
+        [Fact]
+        public void AddChatChannel_WithAnInvalidMaxMessageLength_ThrowsArgumentOutOfRangeException()
+        {
+            var services = new ServiceCollection();
+
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                services.AddChatChannel<DummyChatContext>(configuration => configuration.MaxMessageLength = 0));
+
+            Assert.Equal(nameof(ChatChannelConfiguration.MaxMessageLength), exception.ParamName);
+        }
+
+        [Fact]
+        public void AddChatChannel_WithAnInvalidMessageHistoryPageSize_ThrowsArgumentOutOfRangeException()
+        {
+            var services = new ServiceCollection();
+
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                services.AddChatChannel<DummyChatContext>(configuration => configuration.MessageHistoryPageSize = 0));
+
+            Assert.Equal(nameof(ChatChannelConfiguration.MessageHistoryPageSize), exception.ParamName);
+        }
+
+        [Fact]
+        public void AddChatChannel_WithValidChatSpecificLimits_DoesNotThrow()
+        {
+            var services = new ServiceCollection();
+
+            services.AddChatChannel<DummyChatContext>(configuration =>
+            {
+                configuration.MaxMessageLength = 500;
+                configuration.MessageHistoryPageSize = 25;
+                configuration.AllowGuestRegister = false;
+            });
+
+            Assert.NotNull(services);
+        }
     }
 }

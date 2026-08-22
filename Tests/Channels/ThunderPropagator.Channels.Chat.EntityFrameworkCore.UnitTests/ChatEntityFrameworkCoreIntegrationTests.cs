@@ -28,7 +28,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var passwordHasher = new PasswordHasher<User>();
             var resolvedConfiguration = configuration ?? new ChatChannelConfiguration();
 
-            return (new UserService(chatContext, passwordHasher), new GroupService(chatContext, resolvedConfiguration), new MessageService(chatContext, resolvedConfiguration), dbContext);
+            return (new UserService(chatContext, passwordHasher, resolvedConfiguration), new GroupService(chatContext, resolvedConfiguration), new MessageService(chatContext, resolvedConfiguration), dbContext);
         }
 
         [Fact]
@@ -79,7 +79,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var sender = await users.RegisterAsync($"sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var memberA = await users.RegisterAsync($"member-a-{Guid.NewGuid():N}", "password", "MemberA", CancellationToken.None);
             var memberB = await users.RegisterAsync($"member-b-{Guid.NewGuid():N}", "password", "MemberB", CancellationToken.None);
-            var group = await groups.CreateAsync("Test Group", sender.Id, CancellationToken.None, memberA.Id, memberB.Id);
+            var group = await groups.CreateAsync("Test Group", sender.Id, [memberA.Id, memberB.Id], CancellationToken.None);
 
             // MessageService.SendMessageToGroupAsync loads the Group by id and enumerates
             // group.GroupUsers in memory — this only works end to end if the GroupUsers navigation
@@ -170,7 +170,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
         {
             var (users, groups, _, _) = CreateServices(fixture);
             var member = await users.RegisterAsync($"joiner-{Guid.NewGuid():N}", "password", "Joiner", CancellationToken.None);
-            var group = await groups.CreateAsync("Membership Group", member.Id, CancellationToken.None);
+            var group = await groups.CreateAsync("Membership Group", member.Id, [], CancellationToken.None);
 
             await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
             var memberGroups = await users.GetUserGroupsAsync(member.Id, CancellationToken.None);
@@ -183,7 +183,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
         {
             var (users, groups, _, _) = CreateServices(fixture);
             var member = await users.RegisterAsync($"twice-{Guid.NewGuid():N}", "password", "Twice", CancellationToken.None);
-            var group = await groups.CreateAsync("Duplicate Membership Group", member.Id, CancellationToken.None);
+            var group = await groups.CreateAsync("Duplicate Membership Group", member.Id, [], CancellationToken.None);
             await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
 
             // Group.AddUser has no in-memory duplicate check of its own (see GroupUserConfiguration's
@@ -218,7 +218,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var messages = new MessageService(spy, new ChatChannelConfiguration());
             var sender = await users.RegisterAsync($"group-update-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"group-update-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Update Spy Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Update Spy Group", sender.Id, [member.Id], CancellationToken.None);
 
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "hello group", CancellationToken.None);
 
@@ -271,7 +271,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, messages, _) = CreateServices(fixture);
             var sender = await users.RegisterAsync($"exclude-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"exclude-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Exclude Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Exclude Group", sender.Id, [member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "group message", CancellationToken.None);
             await messages.SendMessageAsync(sender.Id, member.Id, "direct message", CancellationToken.None);
 
@@ -301,7 +301,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, messages, _) = CreateServices(fixture);
             var sender = await users.RegisterAsync($"group-history-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"group-history-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("History Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("History Group", sender.Id, [member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "first", CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "second", CancellationToken.None);
 
@@ -318,7 +318,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var sender = await users.RegisterAsync($"nonmember-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"nonmember-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
             var outsider = await users.RegisterAsync($"nonmember-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
-            var group = await groups.CreateAsync("Members Only Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Members Only Group", sender.Id, [member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "secret", CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupAccessDeniedException>(
@@ -429,7 +429,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var creator = await users.RegisterAsync($"delete-group-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var memberA = await users.RegisterAsync($"delete-group-member-a-{Guid.NewGuid():N}", "password", "MemberA", CancellationToken.None);
             var memberB = await users.RegisterAsync($"delete-group-member-b-{Guid.NewGuid():N}", "password", "MemberB", CancellationToken.None);
-            var group = await groups.CreateAsync("Doomed Group", creator.Id, CancellationToken.None, memberA.Id, memberB.Id);
+            var group = await groups.CreateAsync("Doomed Group", creator.Id, [memberA.Id, memberB.Id], CancellationToken.None);
 
             var (deleted, affectedMemberIds) = await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
 
@@ -447,7 +447,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, _, _) = CreateServices(fixture);
             var creator = await users.RegisterAsync($"forbidden-delete-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync($"forbidden-delete-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Protected Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Protected Group", creator.Id, [member.Id], CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupDeleteForbiddenException>(
                 () => groups.DeleteGroupAsync(member.Id, group.Id, CancellationToken.None));
@@ -472,7 +472,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, _, _) = CreateServices(fixture);
             var creator = await users.RegisterAsync($"repeat-delete-group-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync($"repeat-delete-group-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Repeat Delete Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Repeat Delete Group", creator.Id, [member.Id], CancellationToken.None);
             var (firstDeleted, firstAffected) = await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
 
             var (secondDeleted, secondAffected) = await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
@@ -489,7 +489,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, _, _) = CreateServices(fixture);
             var creator = await users.RegisterAsync($"concurrent-delete-group-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync($"concurrent-delete-group-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Concurrent Delete Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Concurrent Delete Group", creator.Id, [member.Id], CancellationToken.None);
 
             // Two independent GroupService instances, each against its own DbContext — see
             // DeleteMessage_CalledConcurrentlyBySender_DoesNotThrowAndEndsUpDeleted's own reasoning.
@@ -509,7 +509,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, messages, _) = CreateServices(fixture);
             var creator = await users.RegisterAsync($"admin-delete-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync($"admin-delete-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Moderated Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Moderated Group", creator.Id, [member.Id], CancellationToken.None);
             var sent = await messages.SendMessageToGroupAsync(member.Id, group.Id, "off-topic", CancellationToken.None);
 
             var deleted = await messages.DeleteMessageAsync(creator.Id, sent.Single().Id, CancellationToken.None);
@@ -524,8 +524,8 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var creator = await users.RegisterAsync($"wrong-group-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var otherCreator = await users.RegisterAsync($"other-group-creator-{Guid.NewGuid():N}", "password", "OtherCreator", CancellationToken.None);
             var member = await users.RegisterAsync($"wrong-group-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Actual Group", creator.Id, CancellationToken.None, member.Id);
-            await groups.CreateAsync("Unrelated Group", otherCreator.Id, CancellationToken.None);
+            var group = await groups.CreateAsync("Actual Group", creator.Id, [member.Id], CancellationToken.None);
+            await groups.CreateAsync("Unrelated Group", otherCreator.Id, [], CancellationToken.None);
             var sent = await messages.SendMessageToGroupAsync(member.Id, group.Id, "hello", CancellationToken.None);
 
             await Assert.ThrowsAsync<MessageDeleteForbiddenException>(
@@ -538,7 +538,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, messages, _) = CreateServices(fixture);
             var creator = await users.RegisterAsync($"send-to-deleted-creator-{Guid.NewGuid():N}", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync($"send-to-deleted-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Soon Deleted Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Soon Deleted Group", creator.Id, [member.Id], CancellationToken.None);
             await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupNotFoundException>(

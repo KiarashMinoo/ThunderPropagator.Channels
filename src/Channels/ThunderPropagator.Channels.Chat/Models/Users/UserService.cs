@@ -8,7 +8,7 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
 #if !DEBUG
         sealed
 #endif
-        class UserService(IChatContext chatContext, IPasswordHasher<User> passwordHasher)
+        class UserService(IChatContext chatContext, IPasswordHasher<User> passwordHasher, ChatChannelConfiguration configuration)
     {
         // Issue #123: shared bounds SearchUsersAsync validates against — mirrors MessageService's
         // own DefaultPageSize/MaxPageSize (#117) for consistency, kept as this service's own
@@ -30,6 +30,11 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
 
         public async Task<User> RegisterAsync(string username, string password, string name, CancellationToken cancellationToken = default)
         {
+            // Issue #141: checked before the username-uniqueness lookup, since a disabled-registration
+            // host shouldn't even reveal whether a given username already exists.
+            if (!configuration.AllowGuestRegister)
+                throw new GuestRegistrationDisabledException();
+
             var dbUser = await GetByUsernameAsync(username, cancellationToken);
             if (dbUser is not null)
                 throw new InvalidOperationException("Username already exists");

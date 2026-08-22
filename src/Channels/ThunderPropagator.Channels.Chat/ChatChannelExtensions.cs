@@ -42,6 +42,9 @@ namespace ThunderPropagator.Channels.Chat
         {
             ChatChannelConfiguration chatChannelConfiguration = new();
             channelConfigurator?.Invoke(chatChannelConfiguration);
+            // Issue #141: fails host startup immediately, with a property-specific message, rather
+            // than letting an out-of-range value surface later as a confusing runtime failure.
+            chatChannelConfiguration.Validate();
 
             services
                 .AddSingleton(chatChannelConfiguration)

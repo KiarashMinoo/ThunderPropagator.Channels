@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Security.Authentication;
 using Microsoft.AspNetCore.Identity;
+using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
@@ -61,11 +62,34 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
                 => throw new NotSupportedException();
         }
 
-        private static (UserService Service, FakeChatContext Context) CreateService()
+        private static (UserService Service, FakeChatContext Context) CreateService(bool allowGuestRegister = true)
         {
             var context = new FakeChatContext();
-            var service = new UserService(context, new PasswordHasher<User>());
+            var configuration = new ChatChannelConfiguration { AllowGuestRegister = allowGuestRegister };
+            var service = new UserService(context, new PasswordHasher<User>(), configuration);
             return (service, context);
+        }
+
+        // Issue #141: a host that provisions users through its own admin/SSO flow can close off
+        // self-service registration via ChatChannelConfiguration.AllowGuestRegister — checked before
+        // the username-uniqueness lookup (UserService.RegisterAsync's own comment explains why).
+        [Fact]
+        public async Task RegisterAsync_WhenGuestRegistrationIsDisabled_ThrowsGuestRegistrationDisabledException()
+        {
+            var (service, _) = CreateService(allowGuestRegister: false);
+
+            await Assert.ThrowsAsync<GuestRegistrationDisabledException>(
+                () => service.RegisterAsync("alice", "correct horse battery staple", "Alice"));
+        }
+
+        [Fact]
+        public async Task RegisterAsync_WhenGuestRegistrationIsEnabled_Succeeds()
+        {
+            var (service, _) = CreateService(allowGuestRegister: true);
+
+            var user = await service.RegisterAsync("alice", "correct horse battery staple", "Alice");
+
+            Assert.Equal("alice", user.UserName);
         }
 
         [Fact]
@@ -128,7 +152,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Models
             context.Seed(user);
 
             var currentHasher = new PasswordHasher<User>();
-            var service = new UserService(context, currentHasher);
+            var service = new UserService(context, currentHasher, new ChatChannelConfiguration());
 
             var loggedInUser = await service.LoginAsync("alice", "correct horse battery staple");
 
