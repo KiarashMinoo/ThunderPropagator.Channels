@@ -1,5 +1,5 @@
-## [1.0.1-beta.70] — 2026-08-22
+## [1.0.1-beta.71] — 2026-08-22
 
 ### 🚀 Features
 
-- Implement QuizChannelFeederMessage serialization contract `(da3665f)` — Kiarash Minoo
+- Add and validate the built-in quiz question bank `(7ccc84f)` — Kiarash Minoo
