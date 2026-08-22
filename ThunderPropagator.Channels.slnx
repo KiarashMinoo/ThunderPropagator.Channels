@@ -84,6 +84,11 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="src/Demo/ThunderPropagator.Channels.Demo.Quiz/ThunderPropagator.Channels.Demo.Quiz.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
     <Project Path="src/Demo/ThunderPropagator.Channels.Demo.StockListBasic/ThunderPropagator.Channels.Demo.StockListBasic.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
@@ -179,6 +184,15 @@
       <Build Solution="Release|Any CPU" Project="false" />
     </Project>
     <Project Path="Tests/Demo/ThunderPropagator.Channels.Demo.Portfolio.UnitTests/ThunderPropagator.Channels.Demo.Portfolio.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Demo/ThunderPropagator.Channels.Demo.Quiz.UnitTests/ThunderPropagator.Channels.Demo.Quiz.UnitTests.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />

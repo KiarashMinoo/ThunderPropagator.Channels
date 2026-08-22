@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="Bogus"/>
+        <PackageReference Include="JetBrains.Annotations" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="QuizChannelFeederMessage.cs">
+            <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizChannelMetadata.cs">
+            <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizChannelConfiguration.cs">
+            <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>
