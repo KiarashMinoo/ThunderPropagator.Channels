@@ -1,5 +1,5 @@
-## [1.0.1-beta.69] — 2026-08-22
+## [1.0.1-beta.70] — 2026-08-22
 
 ### 🚀 Features
 
-- Implement QuizChannelMetadata descriptors `(36a5d97)` — Kiarash Minoo
+- Implement QuizChannelFeederMessage serialization contract `(da3665f)` — Kiarash Minoo
