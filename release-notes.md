@@ -1,5 +1,5 @@
-## [1.0.1-beta.68] — 2026-08-22
+## [1.0.1-beta.69] — 2026-08-22
 
 ### 🚀 Features
 
-- Define QuizPhase and valid game-state transitions `(89a154a)` — Kiarash Minoo
+- Implement QuizChannelMetadata descriptors `(36a5d97)` — Kiarash Minoo
