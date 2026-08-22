@@ -1,5 +1,5 @@
-## [1.0.1-beta.66] — 2026-08-22
+## [1.0.1-beta.67] — 2026-08-22
 
-### 🧪 Tests
+### 🚀 Features
 
-- Add regression coverage for GroupId DTO mapping and group sends `(7a2ef0a)` — Kiarash Minoo
+- Scaffold the Quiz channel package and project structure `(186302c)` — Kiarash Minoo
