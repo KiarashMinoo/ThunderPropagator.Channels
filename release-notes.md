@@ -1,5 +1,5 @@
-## [1.0.1-beta.72] — 2026-08-22
+## [1.0.1-beta.73] — 2026-08-22
 
 ### 🚀 Features
 
-- Implement quiz game sessions, lobby membership, and reconnect snapshots `(e7c1259)` — Kiarash Minoo
+- Implement the cancellable IterativeFeeder game loop and countdown `(8a6d52d)` — Kiarash Minoo
