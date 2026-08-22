@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.66] — 2026-08-22
+
+### 🧪 Tests
+
+- Add regression coverage for GroupId DTO mapping and group sends `(7a2ef0a)` — Kiarash Minoo
+
 ## [1.0.1-beta.65] — 2026-08-22
 
 ### 🚀 Features

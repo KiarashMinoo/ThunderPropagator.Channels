@@ -1,5 +1,5 @@
-## [1.0.1-beta.65] — 2026-08-22
+## [1.0.1-beta.66] — 2026-08-22
 
-### 🚀 Features
+### 🧪 Tests
 
-- Define and configure navigation-property loading for every provider `(8cd22d9)` — Kiarash Minoo
+- Add regression coverage for GroupId DTO mapping and group sends `(7a2ef0a)` — Kiarash Minoo
