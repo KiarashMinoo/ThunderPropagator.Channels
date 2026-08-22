@@ -1,5 +1,5 @@
-## [1.0.1-beta.61] — 2026-08-21
+## [1.0.1-beta.62] — 2026-08-22
 
 ### 🚀 Features
 
-- Capture feeder-message DateTime once during construction `(a4fd711)` — Kiarash Minoo
+- Initialize pipeline counters thread-safely `(37af220)` — Kiarash Minoo
