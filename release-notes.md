@@ -1,5 +1,5 @@
-## [1.0.1-beta.63] — 2026-08-22
+## [1.0.1-beta.64] — 2026-08-22
 
 ### 🚀 Features
 
-- Reorder GroupService.CreateAsync parameters for natural cancellation usage `(2ac92a9)` — Kiarash Minoo
+- Add chat-specific limits and defaults to ChatChannelConfiguration `(1c07f5a)` — Kiarash Minoo

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.64] — 2026-08-22
+
+### 🚀 Features
+
+- Add chat-specific limits and defaults to ChatChannelConfiguration `(1c07f5a)` — Kiarash Minoo
+
 ## [1.0.1-beta.63] — 2026-08-22
 
 ### 🚀 Features
