@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.65] — 2026-08-22
+
+### 🚀 Features
+
+- Define and configure navigation-property loading for every provider `(8cd22d9)` — Kiarash Minoo
+
 ## [1.0.1-beta.64] — 2026-08-22
 
 ### 🚀 Features
