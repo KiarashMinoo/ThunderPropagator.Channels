@@ -1,5 +1,5 @@
-## [1.0.1-beta.62] — 2026-08-22
+## [1.0.1-beta.63] — 2026-08-22
 
 ### 🚀 Features
 
-- Initialize pipeline counters thread-safely `(37af220)` — Kiarash Minoo
+- Reorder GroupService.CreateAsync parameters for natural cancellation usage `(2ac92a9)` — Kiarash Minoo
