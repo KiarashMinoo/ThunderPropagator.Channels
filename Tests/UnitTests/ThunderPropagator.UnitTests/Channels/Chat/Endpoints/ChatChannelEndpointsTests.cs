@@ -13,6 +13,7 @@ using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
+using ThunderPropagator.Channels.Chat.Pipelines.Messages.Send;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Search;
 
@@ -827,6 +828,40 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             Assert.Null(created.Value.ReceiverId);
             Assert.Equal(3, created.Value.MessageIds.Count);
             Assert.Equal(3, context.Messages.Count(message => message.GroupId == group.Id));
+        }
+
+        // Issue #143: closes the actual regression gap #105 was about. The REST test above uses
+        // ChatChannelSendMessageRequestDto, a plain POCO with independent auto-properties — it can
+        // never exhibit the dictionary-key-collision bug #105 fixed. Only
+        // ChatChannelSendMessageReceiverPipelineRequestDto (the WebSocket DTO, a BindingDictionary —
+        // see its own tests' comment) could ever alias GroupId onto ReceiverId's storage slot. This
+        // drives that exact DTO type from binding through MessageService.SendMessageToGroupAsync's
+        // group resolution — the same two calls ChatChannelSendMessageReceiverPipeline.
+        // InvokeAuthenticatedAsync's group branch makes — since the pipeline's own Invoke can't be
+        // exercised in isolation (ChannelInfo's constructor is internal to a closed-source assembly;
+        // see ChatChannelAuthenticationTests' own comment). A regression reintroducing the #105 alias
+        // would make request.GroupId read back Guid.Empty (ReceiverId's untouched default) here,
+        // throwing on ValidateTarget or, if it slipped past that, delivering zero messages instead of
+        // three.
+        [Fact]
+        public async Task GroupSend_ThroughTheWebSocketRequestDto_FromBindingThroughGroupResolution_DeliversToEveryMember()
+        {
+            var (messageService, _, context) = CreateMessageServiceAndChannel();
+            var sender = Guid.NewGuid();
+            var memberA = Guid.NewGuid();
+            var memberB = Guid.NewGuid();
+            var group = Group.Create("Team", sender).AddUser(sender).AddUser(memberA).AddUser(memberB);
+            context.Seed(group);
+
+            var request = new ChatChannelSendMessageReceiverPipelineRequestDto { GroupId = group.Id, Body = "hi team" };
+            request.ValidateTarget();
+
+            var messages = await messageService.SendMessageToGroupAsync(sender, request.GroupId!.Value, request.Body, CancellationToken.None);
+
+            Assert.Equal(3, messages.Count);
+            Assert.Contains(messages, message => message.ReceiverId == memberA);
+            Assert.Contains(messages, message => message.ReceiverId == memberB);
+            Assert.All(messages, message => Assert.Equal(group.Id, message.GroupId));
         }
 
         [Fact]
