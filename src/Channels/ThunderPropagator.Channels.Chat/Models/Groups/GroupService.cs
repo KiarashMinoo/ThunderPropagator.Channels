@@ -44,7 +44,21 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
         // users array does or doesn't include, and this is the WebSocket Groups/Create pipeline's only
         // call site too, so changing that default would have silently changed already-tested behavior
         // for both transports rather than just adding the missing validation this issue asks for.
-        public async Task<Group> CreateAsync(string name, Guid createdByUserId, CancellationToken cancellationToken = default, params Guid[] users)
+        //
+        // Issue #140: users used to be a trailing `params Guid[]`, which C# only allows after every
+        // other parameter — including the optional cancellationToken — so a caller passing member ids
+        // had to also supply a token explicitly just to reach them, even though cancellation is the
+        // less commonly varied argument of the two. users now comes right after the two required
+        // parameters as a plain IReadOnlyCollection<Guid>, with cancellationToken last and still
+        // optional — the conventional .NET shape, and the same relative order the REST/WebSocket
+        // call sites' own arguments (name, creator, members, token) already read in. GroupService is
+        // internal to this assembly (never part of the public package surface), so this is a pure
+        // source-compatibility change: both existing call sites were updated in the same change, and
+        // no binary-compatibility shim (e.g. an [Obsolete] overload retaining the old order) is
+        // needed — external consumers can never have compiled against this signature. A caller
+        // migrating a positional `CreateAsync(name, creator, cancellationToken, u1, u2)` call rewrites
+        // it as `CreateAsync(name, creator, [u1, u2], cancellationToken)`.
+        public async Task<Group> CreateAsync(string name, Guid createdByUserId, IReadOnlyCollection<Guid> users, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new InvalidGroupCreateRequestException("Name cannot be empty.");

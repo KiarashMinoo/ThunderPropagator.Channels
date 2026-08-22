@@ -607,7 +607,7 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
 
             try
             {
-                var group = await groupService.CreateAsync(request.Name, currentUserId, cancellationToken, request.UserIds ?? []);
+                var group = await groupService.CreateAsync(request.Name, currentUserId, request.UserIds ?? [], cancellationToken);
 
                 return TypedResults.Created((string?)null, ChatChannelGroupSummaryDto.FromGroup(group));
             }
