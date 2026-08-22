@@ -23,6 +23,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
     internal abstract class AuthenticatedChatChannelReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
+        private readonly object _counterLock = new();
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
@@ -30,7 +31,8 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
             CancellationToken cancellationToken = default)
         {
             var activityName = $"{channelInfo.ChannelName}_{GetType().GetTypeInfo().Name}_{nameof(Invoke)}";
-            _counter ??= Telemetry.CreateCounter<long>($"thunderpropagator.{activityName.ToLowerInvariant().Replace('_', '.')}");
+            _counter = ChatChannelPipelineTelemetry.EnsureCounter(ref _counter, _counterLock,
+                () => Telemetry.CreateCounter<long>($"thunderpropagator.{activityName.ToLowerInvariant().Replace('_', '.')}"));
 
             using var activity = Telemetry.StartActivity(activityName, ActivityKind.Consumer)?
                 .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType)
