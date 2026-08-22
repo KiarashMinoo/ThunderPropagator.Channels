@@ -10,6 +10,17 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Pipelines
     /// to its own key. ValidateTarget also now rejects a request that sets both ReceiverId and
     /// GroupId, not just one that sets neither, since specifying both leaves the destination
     /// ambiguous.
+    ///
+    /// Issue #143: the ReceiverId/GroupId-independence tests below only ever leave the untouched
+    /// property at its implicit default (never explicitly assigned) — none proved independence still
+    /// holds when both properties are explicitly touched, including with an "unset" sentinel value
+    /// rather than an omission. Added that coverage, plus a pipeline-level group-send test (see
+    /// ChatChannelEndpointsTests) that drives this exact DTO type from binding through
+    /// MessageService.SendMessageToGroupAsync's group resolution — closing the actual regression gap
+    /// #105 was about, since ChatChannelSendMessageRequestDto (the REST DTO, already covered by
+    /// ChatChannelEndpointsTests' own group-target test) is a plain POCO with independent
+    /// auto-properties, structurally immune to the dictionary-key-collision bug that only a
+    /// BindingDictionary-backed type like this one could ever exhibit.
     /// </summary>
     public sealed class ChatChannelSendMessageReceiverPipelineRequestDtoTests
     {
@@ -113,6 +124,43 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Pipelines
             dto.GroupId = Guid.Empty;
 
             Assert.Throws<InvalidOperationException>(dto.ValidateTarget);
+        }
+
+        // Issue #143: the other independence tests above only ever leave the untouched property at
+        // its implicit default (never explicitly assigned) — this proves independence still holds
+        // when GroupId is explicitly touched with the "unset" sentinel too, not just omitted, so a
+        // regression that made GroupId's setter alias ReceiverId's storage slot again would corrupt
+        // ReceiverId here even though GroupId itself was only ever set to Guid.Empty.
+        [Fact]
+        public void SettingGroupIdToEmptyGuid_AfterSettingReceiverId_DoesNotClearReceiverIdAndValidatesAsReceiverOnly()
+        {
+            var receiverId = Guid.NewGuid();
+            var dto = CreateDto();
+            dto.ReceiverId = receiverId;
+
+            dto.GroupId = Guid.Empty;
+
+            Assert.Equal(receiverId, dto.ReceiverId);
+            Assert.Equal(Guid.Empty, dto.GroupId);
+            var exception = Record.Exception(dto.ValidateTarget);
+            Assert.Null(exception);
+        }
+
+        // Issue #143: the symmetric case — setting ReceiverId to the "unset" sentinel must not
+        // disturb an already-assigned GroupId.
+        [Fact]
+        public void SettingReceiverIdToEmptyGuid_AfterSettingGroupId_DoesNotClearGroupIdAndValidatesAsGroupOnly()
+        {
+            var groupId = Guid.NewGuid();
+            var dto = CreateDto();
+            dto.GroupId = groupId;
+
+            dto.ReceiverId = Guid.Empty;
+
+            Assert.Equal(groupId, dto.GroupId);
+            Assert.Equal(Guid.Empty, dto.ReceiverId);
+            var exception = Record.Exception(dto.ValidateTarget);
+            Assert.Null(exception);
         }
     }
 }
