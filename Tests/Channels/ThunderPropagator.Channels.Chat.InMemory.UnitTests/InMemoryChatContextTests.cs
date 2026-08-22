@@ -25,7 +25,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var passwordHasher = new PasswordHasher<User>();
             var resolvedConfiguration = configuration ?? new ChatChannelConfiguration();
 
-            return (new UserService(context, passwordHasher), new GroupService(context, resolvedConfiguration), new MessageService(context, resolvedConfiguration), store);
+            return (new UserService(context, passwordHasher, resolvedConfiguration), new GroupService(context, resolvedConfiguration), new MessageService(context, resolvedConfiguration), store);
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var sender = await users.RegisterAsync("sender", "password", "Sender", CancellationToken.None);
             var memberA = await users.RegisterAsync("member-a", "password", "MemberA", CancellationToken.None);
             var memberB = await users.RegisterAsync("member-b", "password", "MemberB", CancellationToken.None);
-            var group = await groups.CreateAsync("Test Group", sender.Id, CancellationToken.None, memberA.Id, memberB.Id);
+            var group = await groups.CreateAsync("Test Group", sender.Id, [memberA.Id, memberB.Id], CancellationToken.None);
 
             var sent = await messages.SendMessageToGroupAsync(sender.Id, group.Id, "hello group", CancellationToken.None);
 
@@ -185,7 +185,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
         {
             var (users, groups, _, _) = CreateServices();
             var member = await users.RegisterAsync("joiner", "password", "Joiner", CancellationToken.None);
-            var group = await groups.CreateAsync("Membership Group", member.Id, CancellationToken.None);
+            var group = await groups.CreateAsync("Membership Group", member.Id, [], CancellationToken.None);
 
             await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
             var memberGroups = await users.GetUserGroupsAsync(member.Id, CancellationToken.None);
@@ -198,7 +198,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
         {
             var (users, groups, _, _) = CreateServices();
             var member = await users.RegisterAsync("twice", "password", "Twice", CancellationToken.None);
-            var group = await groups.CreateAsync("Duplicate Membership Group", member.Id, CancellationToken.None);
+            var group = await groups.CreateAsync("Duplicate Membership Group", member.Id, [], CancellationToken.None);
             await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
 
             // Group.AddUser has no in-memory duplicate check of its own (GroupUser doesn't override
@@ -243,13 +243,13 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
         public async Task SendMessageToGroup_PerformsNoGroupUpdate()
         {
             var store = new InMemoryChatStore();
-            var users = new UserService(new InMemoryChatContext(store), new PasswordHasher<User>());
+            var users = new UserService(new InMemoryChatContext(store), new PasswordHasher<User>(), new ChatChannelConfiguration());
             var groups = new GroupService(new InMemoryChatContext(store), new ChatChannelConfiguration());
             var spy = new UpdateCountingChatContext(new InMemoryChatContext(store));
             var messages = new MessageService(spy, new ChatChannelConfiguration());
             var sender = await users.RegisterAsync("group-update-sender", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync("group-update-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Update Spy Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Update Spy Group", sender.Id, [member.Id], CancellationToken.None);
 
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "hello group", CancellationToken.None);
 
@@ -304,7 +304,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, messages, _) = CreateServices();
             var sender = await users.RegisterAsync("exclude-sender", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync("exclude-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Exclude Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Exclude Group", sender.Id, [member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "group message", CancellationToken.None);
             await messages.SendMessageAsync(sender.Id, member.Id, "direct message", CancellationToken.None);
 
@@ -334,7 +334,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, messages, _) = CreateServices();
             var sender = await users.RegisterAsync("group-history-sender", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync("group-history-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("History Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("History Group", sender.Id, [member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "first", CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "second", CancellationToken.None);
 
@@ -351,7 +351,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var sender = await users.RegisterAsync("nonmember-sender", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync("nonmember-member", "password", "Member", CancellationToken.None);
             var outsider = await users.RegisterAsync("nonmember-outsider", "password", "Outsider", CancellationToken.None);
-            var group = await groups.CreateAsync("Members Only Group", sender.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Members Only Group", sender.Id, [member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "secret", CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupAccessDeniedException>(
@@ -466,7 +466,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var creator = await users.RegisterAsync("delete-group-creator", "password", "Creator", CancellationToken.None);
             var memberA = await users.RegisterAsync("delete-group-member-a", "password", "MemberA", CancellationToken.None);
             var memberB = await users.RegisterAsync("delete-group-member-b", "password", "MemberB", CancellationToken.None);
-            var group = await groups.CreateAsync("Doomed Group", creator.Id, CancellationToken.None, memberA.Id, memberB.Id);
+            var group = await groups.CreateAsync("Doomed Group", creator.Id, [memberA.Id, memberB.Id], CancellationToken.None);
 
             var (deleted, affectedMemberIds) = await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
 
@@ -484,7 +484,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, _, _) = CreateServices();
             var creator = await users.RegisterAsync("forbidden-delete-creator", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync("forbidden-delete-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Protected Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Protected Group", creator.Id, [member.Id], CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupDeleteForbiddenException>(
                 () => groups.DeleteGroupAsync(member.Id, group.Id, CancellationToken.None));
@@ -509,7 +509,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, _, _) = CreateServices();
             var creator = await users.RegisterAsync("repeat-delete-group-creator", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync("repeat-delete-group-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Repeat Delete Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Repeat Delete Group", creator.Id, [member.Id], CancellationToken.None);
             var (firstDeleted, firstAffected) = await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
 
             var (secondDeleted, secondAffected) = await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
@@ -526,7 +526,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, _, _) = CreateServices();
             var creator = await users.RegisterAsync("concurrent-delete-group-creator", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync("concurrent-delete-group-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Concurrent Delete Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Concurrent Delete Group", creator.Id, [member.Id], CancellationToken.None);
 
             await Task.WhenAll(
                 groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None),
@@ -542,7 +542,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, messages, _) = CreateServices();
             var creator = await users.RegisterAsync("admin-delete-creator", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync("admin-delete-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Moderated Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Moderated Group", creator.Id, [member.Id], CancellationToken.None);
             var sent = await messages.SendMessageToGroupAsync(member.Id, group.Id, "off-topic", CancellationToken.None);
 
             var deleted = await messages.DeleteMessageAsync(creator.Id, sent.Single().Id, CancellationToken.None);
@@ -557,8 +557,8 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var creator = await users.RegisterAsync("wrong-group-creator", "password", "Creator", CancellationToken.None);
             var otherCreator = await users.RegisterAsync("other-group-creator", "password", "OtherCreator", CancellationToken.None);
             var member = await users.RegisterAsync("wrong-group-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Actual Group", creator.Id, CancellationToken.None, member.Id);
-            await groups.CreateAsync("Unrelated Group", otherCreator.Id, CancellationToken.None);
+            var group = await groups.CreateAsync("Actual Group", creator.Id, [member.Id], CancellationToken.None);
+            await groups.CreateAsync("Unrelated Group", otherCreator.Id, [], CancellationToken.None);
             var sent = await messages.SendMessageToGroupAsync(member.Id, group.Id, "hello", CancellationToken.None);
 
             await Assert.ThrowsAsync<MessageDeleteForbiddenException>(
@@ -571,7 +571,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory
             var (users, groups, messages, _) = CreateServices();
             var creator = await users.RegisterAsync("send-to-deleted-creator", "password", "Creator", CancellationToken.None);
             var member = await users.RegisterAsync("send-to-deleted-member", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Soon Deleted Group", creator.Id, CancellationToken.None, member.Id);
+            var group = await groups.CreateAsync("Soon Deleted Group", creator.Id, [member.Id], CancellationToken.None);
             await groups.DeleteGroupAsync(creator.Id, group.Id, CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupNotFoundException>(

@@ -1,4 +1,3 @@
-using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Pipelines
@@ -6,8 +5,10 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Pipelines
     /// <summary>
     /// Issue #118: ChatChannelGetMessageHistoryReceiverPipelineRequestDto.ValidateTarget mirrors
     /// ChatChannelSendMessageReceiverPipelineRequestDto's mutual-exclusivity check — a history
-    /// request is either a direct conversation or a group's, never both or neither. Page/PageSize
-    /// default to 1/MessageService.DefaultPageSize when the caller omits them.
+    /// request is either a direct conversation or a group's, never both or neither. Page defaults to
+    /// 1 when the caller omits it. Issue #141: PageSize is left null when the caller omits it —
+    /// MessageService now resolves an unset PageSize against the configurable
+    /// ChatChannelConfiguration.MessageHistoryPageSize rather than this DTO defaulting it itself.
     /// </summary>
     public sealed class ChatChannelGetMessageHistoryReceiverPipelineRequestDtoTests
     {
@@ -72,11 +73,11 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Pipelines
         }
 
         [Fact]
-        public void PageSize_WhenNotSet_DefaultsToMessageServiceDefault()
+        public void PageSize_WhenNotSet_IsNull()
         {
             var dto = new ChatChannelGetMessageHistoryReceiverPipelineRequestDto();
 
-            Assert.Equal(MessageService.DefaultPageSize, dto.PageSize);
+            Assert.Null(dto.PageSize);
         }
 
         [Fact]

@@ -17,6 +17,8 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
 
         public Task<Message> SendMessageAsync(Guid senderId, Guid receiverId, string body, CancellationToken cancellationToken = default)
         {
+            ValidateBodyLength(body);
+
             var message = Message.Create(senderId, receiverId, body);
 
             return chatContext.CreateAsync(message, cancellationToken);
@@ -24,6 +26,8 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
 
         public async Task<IReadOnlyCollection<Message>> SendMessageToGroupAsync(Guid senderId, Guid groupId, string body, CancellationToken cancellationToken = default)
         {
+            ValidateBodyLength(body);
+
             List<Message> rtn = [];
 
             var group = await chatContext.GetAsync<Group, Guid>(groupId, cancellationToken) ?? throw new GroupNotFoundException();
@@ -47,18 +51,27 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
         // Issue #117: currentUserId is always one side of the pair the provider filters on, so a
         // caller can never be handed a page from a conversation it isn't part of — there's no
         // separate authorization check to forget or bypass.
-        public Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid currentUserId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+        //
+        // Issue #141: pageSize is now optional — omitting it (both REST callers pass null when the
+        // query string doesn't specify one, and the WebSocket request DTO's PageSize is likewise
+        // null when unset) falls back to configuration.MessageHistoryPageSize rather than a
+        // hardcoded constant, so a host can tune the effective default without every caller needing
+        // to know its value. MaxPageSize remains the hard per-request ceiling regardless.
+        public Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid currentUserId, Guid otherUserId, int page, int? pageSize = null, CancellationToken cancellationToken = default)
         {
-            ValidatePaging(page, pageSize);
+            var effectivePageSize = pageSize ?? configuration.MessageHistoryPageSize;
+            ValidatePaging(page, effectivePageSize);
 
-            return chatContext.GetDirectMessageHistoryAsync(currentUserId, otherUserId, page, pageSize, cancellationToken);
+            return chatContext.GetDirectMessageHistoryAsync(currentUserId, otherUserId, page, effectivePageSize, cancellationToken);
         }
 
         // Issue #117: unlike the direct case, group membership has to be checked explicitly —
-        // requesting a group's history doesn't imply the caller belongs to it.
-        public async Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid currentUserId, Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
+        // requesting a group's history doesn't imply the caller belongs to it. Issue #141: pageSize
+        // defaulting mirrors GetDirectMessageHistoryAsync above.
+        public async Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid currentUserId, Guid groupId, int page, int? pageSize = null, CancellationToken cancellationToken = default)
         {
-            ValidatePaging(page, pageSize);
+            var effectivePageSize = pageSize ?? configuration.MessageHistoryPageSize;
+            ValidatePaging(page, effectivePageSize);
 
             var group = await chatContext.GetAsync<Group, Guid>(groupId, cancellationToken) ?? throw new GroupNotFoundException();
             if (group.IsDeleted)
@@ -67,7 +80,7 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             if (group.GroupUsers.All(groupUser => groupUser.UserId != currentUserId))
                 throw new GroupAccessDeniedException();
 
-            return await chatContext.GetGroupMessageHistoryAsync(groupId, page, pageSize, cancellationToken);
+            return await chatContext.GetGroupMessageHistoryAsync(groupId, page, effectivePageSize, cancellationToken);
         }
 
         // Issue #119: unknown ids and the wrong sender each map to their own exception (404 vs 403)
@@ -133,6 +146,13 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             if (string.IsNullOrWhiteSpace(body))
                 throw new InvalidMessageEditException("Body cannot be empty.");
 
+            // Issue #141: "same rules as new messages" now includes MaxMessageLength too — a revised
+            // body is held to the exact same limit SendMessageAsync enforces via ValidateBodyLength,
+            // just surfaced as InvalidMessageEditException (this method's existing exception type)
+            // rather than InvalidMessageSendException.
+            if (body.Length > configuration.MaxMessageLength)
+                throw new InvalidMessageEditException($"Body must not exceed {configuration.MaxMessageLength} characters (was {body.Length}).");
+
             message.Edit(body);
             await chatContext.UpdateAsync(message, cancellationToken);
 
@@ -180,6 +200,16 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
 
             if (pageSize is < 1 or > MaxPageSize)
                 throw new InvalidMessageHistoryPageRequestException($"PageSize must be between 1 and {MaxPageSize}.");
+        }
+
+        // Issue #141: shared by SendMessageAsync/SendMessageToGroupAsync — a single check point so
+        // both the direct and group send paths (and, by extension, both the REST SendMessageAsync
+        // endpoint and the WebSocket Messages/Send pipeline, which call these same methods) enforce
+        // MaxMessageLength identically rather than each transport re-implementing it.
+        private void ValidateBodyLength(string body)
+        {
+            if (body is not null && body.Length > configuration.MaxMessageLength)
+                throw new InvalidMessageSendException($"Body must not exceed {configuration.MaxMessageLength} characters (was {body.Length}).");
         }
     }
 }

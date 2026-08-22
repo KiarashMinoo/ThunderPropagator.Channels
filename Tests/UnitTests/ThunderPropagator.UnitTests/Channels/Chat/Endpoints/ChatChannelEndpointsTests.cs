@@ -155,13 +155,17 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
         private static (UserService Service, FakeChatContext Context) CreateService()
         {
             var context = new FakeChatContext();
-            return (new UserService(context, new PasswordHasher<User>()), context);
+            return (new UserService(context, new PasswordHasher<User>(), new ChatChannelConfiguration()), context);
         }
 
-        private static (MessageService Service, FakeChatContext Context) CreateMessageService()
+        private static (MessageService Service, FakeChatContext Context) CreateMessageService(int? messageHistoryPageSize = null)
         {
             var context = new FakeChatContext();
-            return (new MessageService(context, new ChatChannelConfiguration()), context);
+            var configuration = new ChatChannelConfiguration();
+            if (messageHistoryPageSize is not null)
+                configuration.MessageHistoryPageSize = messageHistoryPageSize.Value;
+
+            return (new MessageService(context, configuration), context);
         }
 
         private static (GroupService GroupService, UserService UserService, FakeChatContext Context) CreateGroupAndUserServices(int? maxGroupMembers = null)
@@ -171,7 +175,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             if (maxGroupMembers is not null)
                 configuration.MaxGroupMembers = maxGroupMembers.Value;
 
-            return (new GroupService(context, configuration), new UserService(context, new PasswordHasher<User>()), context);
+            return (new GroupService(context, configuration), new UserService(context, new PasswordHasher<User>(), configuration), context);
         }
 
         private static (GroupService GroupService, ChatChannel Channel, FakeChatContext Context) CreateGroupServiceAndChannel()
@@ -197,12 +201,19 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             return channel;
         }
 
-        private static (MessageService MessageService, ChatChannel Channel, FakeChatContext Context) CreateMessageServiceAndChannel(TimeSpan? messageEditWindow = null)
+        private static (MessageService MessageService, ChatChannel Channel, FakeChatContext Context) CreateMessageServiceAndChannel(
+            TimeSpan? messageEditWindow = null,
+            int? maxMessageLength = null,
+            int? messageHistoryPageSize = null)
         {
             var context = new FakeChatContext();
             var configuration = new ChatChannelConfiguration();
             if (messageEditWindow is not null)
                 configuration.MessageEditWindow = messageEditWindow.Value;
+            if (maxMessageLength is not null)
+                configuration.MaxMessageLength = maxMessageLength.Value;
+            if (messageHistoryPageSize is not null)
+                configuration.MessageHistoryPageSize = messageHistoryPageSize.Value;
 
             return (new MessageService(context, configuration), CreateChatChannel(), context);
         }
@@ -380,6 +391,17 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var ok = Assert.IsType<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>>(result.Result);
             Assert.Equal(0, ok.Value!.TotalCount);
             Assert.Empty(ok.Value.Messages);
+        }
+
+        [Fact]
+        public async Task GetDirectMessageHistoryAsync_WithoutAnExplicitSize_UsesTheConfiguredMessageHistoryPageSize()
+        {
+            var (service, _) = CreateMessageService(messageHistoryPageSize: 10);
+
+            var result = await ChatChannelEndpoints.GetDirectMessageHistoryAsync(service, CreatePrincipal(Guid.NewGuid()), Guid.NewGuid().ToString());
+
+            var ok = Assert.IsType<Ok<ChatChannelGetMessageHistoryReceiverPipelineResponseDto>>(result.Result);
+            Assert.Equal(10, ok.Value!.PageSize);
         }
 
         [Fact]
@@ -884,6 +906,31 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
         }
 
         [Fact]
+        public async Task SendMessageAsync_WithABodyExceedingMaxMessageLength_ReturnsValidationProblem()
+        {
+            var (messageService, channel, _) = CreateMessageServiceAndChannel(maxMessageLength: 5);
+            var request = new ChatChannelSendMessageRequestDto { ReceiverId = Guid.NewGuid(), Body = "too long" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(Guid.NewGuid()), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task SendMessageAsync_ToAGroup_WithABodyExceedingMaxMessageLength_ReturnsValidationProblem()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel(maxMessageLength: 5);
+            var sender = Guid.NewGuid();
+            var group = Group.Create("Team", sender).AddUser(sender);
+            context.Seed(group);
+            var request = new ChatChannelSendMessageRequestDto { GroupId = group.Id, Body = "too long" };
+
+            var result = await ChatChannelEndpoints.SendMessageAsync(messageService, channel, CreatePrincipal(sender), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
         public void SendMessageAsync_TheRequestDtoHasNoSenderField()
         {
             // The AC's "clients cannot spoof the sender" — there is no field a client could set to
@@ -1078,6 +1125,20 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             var message = Message.Create(sender, Guid.NewGuid(), "original");
             context.Seed(message);
             var request = new ChatChannelEditMessageRequestDto { Body = body };
+
+            var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString(), request);
+
+            Assert.IsType<ValidationProblem>(result.Result);
+        }
+
+        [Fact]
+        public async Task EditMessageAsync_WithABodyExceedingMaxMessageLength_ReturnsValidationProblem()
+        {
+            var (messageService, channel, context) = CreateMessageServiceAndChannel(maxMessageLength: 5);
+            var sender = Guid.NewGuid();
+            var message = Message.Create(sender, Guid.NewGuid(), "original");
+            context.Seed(message);
+            var request = new ChatChannelEditMessageRequestDto { Body = "too long" };
 
             var result = await ChatChannelEndpoints.EditMessageAsync(messageService, channel, CreatePrincipal(sender), message.Id.ToString(), request);
 

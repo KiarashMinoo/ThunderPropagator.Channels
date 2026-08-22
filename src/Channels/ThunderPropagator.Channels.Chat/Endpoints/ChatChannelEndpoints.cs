@@ -200,7 +200,10 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             ClaimsPrincipal principal,
             string? with,
             int page = 1,
-            int size = MessageService.DefaultPageSize,
+            // Issue #141: null (rather than the removed MessageService.DefaultPageSize literal)
+            // lets MessageService fall back to the now-configurable
+            // ChatChannelConfiguration.MessageHistoryPageSize instead of a hardcoded constant.
+            int? size = null,
             CancellationToken cancellationToken = default)
         {
             if (!TryGetCurrentUserId(principal, out var currentUserId))
@@ -245,7 +248,8 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             ClaimsPrincipal principal,
             string groupId,
             int page = 1,
-            int size = MessageService.DefaultPageSize,
+            // Issue #141: see GetDirectMessageHistoryAsync's own comment on this default.
+            int? size = null,
             CancellationToken cancellationToken = default)
         {
             if (!TryGetCurrentUserId(principal, out var currentUserId))
@@ -442,24 +446,28 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                     [nameof(request.Body)] = ["Body must not be empty."]
                 });
 
-            if (hasReceiver)
-            {
-                var message = await messageService.SendMessageAsync(currentUserId, request.ReceiverId!.Value, request.Body, cancellationToken);
-                chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
-
-                return TypedResults.Created((string?)null, new ChatChannelSentMessageResponseDto
-                {
-                    MessageIds = [message.Id],
-                    SenderId = currentUserId,
-                    ReceiverId = request.ReceiverId,
-                    GroupId = null,
-                    Body = request.Body,
-                    Created = message.Created
-                });
-            }
-
+            // Issue #141: both branches now share one try/catch so MaxMessageLength violations
+            // (InvalidMessageSendException, thrown by both SendMessageAsync and
+            // SendMessageToGroupAsync) map to the same ValidationProblem response regardless of
+            // which target this request has.
             try
             {
+                if (hasReceiver)
+                {
+                    var message = await messageService.SendMessageAsync(currentUserId, request.ReceiverId!.Value, request.Body, cancellationToken);
+                    chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
+
+                    return TypedResults.Created((string?)null, new ChatChannelSentMessageResponseDto
+                    {
+                        MessageIds = [message.Id],
+                        SenderId = currentUserId,
+                        ReceiverId = request.ReceiverId,
+                        GroupId = null,
+                        Body = request.Body,
+                        Created = message.Created
+                    });
+                }
+
                 var messages = await messageService.SendMessageToGroupAsync(currentUserId, request.GroupId!.Value, request.Body, cancellationToken);
                 foreach (var message in messages)
                     chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
@@ -472,6 +480,13 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                     GroupId = request.GroupId,
                     Body = request.Body,
                     Created = messages.FirstOrDefault()?.Created ?? DateTimeOffset.UtcNow
+                });
+            }
+            catch (InvalidMessageSendException exception)
+            {
+                return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    [nameof(request.Body)] = [exception.Message]
                 });
             }
             catch (GroupNotFoundException)
