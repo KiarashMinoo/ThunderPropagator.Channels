@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.Channels.Demo.Quiz.Pipelines.Answer;
 using ThunderPropagator.Channels.Demo.Quiz.Pipelines.Join;
@@ -13,16 +14,30 @@ namespace ThunderPropagator.Channels.Demo.Quiz
         // with it, the first real consumer of QuizGameSessionStore (#187), making that store a
         // singleton. #192 adds QuizGameLoopRegistry as a singleton too, since that's how QuizChannel's
         // SubmitAnswer/StartGame reach the very same QuizGameLoop instance the feeder constructs and
-        // registers into it. #191/#192/#193 add the Join/Answer/Start receive pipelines on top.
+        // registers into it. #191/#192/#193 add the Join/Answer/Start receive pipelines on top. #195's
+        // own AC ("Make repeated registration safe") is why every singleton below is a TryAdd* rather
+        // than a plain Add*: AddChannel/AddChannelFeeder/AddReceivePipeline are already TryAdd*
+        // internally, so with these three also converted, a second AddQuizChannel call on the same
+        // IServiceCollection is a complete no-op — the first call's configuration wins, matching
+        // NotificationsExtensions.AddNotificationsChannel's own established convention for the same
+        // AC elsewhere in this codebase.
         public static IServiceCollection AddQuizChannel(this IServiceCollection services, Action<QuizChannelConfiguration>? channelConfigurator = null)
         {
             QuizChannelConfiguration quizChannelConfiguration = new();
             channelConfigurator?.Invoke(quizChannelConfiguration);
 
+            // Each property validates itself against rules only it can check (positivity) the moment
+            // channelConfigurator sets it; this is the one rule that needs both properties at once, so
+            // it can only run here, after the configurator above has finished (#195's own AC: "Invalid
+            // configuration fails at startup with property-specific errors").
+            if (quizChannelConfiguration.MinPlayers > quizChannelConfiguration.MaxPlayers)
+                throw new QuizChannelConfigurationValidationException(nameof(QuizChannelConfiguration.MinPlayers), $"({quizChannelConfiguration.MinPlayers}) must not exceed {nameof(QuizChannelConfiguration.MaxPlayers)} ({quizChannelConfiguration.MaxPlayers}).");
+
+            services.TryAddSingleton(quizChannelConfiguration);
+            services.TryAddSingleton<QuizGameSessionStore>();
+            services.TryAddSingleton<QuizGameLoopRegistry>();
+
             services
-                .AddSingleton(quizChannelConfiguration)
-                .AddSingleton<QuizGameSessionStore>()
-                .AddSingleton<QuizGameLoopRegistry>()
                 .AddChannel<QuizChannel>()
                 .AddChannelFeeder<QuizChannel, QuizFeeder, QuizChannelFeederMessage, QuizFeederConfiguration>(configuration =>
                     configuration.Bind(quizChannelConfiguration.FeederConfiguration))

@@ -173,7 +173,11 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
         private void StartGameLocked()
         {
             _session.PhaseStateMachine.StartGame();
-            _questions = _questionBank.Shuffle(Random.Shared.Next());
+
+            var shuffled = _questionBank.Shuffle(Random.Shared.Next());
+            var questionsPerGame = Math.Min(_feederConfiguration.QuestionsPerGame, shuffled.Count);
+            _questions = shuffled.Take(questionsPerGame).ToList();
+
             _questionIndex = 0;
             _questionTimeRemaining = _feederConfiguration.QuestionDuration;
             _scoringEngine.BeginQuestion(_questions[_questionIndex].CorrectAnswer, _questionTimeRemaining);
