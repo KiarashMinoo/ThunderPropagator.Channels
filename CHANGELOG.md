@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.78] — 2026-08-23
+
+### 🚀 Features
+
+- Implement ThunderPropagator.Providers.DotNet.Quiz `(9ae7d35)` — Kiarash Minoo
+- Implement the quiz provider directly inside QuizChannel `(a191c24)` — Kiarash Minoo
+
 ## [1.0.1-beta.77] — 2026-08-23
 
 ### 🚀 Features
