@@ -1,5 +1,5 @@
-## [1.0.1-beta.73] — 2026-08-22
+## [1.0.1-beta.74] — 2026-08-23
 
 ### 🚀 Features
 
-- Implement the cancellable IterativeFeeder game loop and countdown `(8a6d52d)` — Kiarash Minoo
+- Implement answer evaluation, scoring, live scoreboard, and winner selection `(dbef5f3)` — Kiarash Minoo
