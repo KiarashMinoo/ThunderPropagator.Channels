@@ -43,6 +43,21 @@ namespace ThunderPropagator.Channels.Demo.Quiz
             set => Set(ValidatePositive(value, nameof(ScoreboardDuration)));
         }
 
+        /// <summary>
+        /// Number of questions played per game, taken from the front of that game's own shuffled
+        /// ordering (see <see cref="Game.QuizQuestionBank.Shuffle"/>) rather than the bank's fixed
+        /// order (#188). Default: <see cref="int.MaxValue"/> — every question in the configured bank
+        /// is played, matching this package's documented demo flow (#189) unless a host opts into a
+        /// shorter game explicitly. Must be strictly positive; a value larger than the bank's own
+        /// question count is not an error — <see cref="Game.QuizGameLoop"/> plays the whole bank
+        /// instead of throwing, since the bank itself is supplied independently of this configuration.
+        /// </summary>
+        public int QuestionsPerGame
+        {
+            get => Get(int.MaxValue);
+            set => Set(ValidatePositive(value, nameof(QuestionsPerGame)));
+        }
+
         public QuizFeederConfiguration()
         {
             IsEnabled = true;
@@ -53,6 +68,12 @@ namespace ThunderPropagator.Channels.Demo.Quiz
         private static TimeSpan ValidatePositive(TimeSpan value, string propertyName)
         {
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, TimeSpan.Zero, propertyName);
+            return value;
+        }
+
+        private static int ValidatePositive(int value, string propertyName)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value, 0, propertyName);
             return value;
         }
     }

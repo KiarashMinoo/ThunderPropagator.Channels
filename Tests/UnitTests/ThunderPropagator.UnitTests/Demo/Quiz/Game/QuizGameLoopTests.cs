@@ -235,6 +235,59 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz.Game
             Assert.Equal(QuizPhase.GameOver, session.PhaseStateMachine.CurrentPhase);
         }
 
+        // Issue #195's own AC: "Expose configurable ... question count" — QuizFeederConfiguration.QuestionsPerGame.
+        [Fact]
+        public void FullGame_WithAConfiguredQuestionsPerGame_PlaysExactlyThatManyQuestions()
+        {
+            var feederConfiguration = new QuizFeederConfiguration
+            {
+                LobbyDuration = TimeSpan.FromMilliseconds(1),
+                QuestionDuration = TimeSpan.FromMilliseconds(1),
+                RevealingDuration = TimeSpan.FromMilliseconds(1),
+                ScoreboardDuration = TimeSpan.FromMilliseconds(1),
+                QuestionsPerGame = 3
+            };
+            var loop = CreateLoop(out var session, out _, feederConfiguration);
+
+            QuizChannelFeederMessage? last = null;
+            var guard = 0;
+            while (session.PhaseStateMachine.CurrentPhase != QuizPhase.GameOver)
+            {
+                last = loop.Advance();
+                if (++guard > 10_000)
+                    throw new TimeoutException("Game never reached GameOver.");
+            }
+
+            Assert.Equal(2, last!.QuestionIndex);
+            Assert.Equal(3, last.TotalQuestions);
+        }
+
+        [Fact]
+        public void FullGame_WithQuestionsPerGameLargerThanTheBank_PlaysTheWholeBankInsteadOfThrowing()
+        {
+            var feederConfiguration = new QuizFeederConfiguration
+            {
+                LobbyDuration = TimeSpan.FromMilliseconds(1),
+                QuestionDuration = TimeSpan.FromMilliseconds(1),
+                RevealingDuration = TimeSpan.FromMilliseconds(1),
+                ScoreboardDuration = TimeSpan.FromMilliseconds(1),
+                QuestionsPerGame = 1_000
+            };
+            var loop = CreateLoop(out var session, out var questionBank, feederConfiguration);
+
+            QuizChannelFeederMessage? last = null;
+            var guard = 0;
+            while (session.PhaseStateMachine.CurrentPhase != QuizPhase.GameOver)
+            {
+                last = loop.Advance();
+                if (++guard > 10_000)
+                    throw new TimeoutException("Game never reached GameOver.");
+            }
+
+            Assert.Equal(questionBank.Count - 1, last!.QuestionIndex);
+            Assert.Equal(questionBank.Count, last.TotalQuestions);
+        }
+
         [Fact]
         public void NextDelay_OnceGameOverIsReached_IsStillPositive()
         {

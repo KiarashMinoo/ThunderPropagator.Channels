@@ -19,6 +19,37 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz
             Assert.Equal(TimeSpan.FromSeconds(15), configuration.QuestionDuration);
             Assert.Equal(TimeSpan.FromSeconds(3), configuration.RevealingDuration);
             Assert.Equal(TimeSpan.FromSeconds(5), configuration.ScoreboardDuration);
+            Assert.Equal(int.MaxValue, configuration.QuestionsPerGame);
+        }
+
+        // Issue #195's own AC: "Expose configurable ... question count ... and relevant validation
+        // rules" — QuestionsPerGame is tested separately from the four durations above since it's an
+        // int, not a TimeSpan, but follows the exact same "configurable, strictly positive" shape.
+        [Fact]
+        public void QuestionsPerGame_AcceptsAConfiguredOverride()
+        {
+            var configuration = new QuizFeederConfiguration
+            {
+                QuestionsPerGame = 5
+            };
+
+            Assert.Equal(5, configuration.QuestionsPerGame);
+        }
+
+        [Fact]
+        public void QuestionsPerGame_RejectsZero()
+        {
+            var configuration = new QuizFeederConfiguration();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => configuration.QuestionsPerGame = 0);
+        }
+
+        [Fact]
+        public void QuestionsPerGame_RejectsNegativeValues()
+        {
+            var configuration = new QuizFeederConfiguration();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => configuration.QuestionsPerGame = -1);
         }
 
         [Fact]
