@@ -94,6 +94,11 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="src/Demo/ThunderPropagator.Channels.Demo.VideoPlayer/ThunderPropagator.Channels.Demo.VideoPlayer.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
   </Folder>
   <Folder Name="/src/Games/">
     <Project Path="src/Games/ThunderPropagator.Channels.Games.RockPaperScissors/ThunderPropagator.Channels.Games.RockPaperScissors.csproj">
@@ -202,6 +207,15 @@
       <Build Solution="Release|Any CPU" Project="false" />
     </Project>
     <Project Path="Tests/Demo/ThunderPropagator.Channels.Demo.StockListBasic.UnitTests/ThunderPropagator.Channels.Demo.StockListBasic.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Demo/ThunderPropagator.Channels.Demo.VideoPlayer.UnitTests/ThunderPropagator.Channels.Demo.VideoPlayer.UnitTests.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+        <PackageReference Include="Bogus"/>
+        <PackageReference Include="JetBrains.Annotations" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Update="VideoPlayerChannelFeederMessage.cs">
+            <DependentUpon>VideoPlayerChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="VideoPlayerChannelMetadata.cs">
+            <DependentUpon>VideoPlayerChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="VideoPlayerChannelConfiguration.cs">
+            <DependentUpon>VideoPlayerChannel.cs</DependentUpon>
+        </Compile>
+    </ItemGroup>
+
+</Project>
