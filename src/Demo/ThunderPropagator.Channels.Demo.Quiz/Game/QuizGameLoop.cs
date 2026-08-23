@@ -92,11 +92,7 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
                 switch (stateMachine.CurrentPhase)
                 {
                     case QuizPhase.Lobby:
-                        stateMachine.StartGame();
-                        _questions = _questionBank.Shuffle(Random.Shared.Next());
-                        _questionIndex = 0;
-                        _questionTimeRemaining = _feederConfiguration.QuestionDuration;
-                        _scoringEngine.BeginQuestion(_questions[_questionIndex].CorrectAnswer, _questionTimeRemaining);
+                        StartGameLocked();
                         break;
 
                     case QuizPhase.Question:
@@ -133,6 +129,54 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
                 _session.UpdateCurrentState(message);
                 return message;
             }
+        }
+
+        /// <summary>
+        /// Starts this game immediately if it is still in <see cref="QuizPhase.Lobby"/>, exactly the
+        /// same way the autonomous Lobby-wait timeout in <see cref="Advance"/> eventually would — same
+        /// question selection, same scoring-engine setup — except triggered on demand by a host
+        /// (<c>QuizStartGameReceiverPipeline</c>, #193) rather than by <see cref="NextDelay"/> elapsing.
+        /// Returns the resulting Question-phase message on success, for the caller to broadcast itself
+        /// (unlike <see cref="Advance"/>, this is not called from <see cref="QuizFeeder"/>'s own tick
+        /// loop, so nothing else would ever emit it) — or null if the game had already left Lobby by
+        /// the time this ran, whether from a prior call or from a concurrent one that won the race
+        /// (#193's own AC: "Concurrent requests create one running loop"): callers must treat null as a
+        /// no-op, not an error.
+        /// </summary>
+        /// <remarks>
+        /// A caveat this deliberately accepts: <see cref="QuizFeeder"/>'s own background tick may
+        /// already be mid-<see cref="Task.Delay(TimeSpan,CancellationToken)"/> for the old Lobby
+        /// duration when this succeeds. The Question phase this returns broadcasts immediately, but the
+        /// next live countdown tick only resumes once that pending delay elapses on its own — this is
+        /// not signaled or cancelled early. Bounded by the configured LobbyDuration and not required by
+        /// #193's own AC (only that the transition itself reaches every subscriber, which it does),
+        /// so interrupting the feeder's own sleep is left out of scope here.
+        /// </remarks>
+        public QuizChannelFeederMessage? TryStartNow()
+        {
+            lock (_lock)
+            {
+                if (_session.PhaseStateMachine.CurrentPhase != QuizPhase.Lobby)
+                    return null;
+
+                StartGameLocked();
+
+                var message = BuildMessage(_session.PhaseStateMachine.CurrentPhase);
+                _session.UpdateCurrentState(message);
+                return message;
+            }
+        }
+
+        // Callers must already hold _lock and must have already confirmed CurrentPhase is Lobby —
+        // shared by Advance()'s own Lobby case and TryStartNow(), the only two ways this game ever
+        // actually begins.
+        private void StartGameLocked()
+        {
+            _session.PhaseStateMachine.StartGame();
+            _questions = _questionBank.Shuffle(Random.Shared.Next());
+            _questionIndex = 0;
+            _questionTimeRemaining = _feederConfiguration.QuestionDuration;
+            _scoringEngine.BeginQuestion(_questions[_questionIndex].CorrectAnswer, _questionTimeRemaining);
         }
 
         /// <summary>
