@@ -1,5 +1,5 @@
-## [1.0.1-beta.75] — 2026-08-23
+## [1.0.1-beta.76] — 2026-08-23
 
 ### 🚀 Features
 
-- Implement Quiz/Join player registration `(9061a48)` — Kiarash Minoo
+- Implement Quiz/Answer submissions with unicast acknowledgement `(e7e85e6)` — Kiarash Minoo
