@@ -18,6 +18,7 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz
             var channelConfiguration = new QuizChannelConfiguration();
             serviceProvider.RegisterChannelConfiguration(channelConfiguration);
             serviceProvider.RegisterService(new QuizGameSessionStore());
+            serviceProvider.RegisterService(new QuizGameLoopRegistry());
 
             var channel = new QuizChannel(serviceProvider);
             var feederConfiguration = new QuizFeederConfiguration();

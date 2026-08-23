@@ -30,6 +30,7 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz
             serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
             serviceProvider.GetService(typeof(QuizChannelConfiguration)).Returns(new QuizChannelConfiguration());
             serviceProvider.GetService(typeof(QuizGameSessionStore)).Returns(sessionStore);
+            serviceProvider.GetService(typeof(QuizGameLoopRegistry)).Returns(new QuizGameLoopRegistry());
 
             var channel = new QuizChannel(serviceProvider);
             channel.Initialize(CancellationToken.None);
@@ -274,6 +275,7 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz
             serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
             serviceProvider.GetService(typeof(QuizChannelConfiguration)).Returns(channelConfiguration);
             serviceProvider.GetService(typeof(QuizGameSessionStore)).Returns(sessionStore);
+            serviceProvider.GetService(typeof(QuizGameLoopRegistry)).Returns(new QuizGameLoopRegistry());
 
             var channel = new QuizChannel(serviceProvider);
             channel.Initialize(CancellationToken.None);

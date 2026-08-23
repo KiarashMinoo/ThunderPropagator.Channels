@@ -19,6 +19,7 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz
             var serviceProvider = FeederCancellationTestHelper.BuildServiceProvider<QuizChannelFeederMessage, QuizFeederConfiguration>();
             serviceProvider.RegisterChannelConfiguration(new QuizChannelConfiguration());
             serviceProvider.RegisterService(new QuizGameSessionStore());
+            serviceProvider.RegisterService(new QuizGameLoopRegistry());
 
             var channel = new QuizChannel(serviceProvider);
             var feederConfiguration = new QuizFeederConfiguration
