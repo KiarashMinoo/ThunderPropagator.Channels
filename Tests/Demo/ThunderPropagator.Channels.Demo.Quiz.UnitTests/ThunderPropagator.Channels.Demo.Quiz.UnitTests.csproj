@@ -35,6 +35,7 @@
         <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Channels.Demo.Portfolio\ThunderPropagator.Channels.Demo.Portfolio.csproj" />
         <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Channels.Demo.Quiz\ThunderPropagator.Channels.Demo.Quiz.csproj" />
         <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Channels.Demo.StockListBasic\ThunderPropagator.Channels.Demo.StockListBasic.csproj" />
+        <ProjectReference Include="..\..\..\src\Demo\ThunderPropagator.Providers.DotNet.Quiz\ThunderPropagator.Providers.DotNet.Quiz.csproj" />
         <ProjectReference Include="..\..\..\src\Games\ThunderPropagator.Channels.Games.RockPaperScissors\ThunderPropagator.Channels.Games.RockPaperScissors.csproj" />
         <ProjectReference Include="..\..\..\src\Games\ThunderPropagator.Channels.Games.TicTacToe\ThunderPropagator.Channels.Games.TicTacToe.csproj" />
     </ItemGroup>

@@ -145,6 +145,60 @@ namespace ThunderPropagator.Channels.Demo.Quiz
             return QuizStartOutcome.Started;
         }
 
+        /// <summary>
+        /// Broadcasts <paramref name="request"/> as this game's current state — #194's own entry point
+        /// for a host application driving its own externally-produced quiz state/questions
+        /// programmatically, entirely independent of this package's built-in simulation
+        /// (<see cref="Game.QuizGameSessionStore"/>/<see cref="Game.QuizGameLoop"/>/<see cref="QuizFeeder"/>):
+        /// unlike <see cref="Join"/>/<see cref="SubmitAnswer"/>/<see cref="StartGame"/>, this method never
+        /// touches session or membership state at all, and <paramref name="request"/>'s
+        /// <see cref="QuizProviderPublishRequest.GameId"/> need not correspond to any session
+        /// <see cref="Game.QuizGameSessionStore"/> knows about. Provider-driven and simulated (#189)
+        /// publishing coexist safely only for <em>different</em> GameIds — the built-in simulation always
+        /// drives its own fixed demo GameId, so a provider-driven host should never reuse that literal
+        /// value; this package has no configuration to disable the simulation outright, so a deployment
+        /// that wants provider-only behavior for a shared GameId cannot currently do so through
+        /// <see cref="QuizChannelExtensions.AddQuizChannel"/> alone.
+        /// </summary>
+        /// <remarks>
+        /// Most of #194's own "payload limits"/"timing"/"options" validation comes for free from
+        /// constructing <see cref="QuizChannelFeederMessage"/> itself below — every property assigned
+        /// here already validates through that type's own setters (#186), exactly as strictly as the
+        /// built-in simulation's own messages are. The one rule the wire message does not itself enforce
+        /// — because it legitimately allows these same fields to be empty at other phases — is checked
+        /// explicitly first: <see cref="QuizPhase.Question"/>/<see cref="QuizPhase.Revealing"/> require
+        /// actual question content (<see cref="QuizProviderValidationException"/> otherwise).
+        /// </remarks>
+        public void PublishProviderState(QuizProviderPublishRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            if (request.Phase is QuizPhase.Question or QuizPhase.Revealing)
+            {
+                if (string.IsNullOrWhiteSpace(request.QuestionText))
+                    throw new QuizProviderValidationException(nameof(request.QuestionText), $"must not be empty while Phase is {request.Phase}.");
+
+                if (request.Options.Count < 2)
+                    throw new QuizProviderValidationException(nameof(request.Options), $"must contain at least 2 options while Phase is {request.Phase} (had {request.Options.Count}).");
+            }
+
+            var message = new QuizChannelFeederMessage
+            {
+                GameId = request.GameId,
+                Phase = request.Phase,
+                QuestionText = request.QuestionText,
+                Options = request.Options,
+                TimeRemaining = request.TimeRemaining,
+                QuestionIndex = request.QuestionIndex,
+                TotalQuestions = request.TotalQuestions,
+                Scoreboard = request.Scoreboard,
+                CorrectAnswer = request.CorrectAnswer,
+                Winner = request.Winner
+            };
+
+            EmitMessage(message);
+        }
+
         private Subscription Subscribe(IConnectionInfo connectionInfo, string requestId, string gameId)
         {
             var subscribeRequest = new QuizJoinSubscribeRequest
