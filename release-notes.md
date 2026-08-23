@@ -1,5 +1,5 @@
-## [1.0.1-beta.79] — 2026-08-23
+## [1.0.1-beta.80] — 2026-08-23
 
-### 🚀 Features
+### 🧪 Tests
 
-- Add AddQuizChannel registration and configuration validation `(95f19db)` — Kiarash Minoo
+- Add deterministic multiplayer integration tests `(0b29088)` — Kiarash Minoo

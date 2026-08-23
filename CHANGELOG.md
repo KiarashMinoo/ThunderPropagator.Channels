@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.80] — 2026-08-23
+
+### 🧪 Tests
+
+- Add deterministic multiplayer integration tests `(0b29088)` — Kiarash Minoo
+
 ## [1.0.1-beta.79] — 2026-08-23
 
 ### 🚀 Features
