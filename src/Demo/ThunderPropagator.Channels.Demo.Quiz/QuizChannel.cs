@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Channels.Exceptions;
 using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
@@ -19,7 +20,7 @@ namespace ThunderPropagator.Channels.Demo.Quiz
 #if !DEBUG
         sealed
 #endif
-        class QuizChannel : AbstractChannel<QuizChannelMetadata, QuizChannelConfiguration>
+        class QuizChannel : AbstractChannel<QuizChannelMetadata, QuizChannelConfiguration>, IProvider<QuizProviderMessage>
     {
         private readonly QuizGameSessionStore _sessionStore;
         private readonly QuizGameLoopRegistry _gameLoopRegistry;
@@ -146,13 +147,13 @@ namespace ThunderPropagator.Channels.Demo.Quiz
         }
 
         /// <summary>
-        /// Broadcasts <paramref name="request"/> as this game's current state — #194's own entry point
-        /// for a host application driving its own externally-produced quiz state/questions
-        /// programmatically, entirely independent of this package's built-in simulation
-        /// (<see cref="Game.QuizGameSessionStore"/>/<see cref="Game.QuizGameLoop"/>/<see cref="QuizFeeder"/>):
-        /// unlike <see cref="Join"/>/<see cref="SubmitAnswer"/>/<see cref="StartGame"/>, this method never
-        /// touches session or membership state at all, and <paramref name="request"/>'s
-        /// <see cref="QuizProviderPublishRequest.GameId"/> need not correspond to any session
+        /// Broadcasts <paramref name="message"/> as this game's current state — #194's own
+        /// <see cref="IProvider{TMessage}"/> implementation, letting a host application push its own
+        /// externally-produced quiz state/questions programmatically, entirely independent of this
+        /// package's built-in simulation (<see cref="Game.QuizGameSessionStore"/>/<see cref="Game.QuizGameLoop"/>/
+        /// <see cref="QuizFeeder"/>): unlike <see cref="Join"/>/<see cref="SubmitAnswer"/>/<see cref="StartGame"/>,
+        /// this method never touches session or membership state at all, and <paramref name="message"/>'s
+        /// <see cref="QuizProviderMessage.GameId"/> need not correspond to any session
         /// <see cref="Game.QuizGameSessionStore"/> knows about. Provider-driven and simulated (#189)
         /// publishing coexist safely only for <em>different</em> GameIds — the built-in simulation always
         /// drives its own fixed demo GameId, so a provider-driven host should never reuse that literal
@@ -161,7 +162,12 @@ namespace ThunderPropagator.Channels.Demo.Quiz
         /// <see cref="QuizChannelExtensions.AddQuizChannel"/> alone.
         /// </summary>
         /// <remarks>
-        /// Most of #194's own "payload limits"/"timing"/"options" validation comes for free from
+        /// Checked, in order: <paramref name="cancellationToken"/> must not already be cancelled
+        /// (#194's own AC: "propagate cancellation/errors" — checked before anything else, so a
+        /// cancelled call never touches the channel at all); <see cref="AbstractChannelConfiguration.IsEnabled"/>
+        /// must be <see langword="true"/> (<see cref="ChannelIsNotEnabledException"/> otherwise, the
+        /// same framework exception <c>NotificationsChannel</c> already uses for the same reason). Most
+        /// of #194's own "payload limits"/"timing"/"options" validation then comes for free from
         /// constructing <see cref="QuizChannelFeederMessage"/> itself below — every property assigned
         /// here already validates through that type's own setters (#186), exactly as strictly as the
         /// built-in simulation's own messages are. The one rule the wire message does not itself enforce
@@ -169,34 +175,40 @@ namespace ThunderPropagator.Channels.Demo.Quiz
         /// explicitly first: <see cref="QuizPhase.Question"/>/<see cref="QuizPhase.Revealing"/> require
         /// actual question content (<see cref="QuizProviderValidationException"/> otherwise).
         /// </remarks>
-        public void PublishProviderState(QuizProviderPublishRequest request)
+        public Task PublishAsync(QuizProviderMessage message, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(message);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            if (request.Phase is QuizPhase.Question or QuizPhase.Revealing)
+            if (!ChannelConfiguration.IsEnabled)
+                throw new ChannelIsNotEnabledException();
+
+            if (message.Phase is QuizPhase.Question or QuizPhase.Revealing)
             {
-                if (string.IsNullOrWhiteSpace(request.QuestionText))
-                    throw new QuizProviderValidationException(nameof(request.QuestionText), $"must not be empty while Phase is {request.Phase}.");
+                if (string.IsNullOrWhiteSpace(message.QuestionText))
+                    throw new QuizProviderValidationException(nameof(message.QuestionText), $"must not be empty while Phase is {message.Phase}.");
 
-                if (request.Options.Count < 2)
-                    throw new QuizProviderValidationException(nameof(request.Options), $"must contain at least 2 options while Phase is {request.Phase} (had {request.Options.Count}).");
+                if (message.Options.Count < 2)
+                    throw new QuizProviderValidationException(nameof(message.Options), $"must contain at least 2 options while Phase is {message.Phase} (had {message.Options.Count}).");
             }
 
-            var message = new QuizChannelFeederMessage
+            var feederMessage = new QuizChannelFeederMessage
             {
-                GameId = request.GameId,
-                Phase = request.Phase,
-                QuestionText = request.QuestionText,
-                Options = request.Options,
-                TimeRemaining = request.TimeRemaining,
-                QuestionIndex = request.QuestionIndex,
-                TotalQuestions = request.TotalQuestions,
-                Scoreboard = request.Scoreboard,
-                CorrectAnswer = request.CorrectAnswer,
-                Winner = request.Winner
+                GameId = message.GameId,
+                Phase = message.Phase,
+                QuestionText = message.QuestionText,
+                Options = message.Options,
+                TimeRemaining = message.TimeRemaining,
+                QuestionIndex = message.QuestionIndex,
+                TotalQuestions = message.TotalQuestions,
+                Scoreboard = message.Scoreboard,
+                CorrectAnswer = message.CorrectAnswer,
+                Winner = message.Winner
             };
 
-            EmitMessage(message);
+            EmitMessage(feederMessage);
+
+            return Task.CompletedTask;
         }
 
         private Subscription Subscribe(IConnectionInfo connectionInfo, string requestId, string gameId)

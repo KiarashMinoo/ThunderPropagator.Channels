@@ -32,5 +32,24 @@ namespace ThunderPropagator.Channels.Demo.Quiz
 
             return services;
         }
+
+        /// <summary>
+        /// Registers <see cref="QuizChannel"/>'s own <see cref="IProvider{TMessage}"/> implementation
+        /// (#194's own scope: "Register through AddChannelProvider") so it can be resolved as
+        /// <see cref="IProvider{TMessage}"/> of <see cref="QuizProviderMessage"/> without a caller
+        /// needing to know the concrete channel type. Purely additive: it assumes
+        /// <see cref="AddQuizChannel"/> has already registered <see cref="QuizChannel"/> in the same
+        /// container (this resolves that same singleton, it does not register a separate instance), so
+        /// a host adds this on top rather than in place of that call — the built-in simulation (#189)
+        /// keeps running its own fixed demo GameId regardless; see
+        /// <see cref="QuizChannel.PublishAsync"/>'s own remarks on the two coexisting safely only for
+        /// different GameIds.
+        /// </summary>
+        public static IServiceCollection AddChannelProvider(this IServiceCollection services)
+        {
+            services.AddSingleton<IProvider<QuizProviderMessage>>(serviceProvider => serviceProvider.GetRequiredService<QuizChannel>());
+
+            return services;
+        }
     }
 }
