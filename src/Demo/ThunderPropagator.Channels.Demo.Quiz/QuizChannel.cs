@@ -94,6 +94,57 @@ namespace ThunderPropagator.Channels.Demo.Quiz
             return gameLoop.SubmitAnswer(player.PlayerName, questionIndex, optionIndex);
         }
 
+        /// <summary>
+        /// Starts <paramref name="gameId"/> early on behalf of <paramref name="connectionInfo"/>,
+        /// skipping the rest of its autonomous Lobby wait (#189). Checked, in order (#193's own scope:
+        /// "Validate current phase, minimum players, and question availability"): the caller must be a
+        /// joined player (<see cref="QuizNotAJoinedPlayerException"/> otherwise) and specifically the
+        /// session's host (<see cref="QuizNotTheHostException"/> otherwise — #193's own AC, "Only the
+        /// host can start a game"); the game must have at least
+        /// <see cref="QuizChannelConfiguration.MinPlayers"/> connected players
+        /// (<see cref="QuizNotEnoughPlayersException"/> otherwise). "Question availability" has no
+        /// separate runtime check here — <see cref="Game.QuizQuestionBank"/>'s own constructor already
+        /// guarantees at least <see cref="Game.QuizQuestionBank.MinimumQuestionCount"/> questions (#188),
+        /// so a bank that reached this point can never be empty. Phase itself is not checked
+        /// explicitly beforehand: <see cref="QuizGameLoop.TryStartNow"/> only ever succeeds from Lobby
+        /// and returns null otherwise, which this method reports as
+        /// <see cref="QuizStartOutcome.AlreadyStarted"/> rather than an error — the same outcome a
+        /// second, duplicate start request (or a concurrent one that lost the race) produces, since
+        /// <see cref="QuizGameLoop.TryStartNow"/>'s own lock makes exactly one caller ever succeed
+        /// (#193's own AC: "Concurrent requests create one running loop").
+        /// </summary>
+        /// <remarks>
+        /// A successful start broadcasts the new Question-phase state via
+        /// <see cref="ThunderPropagator.Application.Channels.IChannel.EmitMessage"/> — unlike
+        /// <see cref="Join"/>/<see cref="SubmitAnswer"/>, this transition is not driven by
+        /// <see cref="QuizFeeder"/>'s own tick loop, so nothing else would ever reach every current
+        /// subscriber (#193's own AC: "All subscribers receive the phase transition") without this
+        /// explicit emission.
+        /// </remarks>
+        internal QuizStartOutcome StartGame(IConnectionInfo connectionInfo, string gameId)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(gameId);
+
+            var session = _sessionStore.TryGetSession(gameId) ?? throw new QuizGameNotFoundException(gameId);
+            var player = session.TryGetPlayerByConnectionId(connectionInfo.ConnectionId) ?? throw new QuizNotAJoinedPlayerException(gameId);
+
+            if (!string.Equals(player.PlayerName, session.HostPlayerName, StringComparison.Ordinal))
+                throw new QuizNotTheHostException(gameId);
+
+            var connectedPlayerCount = session.Players.Count(candidate => candidate.IsConnected);
+            if (connectedPlayerCount < ChannelConfiguration.MinPlayers)
+                throw new QuizNotEnoughPlayersException(gameId, ChannelConfiguration.MinPlayers, connectedPlayerCount);
+
+            var gameLoop = _gameLoopRegistry.TryGet(gameId) ?? throw new QuizGameNotFoundException(gameId);
+            var message = gameLoop.TryStartNow();
+
+            if (message is null)
+                return QuizStartOutcome.AlreadyStarted;
+
+            EmitMessage(message);
+            return QuizStartOutcome.Started;
+        }
+
         private Subscription Subscribe(IConnectionInfo connectionInfo, string requestId, string gameId)
         {
             var subscribeRequest = new QuizJoinSubscribeRequest
