@@ -19,9 +19,16 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
 #endif
         class QuizGameLoop
     {
+#if NET9_0_OR_GREATER
+        private readonly Lock _lock = new();
+#else
+        private readonly object _lock = new();
+#endif
+
         private readonly QuizGameSession _session;
         private readonly QuizQuestionBank _questionBank;
         private readonly QuizFeederConfiguration _feederConfiguration;
+        private readonly QuizScoringEngine _scoringEngine = new();
 
         private IReadOnlyList<QuizQuestion> _questions = [];
         private int _questionIndex;
@@ -51,14 +58,23 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
         /// but a caller must keep waiting a real, positive interval between calls regardless — that is
         /// what keeps polling a finished session from becoming the busy-spin #189's own AC forbids.
         /// </summary>
-        public TimeSpan NextDelay => _session.PhaseStateMachine.CurrentPhase switch
+        public TimeSpan NextDelay
         {
-            QuizPhase.Lobby => _feederConfiguration.LobbyDuration,
-            QuizPhase.Question => QuestionTick,
-            QuizPhase.Revealing => _feederConfiguration.RevealingDuration,
-            QuizPhase.Scoreboard => _feederConfiguration.ScoreboardDuration,
-            _ => _feederConfiguration.ScoreboardDuration
-        };
+            get
+            {
+                lock (_lock)
+                {
+                    return _session.PhaseStateMachine.CurrentPhase switch
+                    {
+                        QuizPhase.Lobby => _feederConfiguration.LobbyDuration,
+                        QuizPhase.Question => QuestionTick,
+                        QuizPhase.Revealing => _feederConfiguration.RevealingDuration,
+                        QuizPhase.Scoreboard => _feederConfiguration.ScoreboardDuration,
+                        _ => _feederConfiguration.ScoreboardDuration
+                    };
+                }
+            }
+        }
 
         /// <summary>
         /// Advances this session by exactly one step, assuming <see cref="NextDelay"/> has already
@@ -69,48 +85,73 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
         /// </summary>
         public QuizChannelFeederMessage? Advance()
         {
-            var stateMachine = _session.PhaseStateMachine;
-
-            switch (stateMachine.CurrentPhase)
+            lock (_lock)
             {
-                case QuizPhase.Lobby:
-                    stateMachine.StartGame();
-                    _questions = _questionBank.Shuffle(Random.Shared.Next());
-                    _questionIndex = 0;
-                    _questionTimeRemaining = _feederConfiguration.QuestionDuration;
-                    break;
+                var stateMachine = _session.PhaseStateMachine;
 
-                case QuizPhase.Question:
-                    _questionTimeRemaining -= QuestionTick;
-                    if (_questionTimeRemaining > TimeSpan.Zero)
+                switch (stateMachine.CurrentPhase)
+                {
+                    case QuizPhase.Lobby:
+                        stateMachine.StartGame();
+                        _questions = _questionBank.Shuffle(Random.Shared.Next());
+                        _questionIndex = 0;
+                        _questionTimeRemaining = _feederConfiguration.QuestionDuration;
+                        _scoringEngine.BeginQuestion(_questions[_questionIndex].CorrectAnswer, _questionTimeRemaining);
                         break;
 
-                    stateMachine.RevealAnswer();
-                    break;
+                    case QuizPhase.Question:
+                        _questionTimeRemaining -= QuestionTick;
+                        if (_questionTimeRemaining > TimeSpan.Zero)
+                            break;
 
-                case QuizPhase.Revealing:
-                    stateMachine.ShowScoreboard();
-                    break;
+                        _scoringEngine.CloseQuestion();
+                        stateMachine.RevealAnswer();
+                        break;
 
-                case QuizPhase.Scoreboard:
-                    var hasMoreQuestions = _questionIndex + 1 < _questions.Count;
-                    if (hasMoreQuestions)
-                    {
-                        _questionIndex++;
-                        _questionTimeRemaining = _feederConfiguration.QuestionDuration;
-                    }
+                    case QuizPhase.Revealing:
+                        stateMachine.ShowScoreboard();
+                        break;
 
-                    stateMachine.NextQuestion(hasMoreQuestions);
-                    break;
+                    case QuizPhase.Scoreboard:
+                        var hasMoreQuestions = _questionIndex + 1 < _questions.Count;
+                        if (hasMoreQuestions)
+                        {
+                            _questionIndex++;
+                            _questionTimeRemaining = _feederConfiguration.QuestionDuration;
+                            _scoringEngine.BeginQuestion(_questions[_questionIndex].CorrectAnswer, _questionTimeRemaining);
+                        }
 
-                case QuizPhase.GameOver:
-                default:
-                    return null;
+                        stateMachine.NextQuestion(hasMoreQuestions);
+                        break;
+
+                    case QuizPhase.GameOver:
+                    default:
+                        return null;
+                }
+
+                var message = BuildMessage(stateMachine.CurrentPhase);
+                _session.UpdateCurrentState(message);
+                return message;
             }
+        }
 
-            var message = BuildMessage(stateMachine.CurrentPhase);
-            _session.UpdateCurrentState(message);
-            return message;
+        /// <summary>
+        /// Submits <paramref name="playerName"/>'s answer of <paramref name="selectedOption"/> for
+        /// whichever question is currently open, scoring it via <see cref="QuizScoringEngine.SubmitAnswer"/>
+        /// against this loop's own authoritative countdown — a caller (a future #192 answer pipeline)
+        /// never supplies timing itself, only which option was picked, keeping scoring entirely
+        /// server-authoritative (#190's own AC). Safe to call from any thread concurrently with
+        /// <see cref="Advance"/>: both share this loop's own lock.
+        /// </summary>
+        public QuizAnswerOutcome SubmitAnswer(string playerName, string selectedOption)
+        {
+            lock (_lock)
+            {
+                if (_session.PhaseStateMachine.CurrentPhase != QuizPhase.Question)
+                    return QuizAnswerOutcome.WindowClosed;
+
+                return _scoringEngine.SubmitAnswer(playerName, selectedOption, _questionTimeRemaining);
+            }
         }
 
         /// <summary>
@@ -120,9 +161,9 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
         /// </summary>
         private TimeSpan QuestionTick => _questionTimeRemaining < TimeSpan.FromSeconds(1) ? _questionTimeRemaining : TimeSpan.FromSeconds(1);
 
-        // Scoreboard/Winner are #190's own scope (answer evaluation, scoring, winner selection) — this
-        // loop only ever drives phase and question selection, never populates either field, matching
-        // the layered, ticket-by-ticket ownership already established by #184/#187/#188.
+        // Callers must already hold _lock — BuildMessage reads _questionIndex/_questions/
+        // _questionTimeRemaining without its own locking, and _scoringEngine.BuildScoreboard/
+        // DetermineWinner are safe to call under this loop's lock regardless (they hold their own).
         private QuizChannelFeederMessage BuildMessage(QuizPhase phase)
         {
             var message = new QuizChannelFeederMessage
@@ -131,7 +172,11 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
                 Phase = phase,
                 QuestionIndex = _questionIndex,
                 TotalQuestions = _questions.Count,
-                TimeRemaining = phase == QuizPhase.Question ? (int)Math.Ceiling(_questionTimeRemaining.TotalSeconds) : 0
+                TimeRemaining = phase == QuizPhase.Question ? (int)Math.Ceiling(_questionTimeRemaining.TotalSeconds) : 0,
+                // Empty until the first question is scored, matching this property's own docs — see
+                // QuizScoringEngine.BuildScoreboard's own remarks for the deterministic ordering (#190's
+                // own AC).
+                Scoreboard = _scoringEngine.BuildScoreboard()
             };
 
             if (phase is QuizPhase.Question or QuizPhase.Revealing)
@@ -141,6 +186,11 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
                 message.Options = question.Options;
                 message.CorrectAnswer = question.CorrectAnswer;
             }
+
+            // Winner reads as empty until GameOver regardless (see that property's own phase-gated
+            // getter) — only ever worth computing once the game has actually ended.
+            if (phase == QuizPhase.GameOver)
+                message.Winner = _scoringEngine.DetermineWinner();
 
             return message;
         }
