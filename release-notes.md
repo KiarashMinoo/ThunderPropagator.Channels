@@ -1,5 +1,6 @@
-## [1.0.1-beta.82] — 2026-08-23
+## [1.0.1-beta.83] — 2026-08-23
 
 ### 🚀 Features
 
-- Scaffold the VideoPlayer channel package and project structure `(99b1be1)` — Kiarash Minoo
+- add additional quiz-related configuration and exception classes `(facf2b6)` — Kiarash Minoo
+- Define VideoFramePacket and its native binary transport `(b1b89bb)` — Kiarash Minoo
