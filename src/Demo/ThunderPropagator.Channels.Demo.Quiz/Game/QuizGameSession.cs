@@ -25,6 +25,14 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
 #endif
 
         private readonly Dictionary<string, QuizPlayer> _playersByName = new(StringComparer.Ordinal);
+
+        // Kept in sync with _playersByName by every mutation below: an entry exists here for exactly
+        // as long as its player is connected under that specific connection — removed on disconnect,
+        // and re-pointed (old key removed, new key added) on reconnect under a different connection.
+        // This is #192's own resolution path for "which joined player is this connection" — never a
+        // client-supplied identity.
+        private readonly Dictionary<string, QuizPlayer> _playersByConnectionId = new(StringComparer.Ordinal);
+
         private QuizChannelFeederMessage? _currentState;
 
         public QuizGameSession(string gameId)
@@ -126,8 +134,10 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
                     if (existingPlayer.IsConnected)
                         throw new QuizDuplicateJoinException(GameId, playerName);
 
+                    _playersByConnectionId.Remove(existingPlayer.ConnectionId);
                     existingPlayer.ConnectionId = connectionId;
                     existingPlayer.IsConnected = true;
+                    _playersByConnectionId[connectionId] = existingPlayer;
 
                     return new QuizPlayerJoinResult(existingPlayer, IsReconnect: true, _currentState);
                 }
@@ -135,6 +145,7 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
                 var isHost = HostPlayerName is null;
                 var player = new QuizPlayer(playerName, connectionId, isHost);
                 _playersByName.Add(playerName, player);
+                _playersByConnectionId[connectionId] = player;
 
                 if (isHost)
                     HostPlayerName = playerName;
@@ -158,12 +169,28 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
 
             lock (_lock)
             {
-                var player = _playersByName.Values.FirstOrDefault(candidate => candidate.IsConnected && candidate.ConnectionId == connectionId);
-                if (player is null)
+                if (!_playersByConnectionId.TryGetValue(connectionId, out var player) || !player.IsConnected)
                     return false;
 
                 player.IsConnected = false;
+                _playersByConnectionId.Remove(connectionId);
                 return true;
+            }
+        }
+
+        /// <summary>
+        /// The currently-connected player using <paramref name="connectionId"/>, or null if that
+        /// connection is not a joined player in this session right now — #192's own resolution path
+        /// for "who is submitting this answer," server-side, rather than trusting a player identity a
+        /// caller might supply directly in a request.
+        /// </summary>
+        public QuizPlayer? TryGetPlayerByConnectionId(string connectionId)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(connectionId);
+
+            lock (_lock)
+            {
+                return _playersByConnectionId.GetValueOrDefault(connectionId);
             }
         }
 

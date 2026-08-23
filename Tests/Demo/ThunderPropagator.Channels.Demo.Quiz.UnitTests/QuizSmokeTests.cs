@@ -26,12 +26,15 @@ namespace ThunderPropagator.Channels.Demo.Quiz.UnitTests
             serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
             serviceProvider.GetService(typeof(QuizChannelConfiguration)).Returns(new QuizChannelConfiguration());
 
-            // QuizGameSessionStore is internal to the product assembly and not visible from this
-            // separate test project (unlike ThunderPropagator.UnitTests, which has InternalsVisibleTo) —
-            // resolved by name and instantiated via reflection purely to satisfy QuizChannel's
-            // constructor dependency for this scaffold-level smoke test.
+            // QuizGameSessionStore/QuizGameLoopRegistry are internal to the product assembly and not
+            // visible from this separate test project (unlike ThunderPropagator.UnitTests, which has
+            // InternalsVisibleTo) — resolved by name and instantiated via reflection purely to satisfy
+            // QuizChannel's constructor dependencies for this scaffold-level smoke test.
             var sessionStoreType = typeof(QuizChannel).Assembly.GetType("ThunderPropagator.Channels.Demo.Quiz.Game.QuizGameSessionStore")!;
             serviceProvider.GetService(sessionStoreType).Returns(Activator.CreateInstance(sessionStoreType));
+
+            var gameLoopRegistryType = typeof(QuizChannel).Assembly.GetType("ThunderPropagator.Channels.Demo.Quiz.Game.QuizGameLoopRegistry")!;
+            serviceProvider.GetService(gameLoopRegistryType).Returns(Activator.CreateInstance(gameLoopRegistryType));
 
             var channel = new QuizChannel(serviceProvider);
             var exception = Record.Exception(() => channel.Initialize(CancellationToken.None));

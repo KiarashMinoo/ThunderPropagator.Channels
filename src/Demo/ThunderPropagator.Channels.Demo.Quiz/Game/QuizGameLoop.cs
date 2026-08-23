@@ -136,21 +136,38 @@ namespace ThunderPropagator.Channels.Demo.Quiz.Game
         }
 
         /// <summary>
-        /// Submits <paramref name="playerName"/>'s answer of <paramref name="selectedOption"/> for
-        /// whichever question is currently open, scoring it via <see cref="QuizScoringEngine.SubmitAnswer"/>
-        /// against this loop's own authoritative countdown — a caller (a future #192 answer pipeline)
-        /// never supplies timing itself, only which option was picked, keeping scoring entirely
-        /// server-authoritative (#190's own AC). Safe to call from any thread concurrently with
-        /// <see cref="Advance"/>: both share this loop's own lock.
+        /// Submits <paramref name="playerName"/>'s choice of <paramref name="optionIndex"/> for
+        /// <paramref name="questionIndex"/>, scoring it via <see cref="QuizScoringEngine.SubmitAnswer"/>
+        /// against this loop's own authoritative countdown — a caller (<c>QuizSubmitAnswerReceiverPipeline</c>,
+        /// #192) never supplies timing or the option's text itself, only which question and index it
+        /// picked, keeping scoring entirely server-authoritative (#190's own AC, #192's own "Resolve
+        /// player and game from server-side session state rather than trusting caller identity").
+        /// Checked, in order: the current phase must be <see cref="QuizPhase.Question"/>
+        /// (<see cref="QuizAnswerOutcome.WindowClosed"/> otherwise — no question open at all right
+        /// now); <paramref name="questionIndex"/> must match the question actually open right now
+        /// (<see cref="QuizAnswerOutcome.Stale"/> otherwise — this answer targets a question the game
+        /// has already moved on from, or has not reached yet); <paramref name="optionIndex"/> must be a
+        /// valid index into that question's options (<see cref="QuizAnswerOutcome.Invalid"/> otherwise,
+        /// without ever reaching <see cref="QuizScoringEngine.SubmitAnswer"/> — an invalid submission
+        /// never consumes this player's one answer for the question, unlike an accepted-but-wrong one).
+        /// Safe to call from any thread concurrently with <see cref="Advance"/>: both share this loop's
+        /// own lock.
         /// </summary>
-        public QuizAnswerOutcome SubmitAnswer(string playerName, string selectedOption)
+        public QuizAnswerOutcome SubmitAnswer(string playerName, int questionIndex, int optionIndex)
         {
             lock (_lock)
             {
                 if (_session.PhaseStateMachine.CurrentPhase != QuizPhase.Question)
                     return QuizAnswerOutcome.WindowClosed;
 
-                return _scoringEngine.SubmitAnswer(playerName, selectedOption, _questionTimeRemaining);
+                if (questionIndex != _questionIndex)
+                    return QuizAnswerOutcome.Stale;
+
+                var options = _questions[_questionIndex].Options;
+                if (optionIndex < 0 || optionIndex >= options.Count)
+                    return QuizAnswerOutcome.Invalid;
+
+                return _scoringEngine.SubmitAnswer(playerName, options[optionIndex], _questionTimeRemaining);
             }
         }
 

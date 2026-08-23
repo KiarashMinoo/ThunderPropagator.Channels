@@ -8,11 +8,11 @@ namespace ThunderPropagator.Channels.Demo.Quiz
     /// <summary>
     /// Drives the demo's single, perpetually-running quiz game via <see cref="QuizGameLoop"/> — an
     /// <see cref="IterativeFeeder{TChannel,TFeederMessage,TFeederConfiguration}"/> rather than a raw
-    /// thread (#189's own AC), since #191/#192/#193 (Join/Answer/host-authorized Start) don't exist
-    /// yet to create real player-driven sessions. One fixed <see cref="DemoGameId"/> is enough for
-    /// that: it is still the same <see cref="QuizGameSessionStore"/> a future ticket's Join pipeline
-    /// would resolve real sessions through, so nothing here needs to change once those tickets add
-    /// more of them.
+    /// thread (#189's own AC), since #193 (host-authorized Start) doesn't exist yet to create
+    /// additional player-driven sessions. One fixed <see cref="DemoGameId"/> is enough for that: it is
+    /// still the same <see cref="QuizGameSessionStore"/>/<see cref="QuizGameLoopRegistry"/> real
+    /// receive pipelines (#191's Join, #192's Answer) already resolve, so nothing here needs to change
+    /// once a future ticket adds more sessions.
     /// </summary>
     internal
 #if !DEBUG
@@ -41,6 +41,10 @@ namespace ThunderPropagator.Channels.Demo.Quiz
             var session = sessionStore.GetOrCreateSession(DemoGameId);
 
             _gameLoop = new QuizGameLoop(session, QuizQuestionBank.CreateDefault(), feederConfiguration);
+
+            // Registered so QuizChannel.SubmitAnswer (#192) can reach this exact loop instance despite
+            // having no other reference to this feeder — see QuizGameLoopRegistry's own remarks.
+            serviceProvider.GetRequiredService<QuizGameLoopRegistry>().Register(DemoGameId, _gameLoop);
 
             channel.SubscriptionAdded += (_, _) => Interlocked.Increment(ref _activeSubscriptions);
             channel.SubscriptionRemoved += (_, _) => Interlocked.Decrement(ref _activeSubscriptions);

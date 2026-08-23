@@ -22,10 +22,12 @@ namespace ThunderPropagator.Channels.Demo.Quiz
         class QuizChannel : AbstractChannel<QuizChannelMetadata, QuizChannelConfiguration>
     {
         private readonly QuizGameSessionStore _sessionStore;
+        private readonly QuizGameLoopRegistry _gameLoopRegistry;
 
         public QuizChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _sessionStore = serviceProvider.GetRequiredService<QuizGameSessionStore>();
+            _gameLoopRegistry = serviceProvider.GetRequiredService<QuizGameLoopRegistry>();
         }
 
         /// <summary>
@@ -66,6 +68,30 @@ namespace ThunderPropagator.Channels.Demo.Quiz
             var subscription = Subscribe(connectionInfo, requestId, gameId);
 
             return new QuizJoinResult(subscription, joinResult.IsReconnect, joinResult.Player.IsHost, normalizedPlayerName);
+        }
+
+        /// <summary>
+        /// Submits <paramref name="connectionInfo"/>'s answer of <paramref name="optionIndex"/> for
+        /// <paramref name="questionIndex"/> in <paramref name="gameId"/>. Resolves which player is
+        /// answering from the session's own established membership
+        /// (<see cref="QuizGameSession.TryGetPlayerByConnectionId"/>) — never from a value a caller
+        /// might supply directly — so a connection that never joined, or a stale connection a
+        /// different player has since taken over via reconnect, can never answer on someone else's
+        /// behalf (#192's own AC: "Resolve player and game from server-side session state rather than
+        /// trusting caller identity", "Only joined players can answer"). Everything else — phase,
+        /// question-index staleness, option-index validity, duplicate submissions, and the actual
+        /// scoring — is <see cref="QuizGameLoop.SubmitAnswer"/>'s own concern (#190/#192); this method
+        /// only ever resolves identity and looks up which loop to delegate to.
+        /// </summary>
+        internal QuizAnswerOutcome SubmitAnswer(IConnectionInfo connectionInfo, string gameId, int questionIndex, int optionIndex)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(gameId);
+
+            var session = _sessionStore.TryGetSession(gameId) ?? throw new QuizGameNotFoundException(gameId);
+            var player = session.TryGetPlayerByConnectionId(connectionInfo.ConnectionId) ?? throw new QuizNotAJoinedPlayerException(gameId);
+            var gameLoop = _gameLoopRegistry.TryGet(gameId) ?? throw new QuizGameNotFoundException(gameId);
+
+            return gameLoop.SubmitAnswer(player.PlayerName, questionIndex, optionIndex);
         }
 
         private Subscription Subscribe(IConnectionInfo connectionInfo, string requestId, string gameId)
