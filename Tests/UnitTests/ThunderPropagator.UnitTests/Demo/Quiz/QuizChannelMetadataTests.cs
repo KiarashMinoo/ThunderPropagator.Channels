@@ -6,6 +6,7 @@ using NSubstitute;
 using ThunderPropagator.Application.Channels.ChannelProgramsDescriptors;
 using ThunderPropagator.Application.Channels.ChannelProgramsDescriptors.DataTypes;
 using ThunderPropagator.Channels.Demo.Quiz;
+using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.Channels.Demo.Quiz.Game.Enums;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz
@@ -24,6 +25,7 @@ namespace ThunderPropagator.UnitTests.Demo.Quiz
             serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
             serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
             serviceProvider.GetService(typeof(QuizChannelConfiguration)).Returns(new QuizChannelConfiguration());
+            serviceProvider.GetService(typeof(QuizGameSessionStore)).Returns(new QuizGameSessionStore());
 
             var channel = new QuizChannel(serviceProvider);
             channel.Initialize(CancellationToken.None);
