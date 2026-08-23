@@ -16,6 +16,54 @@
         <Compile Update="QuizChannelConfiguration.cs">
             <DependentUpon>QuizChannel.cs</DependentUpon>
         </Compile>
+        <Compile Update="QuizFeederConfiguration.cs">
+          <DependentUpon>QuizFeeder.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizNotAJoinedPlayerException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizChannelConfigurationValidationException.cs">
+          <DependentUpon>QuizChannelConfiguration.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizGameFullException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizGameNotFoundException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizInvalidPlayerNameException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizChannelFeederMessageValidationException.cs">
+          <DependentUpon>QuizChannelFeederMessage.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizJoinResult.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizNotTheHostException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizNonLobbyJoinNotAllowedException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizNotEnoughPlayersException.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizProviderValidationException.cs">
+          <DependentUpon>IProvider.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizProviderMessage.cs">
+          <DependentUpon>IProvider.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizScoreboardEntry.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="IProvider.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
+        <Compile Update="QuizJoinSubscribeRequest.cs">
+          <DependentUpon>QuizChannel.cs</DependentUpon>
+        </Compile>
     </ItemGroup>
 
 </Project>
