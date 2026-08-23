@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.82] — 2026-08-23
+
+### 🚀 Features
+
+- Scaffold the VideoPlayer channel package and project structure `(99b1be1)` — Kiarash Minoo
+
 ## [1.0.1-beta.81] — 2026-08-23
 
 ### 📝 Documentation

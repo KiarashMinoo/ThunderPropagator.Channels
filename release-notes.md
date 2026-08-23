@@ -1,5 +1,5 @@
-## [1.0.1-beta.81] — 2026-08-23
+## [1.0.1-beta.82] — 2026-08-23
 
-### 📝 Documentation
+### 🚀 Features
 
-- Document the quiz demo package's registration and WebSocket protocol `(ef78289)` — Kiarash Minoo
+- Scaffold the VideoPlayer channel package and project structure `(99b1be1)` — Kiarash Minoo
