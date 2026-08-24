@@ -30,5 +30,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 
         /// <summary>Total stream duration, or <see cref="TimeSpan.Zero"/> for a source of unknown or indeterminate (e.g. live) length.</summary>
         public TimeSpan Duration { get; init; }
+
+        /// <summary>Whether the source has at least one audio stream alongside its video stream. Informational only — this type never yields audio itself; see #224's own scope for audio streaming.</summary>
+        public bool HasAudio { get; init; }
     }
 }
