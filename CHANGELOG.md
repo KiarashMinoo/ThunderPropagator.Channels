@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.84] — 2026-08-24
+
+### 🚀 Features
+
+- Implement playback state message and channel metadata `(11db3a2)` — Kiarash Minoo
+
 ## [1.0.1-beta.83] — 2026-08-23
 
 ### 🚀 Features
