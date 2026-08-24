@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.86] — 2026-08-24
+
+### 🚀 Features
+
+- Implement the FFmpeg frame decoder and JPEG/WebP encoder `(b5b456e)` — Kiarash Minoo
+
 ## [1.0.1-beta.85] — 2026-08-24
 
 ### 🚀 Features
