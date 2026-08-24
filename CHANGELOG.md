@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.85] — 2026-08-24
+
+### 🚀 Features
+
+- Define the replaceable IVideoFrameSource abstraction `(65e0b02)` — Kiarash Minoo
+
 ## [1.0.1-beta.84] — 2026-08-24
 
 ### 🚀 Features

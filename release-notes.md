@@ -1,5 +1,5 @@
-## [1.0.1-beta.84] — 2026-08-24
+## [1.0.1-beta.85] — 2026-08-24
 
 ### 🚀 Features
 
-- Implement playback state message and channel metadata `(11db3a2)` — Kiarash Minoo
+- Define the replaceable IVideoFrameSource abstraction `(65e0b02)` — Kiarash Minoo
