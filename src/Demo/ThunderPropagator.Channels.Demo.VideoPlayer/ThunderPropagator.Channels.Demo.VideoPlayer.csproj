@@ -1,9 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+    <!-- FFmpeg.AutoGen's generated bindings use unsafe pointer access to native FFmpeg structs. -->
+    <PropertyGroup>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="$(ThunderPropagatorPackageId)"/>
         <PackageReference Include="Bogus"/>
         <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="FFmpeg.AutoGen" />
+        <PackageReference Include="SkiaSharp" />
     </ItemGroup>
 
     <ItemGroup>
