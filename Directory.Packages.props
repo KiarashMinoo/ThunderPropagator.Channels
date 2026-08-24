@@ -55,7 +55,7 @@
     <PackageVersion Include="MongoDB.Driver" Version="3.*" />
   </ItemGroup>
   <ItemGroup>
-    <PackageVersion Include="FFmpeg.AutoGen" Version="9.0.1" />
+    <PackageVersion Include="FFmpeg.AutoGen" Version="9.0.1.1" />
     <PackageVersion Include="SkiaSharp" Version="4.151.1" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="NodaTime" Version="3.3.3" />
