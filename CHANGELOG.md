@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.90] — 2026-08-25
+
+### 🚀 Features
+
+- Implement one decoder and publisher lifecycle per active session `(ca87b37)` — Kiarash Minoo
+
 ## [1.0.1-beta.89] — 2026-08-25
 
 ### 🚀 Features
