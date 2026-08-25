@@ -28,6 +28,23 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
     /// this type ever creates, which is what this ticket's concurrency/dispose-ordering ACs are actually
     /// about; reusing an already-open source across a seek is a possible future optimization, not a
     /// correctness requirement here.
+    /// <para/>
+    /// <b>Late join:</b> <see cref="Join"/> is how a viewer joining mid-playback starts at the current
+    /// live position instead of frame 0, without creating a second decoder/timeline — #223's own scope.
+    /// It and <see cref="PublishFrame"/> are the only two places that touch <c>_lastPublishedFrame</c>,
+    /// always under the same lock, which is what makes a join's own "subscribe, then unicast whatever
+    /// was last published" atomic relative to a concurrently-running publish's own "record what was just
+    /// published, then deliver it to whoever is currently subscribed": either the join's critical section
+    /// runs first (it unicasts the prior frame, then the in-flight publish's own delivery reaches the
+    /// newly-subscribed viewer normally — correct order, no duplicate), or the publish's runs first (its
+    /// delivery pass does not yet include the joining viewer, and the join's own unicast — reading
+    /// <c>_lastPublishedFrame</c> after that publish updated it — delivers exactly that one frame instead
+    /// — also correct, no duplicate, no gap). Without this, "subscribe" and "read the last frame to
+    /// unicast" as two separate, unlocked steps could race a concurrent publish either way and either
+    /// duplicate a frame or momentarily rewind — #223's own AC, "Duplicate/racing frames cannot cause
+    /// visible rewind." <c>_lastPublishedFrame</c> is cleared whenever a new generation starts, so a join
+    /// racing a <see cref="SelectAsync"/>/<see cref="SeekAsync"/> call never hands out a frame from a
+    /// superseded epoch — #223's own AC, "Snapshot and bootstrap belong to the same epoch."
     /// </remarks>
     public sealed class VideoPlaybackSession : IAsyncDisposable
     {
@@ -39,6 +56,19 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         private readonly CancellationToken _hostShutdownToken;
         private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
         private readonly ConcurrentDictionary<string, SubscriberFrameQueue<VideoFramePacket>> _subscribers = new();
+
+        // Guards _lastPublishedFrame together with "which viewers are currently subscribed" as one
+        // atomic unit, shared by PublishFrame and Join — #223's own scope. A plain sync lock (never held
+        // across an await) rather than _lifecycleLock: PublishFrame runs on every decoded frame, a much
+        // hotter path than any lifecycle call, and reusing the async lifecycle semaphore here would add
+        // needless overhead and an unrelated cross-lock-ordering concern for no benefit. See this type's
+        // own remarks on how Join uses it to prevent duplicate/rewound delivery.
+#if NET9_0_OR_GREATER
+        private readonly Lock _publishGate = new();
+#else
+        private readonly object _publishGate = new();
+#endif
+        private VideoFramePacket? _lastPublishedFrame;
 
         private volatile PlayState _state = PlayState.Loading;
         private volatile Exception? _fault;
@@ -125,6 +155,55 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         }
 
         /// <summary>
+        /// Subscribes <paramref name="viewerId"/> exactly as <see cref="Subscribe"/> does — creating no
+        /// decoder or timeline of its own, just registering their queue — and, atomically with that
+        /// subscription, unicasts whatever frame was most recently published (if any, and if it still
+        /// belongs to the current epoch) directly into their own queue so they start at the current live
+        /// position rather than frame 0. See this type's own remarks on how the atomicity is achieved and
+        /// why it is necessary. Safe to call while <see cref="State"/> is <see cref="PlayState.Paused"/>
+        /// or <see cref="PlayState.Buffering"/> — the bootstrap frame is simply whatever was last
+        /// published, which naturally stays fixed while paused — #223's own AC, "Paused joins display the
+        /// paused frame."
+        /// </summary>
+        public LateJoinSnapshot Join(string viewerId)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(viewerId);
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            lock (_publishGate)
+            {
+                _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+
+                var frame = _lastPublishedFrame;
+                if (frame is null)
+                {
+                    return new LateJoinSnapshot
+                    {
+                        State = _state,
+                        Epoch = Epoch,
+                        HasBootstrapFrame = false,
+                        FrameNumber = 0,
+                        MediaPosition = TimeSpan.Zero,
+                        SyncTime = TimeSpan.Zero
+                    };
+                }
+
+                if (_subscribers.TryGetValue(viewerId, out var queue))
+                    queue.Enqueue(frame);
+
+                return new LateJoinSnapshot
+                {
+                    State = _state,
+                    Epoch = frame.Epoch,
+                    HasBootstrapFrame = true,
+                    FrameNumber = frame.FrameNumber,
+                    MediaPosition = frame.PresentationTimestamp,
+                    SyncTime = frame.DisplayTime
+                };
+            }
+        }
+
+        /// <summary>
         /// Opens <paramref name="source"/> and starts decoding/publishing from <paramref name="startPosition"/>,
         /// first stopping and disposing whichever generation (if any) was previously active — calling
         /// this again while already playing is how a caller switches to a different video.
@@ -159,6 +238,11 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 Interlocked.Increment(ref _epoch);
                 Interlocked.Exchange(ref _nextFrameNumber, 0);
                 _currentSource = source;
+
+                // A join racing this switch must never bootstrap a frame from the epoch being replaced —
+                // #223's own AC, "Snapshot and bootstrap belong to the same epoch."
+                lock (_publishGate)
+                    _lastPublishedFrame = null;
 
                 var newSource = _sourceFactory();
                 try
@@ -350,8 +434,16 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 Payload = _encodeFrame(frame)
             };
 
-            foreach (var subscriber in _subscribers.Values)
-                subscriber.Enqueue(packet);
+            // Recording "this is now the last published frame" and delivering it to every currently
+            // subscribed viewer must happen as one atomic unit relative to Join's own "subscribe, then
+            // unicast the last published frame" — see this type's own remarks.
+            lock (_publishGate)
+            {
+                _lastPublishedFrame = packet;
+
+                foreach (var subscriber in _subscribers.Values)
+                    subscriber.Enqueue(packet);
+            }
         }
 
         /// <summary>Explicitly stops one generation (cancel, await both loops, dispose once) — used by every lifecycle call that tears one down on purpose.</summary>
