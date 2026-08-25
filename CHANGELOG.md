@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.89] — 2026-08-25
+
+### 🚀 Features
+
+- Add bounded decode-to-publish buffering and late-frame dropping `(cccc46b)` — Kiarash Minoo
+
 ## [1.0.1-beta.88] — 2026-08-24
 
 ### 📦 Dependencies
