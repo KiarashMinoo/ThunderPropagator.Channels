@@ -1,5 +1,5 @@
-## [1.0.1-beta.90] — 2026-08-25
+## [1.0.1-beta.91] — 2026-08-25
 
 ### 🚀 Features
 
-- Implement one decoder and publisher lifecycle per active session `(ca87b37)` — Kiarash Minoo
+- Implement atomic late-join snapshots and live-frame bootstrap `(3577efa)` — Kiarash Minoo
