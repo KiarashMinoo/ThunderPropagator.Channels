@@ -414,6 +414,40 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
             Assert.False(session.IsSubscribed("viewerA"));
         }
 
+        // #230's own "mark reconnect snapshots" signal: VideoPlayerJoinReceiverPipeline reads
+        // IsSubscribed *before* calling Join (Join itself always leaves it true afterward, so reading it
+        // after would never distinguish a first join from a reconnect). This mirrors that exact sequence
+        // across two joins by the same viewer, rather than the single-Join checks the tests above already
+        // cover individually.
+        [Fact]
+        public async Task IsSubscribed_ReadBeforeEachJoin_IsFalseThenTrue_MatchingVideoJoinsOwnReconnectSignal()
+        {
+            await using var session = new VideoPlaybackSession("s26", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            var wasSubscribedBeforeFirstJoin = session.IsSubscribed("viewerA");
+            session.Join("viewerA");
+
+            var wasSubscribedBeforeSecondJoin = session.IsSubscribed("viewerA");
+            session.Join("viewerA");
+
+            Assert.False(wasSubscribedBeforeFirstJoin, "a genuinely new viewer's first join must not be marked a reconnect");
+            Assert.True(wasSubscribedBeforeSecondJoin, "the same viewer joining again must be marked a reconnect");
+        }
+
+        [Fact]
+        public async Task Join_AfterSessionHasEnded_ReturnsASnapshotWithoutThrowing()
+        {
+            await using var session = new VideoPlaybackSession("s27", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughEncode);
+
+            await session.SelectAsync(TestSource);
+            await session.EndAsync();
+
+            var snapshot = session.Join("lateViewer");
+
+            Assert.Equal(PlayState.Ended, snapshot.State);
+            Assert.True(session.IsSubscribed("lateViewer"));
+        }
+
         private sealed class FaultingVideoFrameSource : IVideoFrameSource
         {
             public bool Disposed { get; private set; }
