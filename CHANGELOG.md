@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.100] — 2026-08-26
+
+### 🚀 Features
+
+- Implement Video/Join at the current live position `(c4c56fd)` — Kiarash Minoo
+
 ## [1.0.1-beta.99] — 2026-08-26
 
 ### 🚀 Features
