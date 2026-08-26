@@ -292,33 +292,56 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 if (_lastPublishedAudioPacket is { } audioPacket && _audioSubscribers.TryGetValue(viewerId, out var audioQueue))
                     audioQueue.Enqueue(audioPacket);
 
-                var frame = _lastPublishedFrame;
-                if (frame is null)
-                {
-                    return new LateJoinSnapshot
-                    {
-                        State = _state,
-                        Epoch = Epoch,
-                        HasBootstrapFrame = false,
-                        FrameNumber = 0,
-                        MediaPosition = TimeSpan.Zero,
-                        SyncTime = TimeSpan.Zero
-                    };
-                }
-
-                if (_subscribers.TryGetValue(viewerId, out var queue))
+                if (_lastPublishedFrame is { } frame && _subscribers.TryGetValue(viewerId, out var queue))
                     queue.Enqueue(frame);
 
+                return BuildSnapshot();
+            }
+        }
+
+        /// <summary>
+        /// Returns the same position/frame/state data <see cref="Join"/> would bootstrap a new subscriber
+        /// with, but without any subscription side effect — for callers (like <c>Video/Pause</c>, #226)
+        /// that need to read "what is currently playing" without joining as a viewer. Uses the same
+        /// <c>_publishGate</c>-guarded snapshot as <see cref="Join"/> for the same atomicity reason: see
+        /// that method's own remarks.
+        /// </summary>
+        public LateJoinSnapshot PeekSnapshot()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            lock (_publishGate)
+            {
+                return BuildSnapshot();
+            }
+        }
+
+        /// <summary>Must be called with <see cref="_publishGate"/> already held — see <see cref="Join"/> and <see cref="PeekSnapshot"/>, its only two callers.</summary>
+        private LateJoinSnapshot BuildSnapshot()
+        {
+            var frame = _lastPublishedFrame;
+            if (frame is null)
+            {
                 return new LateJoinSnapshot
                 {
                     State = _state,
-                    Epoch = frame.Epoch,
-                    HasBootstrapFrame = true,
-                    FrameNumber = frame.FrameNumber,
-                    MediaPosition = frame.PresentationTimestamp,
-                    SyncTime = frame.DisplayTime
+                    Epoch = Epoch,
+                    HasBootstrapFrame = false,
+                    FrameNumber = 0,
+                    MediaPosition = TimeSpan.Zero,
+                    SyncTime = TimeSpan.Zero
                 };
             }
+
+            return new LateJoinSnapshot
+            {
+                State = _state,
+                Epoch = frame.Epoch,
+                HasBootstrapFrame = true,
+                FrameNumber = frame.FrameNumber,
+                MediaPosition = frame.PresentationTimestamp,
+                SyncTime = frame.DisplayTime
+            };
         }
 
         /// <summary>
