@@ -29,6 +29,9 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         /// <summary>How many frames this instance has produced have since had <see cref="DecodedAudioFrame.Dispose"/> called on them exactly once.</summary>
         public int DisposedFrameCount => Volatile.Read(ref _disposedFrameCount);
 
+        /// <summary>The <see cref="AudioStreamInfo.SourceCodecName"/> this instance reports on <see cref="OpenAsync"/> — settable so tests can exercise a <see cref="VideoPlaybackSession"/>'s own auto-detection without a real source. Default: <c>"synthetic"</c>.</summary>
+        public string SourceCodecName { get; set; } = "synthetic";
+
         public AudioStreamInfo? StreamInfo { get; private set; }
 
         public Task<AudioStreamInfo> OpenAsync(VideoSource source, CancellationToken cancellationToken = default)
@@ -41,7 +44,8 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
                 SampleRate = SampleRate,
                 Channels = Channels,
                 SampleFormat = AudioSampleFormat.Float32Interleaved,
-                Duration = TimeSpan.FromTicks(ChunkDurations.Sum(d => d.Ticks))
+                Duration = TimeSpan.FromTicks(ChunkDurations.Sum(d => d.Ticks)),
+                SourceCodecName = SourceCodecName
             };
             _opened = true;
 

@@ -71,7 +71,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
     {
         private readonly Func<IVideoFrameSource> _sourceFactory;
         private readonly Func<IAudioFrameSource>? _audioSourceFactory;
-        private readonly Func<int, int, IAudioEncoder> _audioEncoderFactory;
+        private readonly Func<int, int, AudioFramePacketEncoding, IAudioEncoder> _audioEncoderFactory;
         private readonly IMonotonicClock _clock;
         private readonly Func<DecodedVideoFrame, ReadOnlyMemory<byte>> _encodeFrame;
         private readonly VideoPlaybackSessionOptions _options;
@@ -95,6 +95,11 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         private VideoFramePacket? _lastPublishedFrame;
         private AudioFramePacket? _lastPublishedAudioPacket;
 
+        // -1 = no audio active for the current generation; otherwise (int)AudioFramePacketEncoding.
+        // A nullable enum can't itself be marked volatile, so this is the lock-free-readable encoding
+        // behind the public AudioEncoding property — see this type's own remarks on audio.
+        private volatile int _audioEncodingRaw = -1;
+
         private volatile PlayState _state = PlayState.Loading;
         private volatile Exception? _fault;
         private Generation? _current;
@@ -113,7 +118,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             Action<FrameDropReason>? onFrameDropped = null,
             CancellationToken hostShutdownToken = default,
             Func<IAudioFrameSource>? audioSourceFactory = null,
-            Func<int, int, IAudioEncoder>? audioEncoderFactory = null)
+            Func<int, int, AudioFramePacketEncoding, IAudioEncoder>? audioEncoderFactory = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
             ArgumentNullException.ThrowIfNull(sourceFactory);
@@ -129,7 +134,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             SessionId = sessionId;
             _sourceFactory = sourceFactory;
             _audioSourceFactory = audioSourceFactory;
-            _audioEncoderFactory = audioEncoderFactory ?? ((sampleRate, channels) => new AudioFrameEncoder(sampleRate, channels, _options.AudioBitRate));
+            _audioEncoderFactory = audioEncoderFactory ?? ((sampleRate, channels, encoding) => new AudioFrameEncoder(sampleRate, channels, encoding, _options.AudioBitRate));
             _clock = clock;
             _encodeFrame = encodeFrame ?? (frame => VideoFrameEncoder.Encode(frame, _options.Encoding, _options.Quality));
             _onFrameDropped = onFrameDropped;
@@ -147,6 +152,27 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 
         /// <summary>The current stream epoch — incremented by every <see cref="SelectAsync"/>/<see cref="SeekAsync"/> call that actually starts a new generation.</summary>
         public int Epoch => Volatile.Read(ref _epoch);
+
+        /// <summary>
+        /// The codec the current generation's audio is encoded with, or <see langword="null"/> if audio
+        /// is not active (video-only/muted, or no video selected yet) — either explicitly configured via
+        /// <see cref="VideoPlaybackSessionOptions.AudioEncoding"/> or auto-detected from the source's own
+        /// audio codec, per that property's own remarks. This is how a caller finds out which codec was
+        /// actually chosen so it can be told to clients (e.g. surfaced in a session state message) — every
+        /// published <see cref="AudioFramePacket"/> also carries the same value on its own
+        /// <see cref="AudioFramePacket.Encoding"/>, so a client already watching packets never strictly
+        /// needs this, but a client that has not yet received one (nothing published yet, or joining
+        /// before <see cref="Join"/>'s own audio bootstrap exists) does. Safe to read from any thread
+        /// without external locking.
+        /// </summary>
+        public AudioFramePacketEncoding? AudioEncoding
+        {
+            get
+            {
+                var raw = _audioEncodingRaw;
+                return raw < 0 ? null : (AudioFramePacketEncoding)raw;
+            }
+        }
 
         /// <summary>Number of viewers currently subscribed via <see cref="Subscribe"/>.</summary>
         public int ViewerCount => _subscribers.Count;
@@ -295,6 +321,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 Interlocked.Increment(ref _epoch);
                 Interlocked.Exchange(ref _nextFrameNumber, 0);
                 Interlocked.Exchange(ref _nextAudioPacketNumber, 0);
+                _audioEncodingRaw = -1;
                 _currentSource = source;
 
                 // A join racing this switch must never bootstrap a frame from the epoch being replaced —
@@ -360,12 +387,16 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             try
             {
                 var audioStreamInfo = await audioSource.OpenAsync(_currentSource!, cancellationToken).ConfigureAwait(false);
+                var resolvedEncoding = ResolveAudioEncoding(_options.AudioEncoding, audioStreamInfo.SourceCodecName);
 
                 generation.AudioSource = audioSource;
+                generation.AudioEncoding = resolvedEncoding;
                 generation.AudioBuffer = new DecodedAudioBuffer(_options.AudioDecodeBufferCapacity, _onFrameDropped);
-                generation.AudioEncoder = _audioEncoderFactory(audioStreamInfo.SampleRate, audioStreamInfo.Channels);
+                generation.AudioEncoder = _audioEncoderFactory(audioStreamInfo.SampleRate, audioStreamInfo.Channels, resolvedEncoding);
                 generation.AudioDecodeTask = RunAudioDecodeLoopAsync(generation, startPosition, generation.Cts.Token);
                 generation.AudioPublishTask = RunAudioPublishLoopAsync(generation, generation.Cts.Token);
+
+                _audioEncodingRaw = (int)resolvedEncoding;
             }
             catch (VideoFrameSourceException)
             {
@@ -375,6 +406,10 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 await audioSource.DisposeAsync().ConfigureAwait(false);
             }
         }
+
+        /// <summary>See <see cref="VideoPlaybackSessionOptions.AudioEncoding"/>'s own remarks for the auto-detect heuristic this implements.</summary>
+        private static AudioFramePacketEncoding ResolveAudioEncoding(AudioFramePacketEncoding? configured, string sourceCodecName) =>
+            configured ?? (string.Equals(sourceCodecName, "aac", StringComparison.OrdinalIgnoreCase) ? AudioFramePacketEncoding.Aac : AudioFramePacketEncoding.Opus);
 
         /// <summary>Freezes the shared timeline for every subscriber at once. Requires a video already selected.</summary>
         public async Task PauseAsync(CancellationToken cancellationToken = default)
@@ -577,7 +612,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 DisplayTime = schedule.DueElapsed,
                 SampleRate = streamInfo.SampleRate,
                 Channels = streamInfo.Channels,
-                Encoding = AudioFramePacketEncoding.Opus,
+                Encoding = generation.AudioEncoding!.Value,
                 Payload = chunk.Payload
             };
 
@@ -722,6 +757,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 
             /// <summary>Non-null only when this generation's audio pipeline actually activated — see <c>TryStartAudioAsync</c>.</summary>
             public IAudioFrameSource? AudioSource { get; set; }
+            public AudioFramePacketEncoding? AudioEncoding { get; set; }
             public DecodedAudioBuffer? AudioBuffer { get; set; }
             public IAudioEncoder? AudioEncoder { get; set; }
             public Task AudioDecodeTask { get; set; } = Task.CompletedTask;

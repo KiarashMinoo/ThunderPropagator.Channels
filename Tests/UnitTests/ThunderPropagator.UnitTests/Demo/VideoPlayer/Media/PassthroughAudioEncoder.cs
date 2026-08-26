@@ -8,8 +8,10 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
     /// accumulation of its own (<see cref="FrameSize"/> is 1), so a <see cref="VideoPlaybackSession"/>'s
     /// own audio wiring/timing logic is testable without any real Opus/native FFmpeg dependency.
     /// </summary>
-    public sealed class PassthroughAudioEncoder : IAudioEncoder
+    public sealed class PassthroughAudioEncoder(AudioFramePacketEncoding encoding = AudioFramePacketEncoding.Opus) : IAudioEncoder
     {
+        public AudioFramePacketEncoding Encoding => encoding;
+
         public int FrameSize => 1;
 
         public IReadOnlyList<EncodedAudioChunk> Encode(DecodedAudioFrame frame) =>

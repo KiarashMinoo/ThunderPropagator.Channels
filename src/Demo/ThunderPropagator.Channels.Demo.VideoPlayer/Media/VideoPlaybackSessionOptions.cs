@@ -38,7 +38,19 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         /// <summary>Passed as each viewer's own audio <see cref="SubscriberFrameQueue{T}"/> capacity.</summary>
         public int AudioSubscriberQueueCapacity { get; init; } = 16;
 
-        /// <summary>Target Opus bitrate, in bits per second, passed to the default <see cref="AudioFrameEncoder"/>.</summary>
+        /// <summary>Target bitrate, in bits per second, passed to the default <see cref="AudioFrameEncoder"/> — suitable for either codec.</summary>
         public int AudioBitRate { get; init; } = 64_000;
+
+        /// <summary>
+        /// Which codec a session encodes audio to. <see langword="null"/> (the default) auto-detects: a
+        /// selected source whose own audio track is already AAC (<see cref="AudioStreamInfo.SourceCodecName"/>)
+        /// encodes to AAC too — avoiding an unnecessary lossy Opus transcode of already-AAC content and
+        /// favoring the broader legacy-browser/Safari compatibility AAC offers when the content was
+        /// already produced with that compatibility in mind — and every other source encodes to
+        /// <see cref="AudioFramePacketEncoding.Opus"/>, the lower-latency, more broadly modern-browser-
+        /// native default. Set explicitly to force one codec for every session regardless of source.
+        /// See <see cref="VideoPlaybackSession.AudioEncoding"/> for what a given session actually chose.
+        /// </summary>
+        public AudioFramePacketEncoding? AudioEncoding { get; init; }
     }
 }

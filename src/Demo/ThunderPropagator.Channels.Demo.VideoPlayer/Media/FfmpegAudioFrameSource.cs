@@ -211,7 +211,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 SampleRate = _outputSampleRate,
                 Channels = _outputChannels,
                 SampleFormat = AudioSampleFormat.Float32Interleaved,
-                Duration = TimeSpan.FromTicks(durationTicks)
+                Duration = TimeSpan.FromTicks(durationTicks),
+                SourceCodecName = ffmpeg.avcodec_get_name(audioStream->codecpar->codec_id)
             };
 
             return StreamInfo;

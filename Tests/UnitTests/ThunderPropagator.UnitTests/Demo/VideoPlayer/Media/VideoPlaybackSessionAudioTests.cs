@@ -52,7 +52,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
             var options = FastOptions() with { EnableAudio = false };
             await using var session = new VideoPlaybackSession(
                 "s2", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), options, PassthroughVideoEncode,
-                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _) => new PassthroughAudioEncoder());
+                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
             session.Subscribe("viewer");
 
             await session.SelectAsync(TestSource);
@@ -66,7 +66,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         {
             await using var session = new VideoPlaybackSession(
                 "s3", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
-                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _) => new PassthroughAudioEncoder());
+                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
             session.Subscribe("viewer");
 
             await session.SelectAsync(TestSource);
@@ -93,7 +93,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         {
             await using var session = new VideoPlaybackSession(
                 "s4", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
-                audioSourceFactory: () => new FakeAudioFrameSource(FakeAudioFrameSource.FailureMode.OpenThrowsNoAudioTrack), audioEncoderFactory: (_, _) => new PassthroughAudioEncoder());
+                audioSourceFactory: () => new FakeAudioFrameSource(FakeAudioFrameSource.FailureMode.OpenThrowsNoAudioTrack), audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
             session.Subscribe("viewer");
 
             await session.SelectAsync(TestSource);
@@ -109,7 +109,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         {
             await using var session = new VideoPlaybackSession(
                 "s5", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
-                audioSourceFactory: () => new FakeAudioFrameSource(FakeAudioFrameSource.FailureMode.ThrowsWhileReading), audioEncoderFactory: (_, _) => new PassthroughAudioEncoder());
+                audioSourceFactory: () => new FakeAudioFrameSource(FakeAudioFrameSource.FailureMode.ThrowsWhileReading), audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
             session.Subscribe("viewer");
 
             await session.SelectAsync(TestSource);
@@ -125,7 +125,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         {
             await using var session = new VideoPlaybackSession(
                 "s6", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
-                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _) => new PassthroughAudioEncoder());
+                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
             session.Subscribe("viewer");
 
             await session.SelectAsync(TestSource);
@@ -156,7 +156,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         {
             await using var session = new VideoPlaybackSession(
                 "s7", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
-                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _) => new PassthroughAudioEncoder());
+                audioSourceFactory: () => new SyntheticAudioFrameSource(), audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
 
             session.Subscribe("probe");
             await session.SelectAsync(TestSource);
@@ -183,6 +183,67 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
             Assert.True(snapshot.HasBootstrapFrame);
             Assert.True(session.TryDequeueAudio("lateViewer", out var bootstrapAudio), "a late joiner must also receive an audio bootstrap packet once audio has started publishing");
             Assert.Equal(snapshot.Epoch, bootstrapAudio!.Epoch);
+        }
+
+        [Fact]
+        public async Task Session_AutoDetectsAacEncoding_WhenTheSourceIsAlreadyAac()
+        {
+            await using var session = new VideoPlaybackSession(
+                "s8", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
+                audioSourceFactory: () => new SyntheticAudioFrameSource { SourceCodecName = "aac" }, audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
+            session.Subscribe("viewer");
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.AudioEncoding is not null, TimeSpan.FromSeconds(5));
+
+            Assert.Equal(AudioFramePacketEncoding.Aac, session.AudioEncoding);
+
+            await WaitUntilAsync(() => session.State == PlayState.Ended, TimeSpan.FromSeconds(5));
+            Assert.True(session.TryDequeueAudio("viewer", out var packet));
+            Assert.Equal(AudioFramePacketEncoding.Aac, packet!.Encoding);
+        }
+
+        [Fact]
+        public async Task Session_AutoDetectsOpusEncoding_WhenTheSourceIsNotAac()
+        {
+            await using var session = new VideoPlaybackSession(
+                "s9", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode,
+                audioSourceFactory: () => new SyntheticAudioFrameSource { SourceCodecName = "mp3" }, audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
+            session.Subscribe("viewer");
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.AudioEncoding is not null, TimeSpan.FromSeconds(5));
+
+            Assert.Equal(AudioFramePacketEncoding.Opus, session.AudioEncoding);
+        }
+
+        [Fact]
+        public async Task Session_ExplicitAudioEncodingOption_OverridesAutoDetection()
+        {
+            var options = FastOptions() with { AudioEncoding = AudioFramePacketEncoding.Opus };
+            await using var session = new VideoPlaybackSession(
+                "s10", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), options, PassthroughVideoEncode,
+                // The source itself is AAC, which would auto-detect to Aac — the explicit option must win regardless.
+                audioSourceFactory: () => new SyntheticAudioFrameSource { SourceCodecName = "aac" }, audioEncoderFactory: (_, _, encoding) => new PassthroughAudioEncoder(encoding));
+            session.Subscribe("viewer");
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.AudioEncoding is not null, TimeSpan.FromSeconds(5));
+
+            Assert.Equal(AudioFramePacketEncoding.Opus, session.AudioEncoding);
+        }
+
+        [Fact]
+        public async Task AudioEncoding_IsNull_UntilAudioActuallyActivates()
+        {
+            await using var session = new VideoPlaybackSession("s11", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughVideoEncode);
+
+            Assert.Null(session.AudioEncoding);
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.State == PlayState.Ended, TimeSpan.FromSeconds(5));
+
+            Assert.Null(session.AudioEncoding);
         }
 
         private sealed class FakeAudioFrameSource : IAudioFrameSource

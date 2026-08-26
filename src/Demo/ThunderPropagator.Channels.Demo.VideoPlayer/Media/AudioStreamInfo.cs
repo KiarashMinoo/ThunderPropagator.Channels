@@ -20,5 +20,15 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 
         /// <summary>Total stream duration, or <see cref="TimeSpan.Zero"/> for a source of unknown or indeterminate (e.g. live) length.</summary>
         public TimeSpan Duration { get; init; }
+
+        /// <summary>
+        /// The source's own original audio codec name (e.g. <c>"aac"</c>, <c>"mp3"</c>, <c>"opus"</c>,
+        /// <c>"vorbis"</c>) before this source ever decoded/resampled it — never a wire
+        /// <see cref="AudioFramePacketEncoding"/> itself, purely informational. A
+        /// <see cref="VideoPlaybackSession"/> uses this to auto-pick an output encoding when the caller
+        /// has not configured one explicitly — see <see cref="VideoPlaybackSessionOptions.AudioEncoding"/>'s
+        /// own remarks. Empty if unknown.
+        /// </summary>
+        public string SourceCodecName { get; init; } = string.Empty;
     }
 }

@@ -41,6 +41,36 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         }
 
         [Fact]
+        public void Constructor_WithInvalidEncoding_Throws()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new AudioFrameEncoder(48_000, 2, (AudioFramePacketEncoding)255));
+        }
+
+        [Fact]
+        public void Constructor_WithAac_DoesNotThrow_EvenWithoutNativeFFmpegLibrariesPresent()
+        {
+            var exception = Record.Exception(() => new AudioFrameEncoder(48_000, 2, AudioFramePacketEncoding.Aac));
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void Encoding_DefaultsToOpus()
+        {
+            using var encoder = new AudioFrameEncoder(48_000, 2);
+
+            Assert.Equal(AudioFramePacketEncoding.Opus, encoder.Encoding);
+        }
+
+        [Fact]
+        public void Encoding_ReflectsWhatWasConfigured()
+        {
+            using var encoder = new AudioFrameEncoder(48_000, 2, AudioFramePacketEncoding.Aac);
+
+            Assert.Equal(AudioFramePacketEncoding.Aac, encoder.Encoding);
+        }
+
+        [Fact]
         public void FrameSize_BeforeFirstUse_IsZero()
         {
             using var encoder = new AudioFrameEncoder(48_000, 2);
