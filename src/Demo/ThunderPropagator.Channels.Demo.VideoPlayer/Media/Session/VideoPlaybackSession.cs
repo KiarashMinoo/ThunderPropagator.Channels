@@ -143,6 +143,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             _encodeFrame = encodeFrame ?? (frame => VideoFrameEncoder.Encode(frame, _options.Encoding, _options.Quality));
             _onFrameDropped = onFrameDropped;
             _hostShutdownToken = hostShutdownToken;
+
+            Reactions = new ReactionAggregator(clock, _options.AllowedReactions, _options.ReactionWindow, _options.MaxReactionsPerViewerPerWindow);
         }
 
         /// <summary>Identifies this session — the same value every <see cref="VideoFramePacket.SessionId"/> it publishes carries.</summary>
@@ -175,6 +177,15 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         /// <see langword="null"/> (no known upper bound), not as an upper bound of zero.
         /// </summary>
         public TimeSpan? Duration => _currentStreamInfo?.Duration;
+
+        /// <summary>
+        /// This session's own <c>Video/React</c> validator/aggregator — #229's own scope. Constructed
+        /// once, alongside this session, from this session's own <see cref="IMonotonicClock"/> and
+        /// <see cref="VideoPlaybackSessionOptions"/> reaction settings; there is exactly one per session,
+        /// unlike <see cref="VideoPlaybackSessionManager"/>'s own multi-session registry, since reactions
+        /// are always scoped to one playback session's own lifetime.
+        /// </summary>
+        public ReactionAggregator Reactions { get; }
 
         /// <summary>
         /// The connection id currently authorized for this session's host-only commands, or
@@ -245,6 +256,9 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             // per track) is simpler for a caller than conditionally subscribing to audio separately.
             _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
         }
+
+        /// <summary>Whether <paramref name="viewerId"/> is currently subscribed via <see cref="Subscribe"/>/<see cref="Join"/> — #229's own scope, "Validate viewer/session membership," which needs a way to check membership without the side effect both of those calls otherwise have.</summary>
+        public bool IsSubscribed(string viewerId) => _subscribers.ContainsKey(viewerId);
 
         /// <summary>Removes and disposes <paramref name="viewerId"/>'s own video and audio queues. Returns <see langword="false"/> if it was not subscribed.</summary>
         public bool Unsubscribe(string viewerId)

@@ -55,5 +55,19 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         /// See <see cref="VideoPlaybackSession.AudioEncoding"/> for what a given session actually chose.
         /// </summary>
         public AudioFramePacketEncoding? AudioEncoding { get; init; }
+
+        /// <summary>
+        /// The reaction strings <see cref="VideoPlaybackSession.Reactions"/> currently accepts — #229's
+        /// own scope. A reasonable small built-in default so a session works out of the box; a real
+        /// deployment would likely configure this itself (populating it is out of this ticket's own
+        /// scope, same as every other piece of DI wiring this module still needs — see #238).
+        /// </summary>
+        public IReadOnlySet<string> AllowedReactions { get; init; } = new HashSet<string> { "like", "love", "laugh", "wow", "sad", "clap" };
+
+        /// <summary>How long a recorded reaction stays visible in <see cref="VideoPlaybackSession.Reactions"/>'s own aggregate snapshot and counts toward a viewer's own rate limit — #229's own scope, "Store/aggregate reactions for ReactionWindowSeconds."</summary>
+        public TimeSpan ReactionWindow { get; init; } = TimeSpan.FromSeconds(10);
+
+        /// <summary>The most reactions one viewer may record within any trailing <see cref="ReactionWindow"/> — a deliberately simple, tunable default, not derived from any specific product requirement.</summary>
+        public int MaxReactionsPerViewerPerWindow { get; init; } = 20;
     }
 }

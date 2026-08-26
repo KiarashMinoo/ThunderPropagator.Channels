@@ -375,6 +375,45 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
             Assert.Contains(session.HostConnectionId, connectionIds);
         }
 
+        [Fact]
+        public async Task IsSubscribed_BeforeSubscribeOrJoin_IsFalse()
+        {
+            await using var session = new VideoPlaybackSession("s22", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.False(session.IsSubscribed("viewerA"));
+        }
+
+        [Fact]
+        public async Task IsSubscribed_AfterSubscribe_IsTrue()
+        {
+            await using var session = new VideoPlaybackSession("s23", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Subscribe("viewerA");
+
+            Assert.True(session.IsSubscribed("viewerA"));
+        }
+
+        [Fact]
+        public async Task IsSubscribed_AfterJoin_IsTrue()
+        {
+            await using var session = new VideoPlaybackSession("s24", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Join("viewerA");
+
+            Assert.True(session.IsSubscribed("viewerA"));
+        }
+
+        [Fact]
+        public async Task IsSubscribed_AfterUnsubscribe_IsFalse()
+        {
+            await using var session = new VideoPlaybackSession("s25", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Subscribe("viewerA");
+            session.Unsubscribe("viewerA");
+
+            Assert.False(session.IsSubscribed("viewerA"));
+        }
+
         private sealed class FaultingVideoFrameSource : IVideoFrameSource
         {
             public bool Disposed { get; private set; }
