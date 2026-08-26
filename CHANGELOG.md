@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.98] — 2026-08-26
+
+### 🚀 Features
+
+- Implement host-only Video/Select for approved sources `(2040e73)` — Kiarash Minoo
+
 ## [1.0.1-beta.97] — 2026-08-26
 
 ### 🚀 Features
