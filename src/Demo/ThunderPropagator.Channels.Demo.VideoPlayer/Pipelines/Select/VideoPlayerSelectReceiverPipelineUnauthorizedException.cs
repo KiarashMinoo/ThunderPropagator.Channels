@@ -4,8 +4,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Select
 {
     /// <summary>
     /// Thrown by <see cref="VideoPlayerSelectReceiverPipeline"/> (see #228) when the calling connection
-    /// is not this session's host. See <c>VideoPlaybackSession.TryClaimOrVerifyHost</c>'s own remarks for
-    /// the temporary host-ownership model this checks against, pending #231's deterministic design.
+    /// is not this session's current host. See <c>VideoPlaybackSession.IsHost</c>'s own remarks for
+    /// #231's deterministic host-ownership design.
     /// </summary>
     internal
 #if !DEBUG

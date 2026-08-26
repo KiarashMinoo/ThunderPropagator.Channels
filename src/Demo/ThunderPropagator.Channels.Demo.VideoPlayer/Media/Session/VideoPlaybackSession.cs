@@ -83,6 +83,24 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         private readonly ConcurrentDictionary<string, SubscriberFrameQueue<VideoFramePacket>> _subscribers = new();
         private readonly ConcurrentDictionary<string, SubscriberFrameQueue<AudioFramePacket>> _audioSubscribers = new();
 
+        // Tracks *when* each currently-subscribed viewer joined (an arbitrary monotonic sequence
+        // number, not a wall-clock time) — #231's own scope, purely to pick a deterministic "next host"
+        // on reassignment (earliest-joined-still-subscribed wins). Deliberately separate from
+        // _subscribers/_audioSubscribers, which only need "is this viewer here," never "when."
+        private readonly ConcurrentDictionary<string, long> _subscriberJoinOrder = new();
+        private long _nextJoinSequence;
+
+        // Guards every host-state mutation (first-subscriber assignment, disconnect-driven
+        // reassignment) — #231's own scope. Deliberately a lock separate from _publishGate/
+        // _lifecycleLock: host bookkeeping has nothing to do with the decode/publish hot path or the
+        // generation-switch lifecycle, and sharing either of those locks here would be an unforced
+        // cross-concern coupling for no benefit.
+#if NET9_0_OR_GREATER
+        private readonly Lock _hostLock = new();
+#else
+        private readonly object _hostLock = new();
+#endif
+
         // Guards _lastPublishedFrame together with "which viewers are currently subscribed" as one
         // atomic unit, shared by PublishFrame and Join — #223's own scope. A plain sync lock (never held
         // across an await) rather than _lifecycleLock: PublishFrame runs on every decoded frame, a much
@@ -189,32 +207,32 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
         /// <summary>
         /// The connection id currently authorized for this session's host-only commands, or
-        /// <see langword="null"/> if none has been established yet. Safe to read from any thread without
-        /// external locking.
+        /// <see langword="null"/> if no eligible subscriber remains. Safe to read from any thread
+        /// without external locking.
         /// </summary>
         /// <remarks>
-        /// Temporary minimal ownership model — #225's own scope, pending #231's deterministic
-        /// host-ownership/command-authorization design. This only tracks "who claimed host first";
-        /// it has no concept of explicit transfer, disconnect-driven release, or multiple simultaneous
-        /// claim attempts beyond a single atomic first-writer-wins race. Do not build further host logic
-        /// on top of this without expecting it to be replaced by #231.
+        /// #231's own scope, "deterministic host ownership and command authorization" — replaces #225's
+        /// original temporary first-caller-wins claim. Ownership is now tied to <i>subscription</i>, not
+        /// to issuing any particular command: the first eligible subscriber (the first connection to call
+        /// <see cref="Subscribe"/>/<see cref="Join"/>) becomes host automatically, and when the current
+        /// host disconnects (<see cref="Unsubscribe"/>), ownership reassigns deterministically to whichever
+        /// remaining subscriber joined earliest — see <see cref="_subscriberJoinOrder"/>. A connection that
+        /// has never subscribed can never become host merely by issuing a host-only command; see
+        /// <see cref="IsHost"/>'s own remarks.
         /// </remarks>
         public string? HostConnectionId => Volatile.Read(ref _hostConnectionId);
 
         /// <summary>
-        /// Atomically claims host status for <paramref name="connectionId"/> if no host is set yet
-        /// (first caller to invoke any host-only command becomes host), or verifies it already matches
-        /// if one is set. See <see cref="HostConnectionId"/>'s own remarks — this is a temporary minimal
-        /// ownership model pending #231.
+        /// Whether <paramref name="connectionId"/> is this session's current host — the single
+        /// authorization check every host-only <c>Video/*</c> pipeline (Play/Pause/Seek/Select) now
+        /// centralizes on, per #231's own scope. A pure, side-effect-free read: unlike #225's original
+        /// <c>TryClaimOrVerifyHost</c>, calling this can never itself grant host status — the only way to
+        /// ever become host is the implicit first-eligible-subscriber assignment inside
+        /// <see cref="Subscribe"/>/<see cref="Join"/>. This is also what makes host status spoof-proof: a
+        /// caller cannot claim ownership by simply asserting an id here, since this method never writes
+        /// <see cref="HostConnectionId"/>, only compares against it.
         /// </summary>
-        /// <returns><see langword="true"/> if <paramref name="connectionId"/> is (now, or already was) this session's host; <see langword="false"/> if a different connection already holds it.</returns>
-        public bool TryClaimOrVerifyHost(string connectionId)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(connectionId);
-
-            var existing = Interlocked.CompareExchange(ref _hostConnectionId, connectionId, null);
-            return existing is null || existing == connectionId;
-        }
+        public bool IsHost(string connectionId) => HostConnectionId == connectionId;
 
         /// <summary>
         /// The codec the current generation's audio is encoded with, or <see langword="null"/> if audio
@@ -250,23 +268,58 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             ArgumentException.ThrowIfNullOrWhiteSpace(viewerId);
             ObjectDisposedException.ThrowIf(_disposed, this);
 
+            RegisterSubscriber(viewerId);
+        }
+
+        /// <summary>
+        /// Registers <paramref name="viewerId"/>'s own video/audio queues (a no-op if already
+        /// subscribed), records its join order, and — if no host is set yet — assigns it as this
+        /// session's host, all under <see cref="_hostLock"/> so a concurrent first-join race can never
+        /// produce more than one host — #231's own AC, "Concurrent joins/disconnects cannot produce
+        /// multiple hosts." Shared by <see cref="Subscribe"/> and <see cref="Join"/>, which otherwise
+        /// duplicated this exact registration.
+        /// </summary>
+        private void RegisterSubscriber(string viewerId)
+        {
             _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
             // Always registered, even for a session that never activates audio — an idle, never-published-to
             // queue is harmless, and keeping Subscribe a single call for "this viewer" (rather than one call
             // per track) is simpler for a caller than conditionally subscribing to audio separately.
             _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+            _subscriberJoinOrder.GetOrAdd(viewerId, _ => Interlocked.Increment(ref _nextJoinSequence));
+
+            lock (_hostLock)
+            {
+                _hostConnectionId ??= viewerId;
+            }
         }
 
         /// <summary>Whether <paramref name="viewerId"/> is currently subscribed via <see cref="Subscribe"/>/<see cref="Join"/> — #229's own scope, "Validate viewer/session membership," which needs a way to check membership without the side effect both of those calls otherwise have.</summary>
         public bool IsSubscribed(string viewerId) => _subscribers.ContainsKey(viewerId);
 
-        /// <summary>Removes and disposes <paramref name="viewerId"/>'s own video and audio queues. Returns <see langword="false"/> if it was not subscribed.</summary>
+        /// <summary>
+        /// Removes and disposes <paramref name="viewerId"/>'s own video and audio queues. Returns
+        /// <see langword="false"/> if it was not subscribed. If <paramref name="viewerId"/> was this
+        /// session's host, also reassigns <see cref="HostConnectionId"/> deterministically to whichever
+        /// remaining subscriber joined earliest, or clears it to <see langword="null"/> if none remain —
+        /// #231's own AC, "Reassignment is deterministic and occurs once per departure." A caller that
+        /// needs to know whether reassignment actually happened (e.g. to decide whether to broadcast an
+        /// updated host) can simply compare <see cref="HostConnectionId"/> before and after calling this.
+        /// </summary>
         public bool Unsubscribe(string viewerId)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(viewerId);
 
             if (_audioSubscribers.TryRemove(viewerId, out var audioQueue))
                 audioQueue.Dispose();
+
+            _subscriberJoinOrder.TryRemove(viewerId, out _);
+
+            lock (_hostLock)
+            {
+                if (_hostConnectionId == viewerId)
+                    _hostConnectionId = _subscriberJoinOrder.OrderBy(kvp => kvp.Value).Select(kvp => (string?)kvp.Key).FirstOrDefault();
+            }
 
             if (!_subscribers.TryRemove(viewerId, out var queue))
                 return false;
@@ -313,8 +366,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
             lock (_publishGate)
             {
-                _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
-                _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+                RegisterSubscriber(viewerId);
 
                 // Bootstrapped under the very same lock/critical-section as the video frame below, for
                 // exactly the same reason — see this type's own remarks on Join's atomicity. Audio has no

@@ -13,9 +13,10 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Play
     /// Wire-facing entry point for <c>Video/Play</c> (see #225) — starts or resumes this channel's one
     /// shared <see cref="VideoPlaybackSession"/> (keyed by <see cref="ChannelInfo.ChannelKey"/>, so every
     /// viewer connecting to this channel instance shares the same session), restricted to whichever
-    /// connection is (or, on a session with no host yet, becomes) that session's host — see
-    /// <see cref="VideoPlaybackSession.TryClaimOrVerifyHost"/>'s own remarks for the temporary minimal
-    /// ownership model this enforces, pending #231's deterministic design. Deliberately does not select a
+    /// connection is that session's current host — see <see cref="VideoPlaybackSession.IsHost"/>'s own
+    /// remarks for #231's deterministic host-ownership design (host status comes only from being the
+    /// first eligible subscriber or a subsequent reassignment on disconnect; this pipeline never grants
+    /// it). Deliberately does not select a
     /// source itself (that's <c>Video/Select</c>'s job, #228) — a session with no source ever selected is
     /// rejected the same way as one that already <see cref="PlayState.Ended"/> or
     /// <see cref="PlayState.Faulted"/>: none of those are states Play can resume from.
@@ -36,7 +37,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Play
                 var session = sessionManager.GetOrCreateSession(channelInfo.ChannelKey.ToString());
                 var connectionId = context.WebSocketConnectionInfo.ConnectionId;
 
-                if (!session.TryClaimOrVerifyHost(connectionId))
+                if (!session.IsHost(connectionId))
                     throw new VideoPlayerPlayReceiverPipelineUnauthorizedException();
 
                 if (session.CurrentSource is null)

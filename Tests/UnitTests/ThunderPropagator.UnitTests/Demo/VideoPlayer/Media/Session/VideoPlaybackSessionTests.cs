@@ -334,45 +334,158 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
         }
 
         [Fact]
-        public async Task TryClaimOrVerifyHost_FirstCaller_ClaimsHost()
+        public async Task Join_FirstSubscriber_BecomesHost()
         {
             await using var session = new VideoPlaybackSession("s15", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
 
-            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
+            session.Join("connection-a");
+
+            Assert.True(session.IsHost("connection-a"));
             Assert.Equal("connection-a", session.HostConnectionId);
         }
 
         [Fact]
-        public async Task TryClaimOrVerifyHost_SameConnectionAgain_StaysHost()
+        public async Task Subscribe_FirstSubscriber_BecomesHost()
         {
             await using var session = new VideoPlaybackSession("s16", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
 
-            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
-            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
-            Assert.Equal("connection-a", session.HostConnectionId);
+            session.Subscribe("connection-a");
+
+            Assert.True(session.IsHost("connection-a"));
         }
 
         [Fact]
-        public async Task TryClaimOrVerifyHost_DifferentConnection_OnceHostIsSet_IsRejected()
+        public async Task Join_SecondSubscriber_DoesNotDisturbTheExistingHost()
         {
             await using var session = new VideoPlaybackSession("s17", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
 
-            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
-            Assert.False(session.TryClaimOrVerifyHost("connection-b"));
-            Assert.Equal("connection-a", session.HostConnectionId); // rejection must not disturb the existing host
+            session.Join("connection-a");
+            session.Join("connection-b");
+
+            Assert.True(session.IsHost("connection-a"));
+            Assert.False(session.IsHost("connection-b"));
+            Assert.Equal("connection-a", session.HostConnectionId);
         }
 
+        // #231's own AC, "Authorization tests cover spoofing" — there is no way for a caller to claim
+        // host status by simply asserting an id; the only public way to ever become host is the implicit
+        // first-eligible-subscriber assignment inside Subscribe/Join. IsHost is a pure read that can
+        // never itself grant anything, unlike #225's original TryClaimOrVerifyHost.
         [Fact]
-        public async Task TryClaimOrVerifyHost_ConcurrentFirstClaims_SettleOnExactlyOneWinner()
+        public async Task IsHost_ArbitraryUnsubscribedConnectionId_IsFalseEvenWhileARealHostExists()
         {
             await using var session = new VideoPlaybackSession("s18", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
 
-            var connectionIds = Enumerable.Range(0, 20).Select(i => $"connection-{i}").ToArray();
-            var results = await Task.WhenAll(connectionIds.Select(id => Task.Run(() => (id, claimed: session.TryClaimOrVerifyHost(id)))));
+            session.Join("connection-a");
 
-            Assert.Single(results, r => r.claimed);
+            Assert.False(session.IsHost("some-made-up-connection-id-nobody-actually-has"));
+            Assert.Equal("connection-a", session.HostConnectionId); // the spoof attempt must not disturb the real host
+        }
+
+        [Fact]
+        public async Task IsHost_NoOneHasEverSubscribed_IsFalseForAnyone()
+        {
+            await using var session = new VideoPlaybackSession("s19b", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.False(session.IsHost("connection-a"));
+            Assert.Null(session.HostConnectionId);
+        }
+
+        // #231's own AC, "Authorization tests cover... stale connections... [and] former-host commands."
+        [Fact]
+        public async Task Unsubscribe_TheHost_MakesItsFormerConnectionIdNoLongerHost()
+        {
+            await using var session = new VideoPlaybackSession("s28", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Join("connection-a");
+            Assert.True(session.IsHost("connection-a"));
+
+            session.Unsubscribe("connection-a");
+
+            Assert.False(session.IsHost("connection-a"));
+        }
+
+        [Fact]
+        public async Task Unsubscribe_TheHost_WithNoOtherSubscribers_ClearsHostToNull()
+        {
+            await using var session = new VideoPlaybackSession("s29", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Join("connection-a");
+            session.Unsubscribe("connection-a");
+
+            Assert.Null(session.HostConnectionId);
+        }
+
+        // #231's own AC, "Reassignment is deterministic and occurs once per departure."
+        [Fact]
+        public async Task Unsubscribe_TheHost_ReassignsToTheEarliestJoinedRemainingSubscriber()
+        {
+            await using var session = new VideoPlaybackSession("s30", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Join("A");
+            session.Join("B");
+            session.Join("C");
+            Assert.True(session.IsHost("A"));
+
+            session.Unsubscribe("A");
+            Assert.True(session.IsHost("B"));
+            Assert.False(session.IsHost("A")); // former host, now rejected the same as a never-subscribed caller
+
+            session.Unsubscribe("B");
+            Assert.True(session.IsHost("C"));
+
+            session.Unsubscribe("C");
+            Assert.Null(session.HostConnectionId);
+        }
+
+        [Fact]
+        public async Task Unsubscribe_ANonHostSubscriber_DoesNotChangeWhoIsHost()
+        {
+            await using var session = new VideoPlaybackSession("s31", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            session.Join("A");
+            session.Join("B");
+
+            session.Unsubscribe("B");
+
+            Assert.True(session.IsHost("A"));
+        }
+
+        // #231's own AC, "Concurrent joins/disconnects cannot produce multiple hosts." Plain concurrent
+        // Task.Run calls, not a Barrier-based rendezvous — this module's own established pitfall (a
+        // blocking Barrier starves the thread pool and can cascade failures into unrelated tests);
+        // ordinary concurrent calls already race enough to prove this.
+        [Fact]
+        public async Task Join_ManyConcurrentFirstJoins_SettleOnExactlyOneHost()
+        {
+            await using var session = new VideoPlaybackSession("s32", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            var connectionIds = Enumerable.Range(0, 20).Select(i => $"connection-{i}").ToArray();
+            await Task.WhenAll(connectionIds.Select(id => Task.Run(() => session.Join(id))));
+
             Assert.NotNull(session.HostConnectionId);
             Assert.Contains(session.HostConnectionId, connectionIds);
+            Assert.Single(connectionIds, id => session.IsHost(id));
+        }
+
+        [Fact]
+        public async Task Unsubscribe_ManyConcurrentDeparturesExceptOneSurvivor_NeverLeavesHostNull_AndSurvivorEndsUpHost()
+        {
+            await using var session = new VideoPlaybackSession("s33", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            var departing = Enumerable.Range(0, 19).Select(i => $"connection-{i}").ToArray();
+            const string survivor = "survivor";
+
+            foreach (var id in departing)
+                session.Join(id);
+            session.Join(survivor); // joined last, so it's the latest-joined — every departing connection joined earlier
+
+            await Task.WhenAll(departing.Select(id => Task.Run(() => session.Unsubscribe(id))));
+
+            // The survivor joined last, so it can only ever become host once every earlier-joined
+            // connection is gone — this asserts the reassignment chain actually reached it, not merely
+            // that *some* host remains.
+            Assert.True(session.IsHost(survivor));
         }
 
         [Fact]
