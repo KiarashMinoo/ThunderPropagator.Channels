@@ -68,7 +68,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
                     sawAnother = packet!.FrameNumber > 0;
 
                 return sawAnother;
-            }, TimeSpan.FromSeconds(5));
+            }, TimeSpan.FromSeconds(20));
 
             var snapshot = session.Join("lateViewer");
 
@@ -108,12 +108,16 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
                 return new SyntheticVideoFrameSource();
             }
 
-            var options = new VideoPlaybackSessionOptions { PlaybackRate = 3.0, PollInterval = TimeSpan.FromMilliseconds(2) };
+            // Real-time (not FastOptions()-style accelerated) so this whole synthetic stream (~380ms)
+            // can't finish naturally before this test gets around to joining/draining a second time —
+            // see feedback_async_test_pitfalls memory: leave real margin, don't guess a rate/delay that
+            // "should" be enough under load.
+            var options = new VideoPlaybackSessionOptions { PlaybackRate = 1.0, PollInterval = TimeSpan.FromMilliseconds(2) };
             await using var session = new VideoPlaybackSession("s4", Factory, new SystemMonotonicClock(), options, PassthroughEncode);
             session.Subscribe("early");
 
             await session.SelectAsync(TestSource);
-            await Task.Delay(30);
+            await WaitUntilAsync(() => session.TryDequeue("early", out _), TimeSpan.FromSeconds(20));
 
             // Drain whatever "early" already has so we can observe it keeps advancing, uninterrupted, after the join below.
             long? lastEarlySeen = null;
@@ -122,17 +126,23 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
 
             session.Join("late");
 
-            await Task.Delay(30);
-
+            // Accumulated across polls (not just within one) — WaitUntilAsync's own condition check
+            // dequeues as a side effect, so a plain "TryDequeue once more after waiting" would lose
+            // whichever packet the successful poll itself already consumed.
             var earlyContinued = false;
-            while (session.TryDequeue("early", out var packet))
+            await WaitUntilAsync(() =>
             {
-                if (lastEarlySeen is { } last)
-                    Assert.True(packet!.FrameNumber > last, "the already-subscribed viewer's own sequence must never reset or go backward because someone else joined");
+                while (session.TryDequeue("early", out var packet))
+                {
+                    if (lastEarlySeen is { } last)
+                        Assert.True(packet!.FrameNumber > last, "the already-subscribed viewer's own sequence must never reset or go backward because someone else joined");
 
-                lastEarlySeen = packet!.FrameNumber;
-                earlyContinued = true;
-            }
+                    lastEarlySeen = packet!.FrameNumber;
+                    earlyContinued = true;
+                }
+
+                return earlyContinued;
+            }, TimeSpan.FromSeconds(20));
 
             Assert.True(earlyContinued, "playback should have kept advancing for the early viewer while this test ran");
             Assert.Equal(1, openCount);
@@ -141,12 +151,15 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
         [Fact]
         public async Task Join_WhilePaused_ReceivesThePausedFrame_AndNothingMoreUntilResume()
         {
-            var options = new VideoPlaybackSessionOptions { PlaybackRate = 4.0, PollInterval = TimeSpan.FromMilliseconds(2) };
+            // Real-time (not accelerated) — see the sibling test's own remarks on why: PauseAsync needs
+            // to run before this synthetic stream (~380ms) finishes naturally, and a faster rate leaves
+            // too little real-world margin for that under load.
+            var options = new VideoPlaybackSessionOptions { PlaybackRate = 1.0, PollInterval = TimeSpan.FromMilliseconds(2) };
             await using var session = new VideoPlaybackSession("s5", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), options, PassthroughEncode);
             session.Subscribe("early");
 
             await session.SelectAsync(TestSource);
-            await WaitUntilAsync(() => session.TryDequeue("early", out _), TimeSpan.FromSeconds(5));
+            await WaitUntilAsync(() => session.TryDequeue("early", out _), TimeSpan.FromSeconds(20));
             while (session.TryDequeue("early", out _)) { }
 
             await session.PauseAsync();
@@ -161,7 +174,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
             Assert.False(session.TryDequeue("lateViewer", out _), "no further frames should arrive for a joiner while paused");
 
             await session.ResumeAsync();
-            await WaitUntilAsync(() => session.TryDequeue("lateViewer", out _), TimeSpan.FromSeconds(5));
+            await WaitUntilAsync(() => session.TryDequeue("lateViewer", out _), TimeSpan.FromSeconds(20));
         }
 
         [Fact]

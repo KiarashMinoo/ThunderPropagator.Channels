@@ -45,10 +45,33 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
     /// visible rewind." <c>_lastPublishedFrame</c> is cleared whenever a new generation starts, so a join
     /// racing a <see cref="SelectAsync"/>/<see cref="SeekAsync"/> call never hands out a frame from a
     /// superseded epoch — #223's own AC, "Snapshot and bootstrap belong to the same epoch."
+    /// <para/>
+    /// <b>Audio:</b> #224's own scope. Every viewer's audio queue is independent of its video one, but
+    /// both are populated from the very same generation's <see cref="FramePacer"/>, so
+    /// <see cref="AudioFramePacket.DisplayTime"/> and <see cref="VideoFramePacket.DisplayTime"/> are
+    /// always on one synchronized clock — #224's own AC, "Audio and video packets share one session
+    /// epoch and synchronized timestamps." Audio activates only when <c>audioSourceFactory</c> is
+    /// supplied to the constructor <i>and</i> <see cref="VideoPlaybackSessionOptions.EnableAudio"/> is
+    /// <see langword="true"/> — a session missing either runs video-only, with no
+    /// <see cref="IAudioFrameSource"/> ever opened and no <see cref="AudioFrameEncoder"/> ever
+    /// constructed — #224's own AC, "Muted/video-only sessions run without audio resources." A source
+    /// that turns out to have no audio track (or whose audio otherwise fails to open) is treated the
+    /// same way: this session keeps playing video-only rather than faulting outright, since a broken or
+    /// absent audio track should never be able to stop video that is otherwise healthy. The same
+    /// tolerance applies to a runtime audio decode/encode failure after a generation has already
+    /// started — it silently stops that generation's own audio (video is unaffected) rather than
+    /// faulting the whole session, unlike a video-side failure, which does fault the session (video is
+    /// this type's own primary contract; audio is always a value-add on top of it, consistent with
+    /// letting a session run muted/video-only in the first place). Audio decode/publish share the exact
+    /// same generation/epoch/cancellation machinery as video (see this type's own remarks on
+    /// generations), so a seek, source change, epoch change, or session removal resets/disposes audio
+    /// work exactly as coherently as it already does for video — #224's own AC.
     /// </remarks>
     public sealed class VideoPlaybackSession : IAsyncDisposable
     {
         private readonly Func<IVideoFrameSource> _sourceFactory;
+        private readonly Func<IAudioFrameSource>? _audioSourceFactory;
+        private readonly Func<int, int, IAudioEncoder> _audioEncoderFactory;
         private readonly IMonotonicClock _clock;
         private readonly Func<DecodedVideoFrame, ReadOnlyMemory<byte>> _encodeFrame;
         private readonly VideoPlaybackSessionOptions _options;
@@ -56,6 +79,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         private readonly CancellationToken _hostShutdownToken;
         private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
         private readonly ConcurrentDictionary<string, SubscriberFrameQueue<VideoFramePacket>> _subscribers = new();
+        private readonly ConcurrentDictionary<string, SubscriberFrameQueue<AudioFramePacket>> _audioSubscribers = new();
 
         // Guards _lastPublishedFrame together with "which viewers are currently subscribed" as one
         // atomic unit, shared by PublishFrame and Join — #223's own scope. A plain sync lock (never held
@@ -69,6 +93,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         private readonly object _publishGate = new();
 #endif
         private VideoFramePacket? _lastPublishedFrame;
+        private AudioFramePacket? _lastPublishedAudioPacket;
 
         private volatile PlayState _state = PlayState.Loading;
         private volatile Exception? _fault;
@@ -76,6 +101,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         private VideoSource? _currentSource;
         private int _epoch;
         private long _nextFrameNumber;
+        private long _nextAudioPacketNumber;
         private bool _disposed;
 
         public VideoPlaybackSession(
@@ -85,7 +111,9 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             VideoPlaybackSessionOptions? options = null,
             Func<DecodedVideoFrame, ReadOnlyMemory<byte>>? encodeFrame = null,
             Action<FrameDropReason>? onFrameDropped = null,
-            CancellationToken hostShutdownToken = default)
+            CancellationToken hostShutdownToken = default,
+            Func<IAudioFrameSource>? audioSourceFactory = null,
+            Func<int, int, IAudioEncoder>? audioEncoderFactory = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
             ArgumentNullException.ThrowIfNull(sourceFactory);
@@ -95,9 +123,13 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_options.DecodeBufferCapacity, 0);
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_options.SubscriberQueueCapacity, 0);
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_options.PlaybackRate, 0.0);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_options.AudioDecodeBufferCapacity, 0);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_options.AudioSubscriberQueueCapacity, 0);
 
             SessionId = sessionId;
             _sourceFactory = sourceFactory;
+            _audioSourceFactory = audioSourceFactory;
+            _audioEncoderFactory = audioEncoderFactory ?? ((sampleRate, channels) => new AudioFrameEncoder(sampleRate, channels, _options.AudioBitRate));
             _clock = clock;
             _encodeFrame = encodeFrame ?? (frame => VideoFrameEncoder.Encode(frame, _options.Encoding, _options.Quality));
             _onFrameDropped = onFrameDropped;
@@ -130,12 +162,19 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             ObjectDisposedException.ThrowIf(_disposed, this);
 
             _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+            // Always registered, even for a session that never activates audio — an idle, never-published-to
+            // queue is harmless, and keeping Subscribe a single call for "this viewer" (rather than one call
+            // per track) is simpler for a caller than conditionally subscribing to audio separately.
+            _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
         }
 
-        /// <summary>Removes and disposes <paramref name="viewerId"/>'s own queue. Returns <see langword="false"/> if it was not subscribed.</summary>
+        /// <summary>Removes and disposes <paramref name="viewerId"/>'s own video and audio queues. Returns <see langword="false"/> if it was not subscribed.</summary>
         public bool Unsubscribe(string viewerId)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(viewerId);
+
+            if (_audioSubscribers.TryRemove(viewerId, out var audioQueue))
+                audioQueue.Dispose();
 
             if (!_subscribers.TryRemove(viewerId, out var queue))
                 return false;
@@ -144,10 +183,20 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             return true;
         }
 
-        /// <summary>Dequeues the oldest packet queued for <paramref name="viewerId"/>, if any and if it is subscribed.</summary>
+        /// <summary>Dequeues the oldest video packet queued for <paramref name="viewerId"/>, if any and if it is subscribed.</summary>
         public bool TryDequeue(string viewerId, out VideoFramePacket? packet)
         {
             if (_subscribers.TryGetValue(viewerId, out var queue))
+                return queue.TryDequeue(out packet);
+
+            packet = null;
+            return false;
+        }
+
+        /// <summary>Dequeues the oldest audio packet queued for <paramref name="viewerId"/>, if any and if it is subscribed. Always empty for a session running without audio — see this type's own remarks.</summary>
+        public bool TryDequeueAudio(string viewerId, out AudioFramePacket? packet)
+        {
+            if (_audioSubscribers.TryGetValue(viewerId, out var queue))
                 return queue.TryDequeue(out packet);
 
             packet = null;
@@ -173,6 +222,14 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             lock (_publishGate)
             {
                 _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+                _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+
+                // Bootstrapped under the very same lock/critical-section as the video frame below, for
+                // exactly the same reason — see this type's own remarks on Join's atomicity. Audio has no
+                // snapshot fields of its own to return (video's own Epoch/MediaPosition/SyncTime already
+                // describe "the position" for both tracks at once), so this is otherwise a pure side effect.
+                if (_lastPublishedAudioPacket is { } audioPacket && _audioSubscribers.TryGetValue(viewerId, out var audioQueue))
+                    audioQueue.Enqueue(audioPacket);
 
                 var frame = _lastPublishedFrame;
                 if (frame is null)
@@ -237,12 +294,16 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 
                 Interlocked.Increment(ref _epoch);
                 Interlocked.Exchange(ref _nextFrameNumber, 0);
+                Interlocked.Exchange(ref _nextAudioPacketNumber, 0);
                 _currentSource = source;
 
                 // A join racing this switch must never bootstrap a frame from the epoch being replaced —
                 // #223's own AC, "Snapshot and bootstrap belong to the same epoch."
                 lock (_publishGate)
+                {
                     _lastPublishedFrame = null;
+                    _lastPublishedAudioPacket = null;
+                }
 
                 var newSource = _sourceFactory();
                 try
@@ -266,6 +327,9 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                     Pacer = pacer,
                     Cts = CancellationTokenSource.CreateLinkedTokenSource(_hostShutdownToken)
                 };
+
+                await TryStartAudioAsync(generation, startPosition, cancellationToken).ConfigureAwait(false);
+
                 generation.DecodeTask = RunDecodeLoopAsync(generation, startPosition, generation.Cts.Token);
                 generation.PublishTask = RunPublishLoopAsync(generation, generation.Cts.Token);
 
@@ -277,6 +341,38 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             finally
             {
                 _lifecycleLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Best-effort: opens an audio source for this generation and starts its own decode/publish
+        /// loops if audio is enabled, a factory was supplied, and the source actually has audio to open
+        /// — leaves <see cref="Generation.AudioSource"/> null (video-only) on any failure, including "no
+        /// audio track," rather than letting an audio problem fault the whole generation. See this
+        /// type's own remarks.
+        /// </summary>
+        private async Task TryStartAudioAsync(Generation generation, TimeSpan startPosition, CancellationToken cancellationToken)
+        {
+            if (!_options.EnableAudio || _audioSourceFactory is null)
+                return;
+
+            var audioSource = _audioSourceFactory();
+            try
+            {
+                var audioStreamInfo = await audioSource.OpenAsync(_currentSource!, cancellationToken).ConfigureAwait(false);
+
+                generation.AudioSource = audioSource;
+                generation.AudioBuffer = new DecodedAudioBuffer(_options.AudioDecodeBufferCapacity, _onFrameDropped);
+                generation.AudioEncoder = _audioEncoderFactory(audioStreamInfo.SampleRate, audioStreamInfo.Channels);
+                generation.AudioDecodeTask = RunAudioDecodeLoopAsync(generation, startPosition, generation.Cts.Token);
+                generation.AudioPublishTask = RunAudioPublishLoopAsync(generation, generation.Cts.Token);
+            }
+            catch (VideoFrameSourceException)
+            {
+                // No audio track, or the audio decoder itself couldn't be opened — video-only for this
+                // generation. Not a caller-visible failure and not a session fault; see this type's own
+                // remarks on why audio is always best-effort relative to video.
+                await audioSource.DisposeAsync().ConfigureAwait(false);
             }
         }
 
@@ -370,6 +466,10 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
                 if (_subscribers.TryRemove(viewerId, out var queue))
                     queue.Dispose();
 
+            foreach (var viewerId in _audioSubscribers.Keys)
+                if (_audioSubscribers.TryRemove(viewerId, out var audioQueue))
+                    audioQueue.Dispose();
+
             _lifecycleLock.Dispose();
         }
 
@@ -416,6 +516,80 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             }
         }
 
+        private async Task RunAudioDecodeLoopAsync(Generation generation, TimeSpan startPosition, CancellationToken token)
+        {
+            await foreach (var frame in generation.AudioSource!.ReadFramesAsync(startPosition, token).ConfigureAwait(false))
+                generation.AudioBuffer!.Enqueue(frame);
+        }
+
+        // Mirrors RunPublishLoopAsync's own shape exactly (same pacer-driven polling, same
+        // IsCompleted-not-IsCompletedSuccessfully reasoning for recognizing "nothing more is ever
+        // coming") — audio simply routes each due frame through the encoder before publishing, and one
+        // decoded frame can yield zero, one, or more encoded packets (see AudioFrameEncoder's own remarks).
+        private async Task RunAudioPublishLoopAsync(Generation generation, CancellationToken token)
+        {
+            while (true)
+            {
+                token.ThrowIfCancellationRequested();
+
+                if (generation.Pacer.IsPaused)
+                {
+                    await Task.Delay(_options.PollInterval, token).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (generation.AudioBuffer!.TryTakeCurrent(generation.Pacer.CurrentMediaPosition, out var frame))
+                {
+                    IReadOnlyList<EncodedAudioChunk> chunks;
+                    using (frame)
+                        chunks = generation.AudioEncoder!.Encode(frame!);
+
+                    foreach (var chunk in chunks)
+                        PublishAudioChunk(generation, chunk);
+
+                    continue;
+                }
+
+                if (generation.AudioDecodeTask.IsCompleted && generation.AudioBuffer.Count == 0)
+                {
+                    foreach (var chunk in generation.AudioEncoder!.Flush())
+                        PublishAudioChunk(generation, chunk);
+
+                    return;
+                }
+
+                await Task.Delay(_options.PollInterval, token).ConfigureAwait(false);
+            }
+        }
+
+        private void PublishAudioChunk(Generation generation, EncodedAudioChunk chunk)
+        {
+            var schedule = generation.Pacer.ComputeSchedule(chunk.PresentationTimestamp);
+            var streamInfo = generation.AudioSource!.StreamInfo!;
+
+            var packet = new AudioFramePacket
+            {
+                SessionId = SessionId,
+                Epoch = Epoch,
+                PacketNumber = Interlocked.Increment(ref _nextAudioPacketNumber) - 1,
+                PresentationTimestamp = chunk.PresentationTimestamp,
+                Duration = chunk.Duration,
+                DisplayTime = schedule.DueElapsed,
+                SampleRate = streamInfo.SampleRate,
+                Channels = streamInfo.Channels,
+                Encoding = AudioFramePacketEncoding.Opus,
+                Payload = chunk.Payload
+            };
+
+            lock (_publishGate)
+            {
+                _lastPublishedAudioPacket = packet;
+
+                foreach (var subscriber in _audioSubscribers.Values)
+                    subscriber.Enqueue(packet);
+            }
+        }
+
         private void PublishFrame(Generation generation, DecodedVideoFrame frame)
         {
             var schedule = generation.Pacer.ComputeSchedule(frame.PresentationTimestamp);
@@ -446,13 +620,15 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             }
         }
 
-        /// <summary>Explicitly stops one generation (cancel, await both loops, dispose once) — used by every lifecycle call that tears one down on purpose.</summary>
+        /// <summary>Explicitly stops one generation (cancel, await every loop — video and audio alike, dispose once) — used by every lifecycle call that tears one down on purpose.</summary>
         private static async Task StopGenerationAsync(Generation generation)
         {
             generation.Cts.Cancel();
 
             try { await generation.DecodeTask.ConfigureAwait(false); } catch { /* observed below or by the supervisor */ }
             try { await generation.PublishTask.ConfigureAwait(false); } catch { }
+            try { await generation.AudioDecodeTask.ConfigureAwait(false); } catch { }
+            try { await generation.AudioPublishTask.ConfigureAwait(false); } catch { }
 
             await generation.EnsureCleanedUpOnceAsync(DisposeGenerationResourcesAsync).ConfigureAwait(false);
         }
@@ -475,6 +651,13 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             try { await generation.PublishTask.ConfigureAwait(false); }
             catch (OperationCanceledException) { }
             catch (Exception ex) { fault ??= ex; }
+
+            // Audio's own outcome never contributes to `fault` — see this type's own remarks on why an
+            // audio failure never faults the whole session. Still awaited here (not fire-and-forget)
+            // purely so the cleanup below never disposes audio resources while its own loops might still
+            // be running.
+            try { await generation.AudioDecodeTask.ConfigureAwait(false); } catch { }
+            try { await generation.AudioPublishTask.ConfigureAwait(false); } catch { }
 
             var wasExplicitlyStopped = generation.Cts.IsCancellationRequested;
 
@@ -511,10 +694,20 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
         {
             generation.Buffer.Dispose();
             await generation.Source.DisposeAsync().ConfigureAwait(false);
+
+            // Never flushed here — see AudioFrameEncoder.Flush's own remarks; whatever trailing packets a
+            // clean end-of-stream still wanted are already handled by RunAudioPublishLoopAsync itself
+            // before it returns. A generation being torn down for any other reason (seek/select/end/
+            // dispose) has no one left to deliver a final flush to anyway.
+            generation.AudioEncoder?.Dispose();
+            generation.AudioBuffer?.Dispose();
+            if (generation.AudioSource is not null)
+                await generation.AudioSource.DisposeAsync().ConfigureAwait(false);
+
             generation.Cts.Dispose();
         }
 
-        /// <summary>One selected video's own source/buffer/pacer/loop-pair. See this type's own remarks on generations.</summary>
+        /// <summary>One selected video's own source/buffer/pacer/loop-pair, plus its own optional audio counterpart. See this type's own remarks on generations and on audio.</summary>
         private sealed class Generation
         {
             private readonly TaskCompletionSource _cleanupCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -526,6 +719,13 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
             public required CancellationTokenSource Cts { get; init; }
             public Task DecodeTask { get; set; } = Task.CompletedTask;
             public Task PublishTask { get; set; } = Task.CompletedTask;
+
+            /// <summary>Non-null only when this generation's audio pipeline actually activated — see <c>TryStartAudioAsync</c>.</summary>
+            public IAudioFrameSource? AudioSource { get; set; }
+            public DecodedAudioBuffer? AudioBuffer { get; set; }
+            public IAudioEncoder? AudioEncoder { get; set; }
+            public Task AudioDecodeTask { get; set; } = Task.CompletedTask;
+            public Task AudioPublishTask { get; set; } = Task.CompletedTask;
 
             /// <summary>
             /// Runs <paramref name="cleanup"/> exactly once for this generation regardless of which of
