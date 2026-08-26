@@ -244,6 +244,96 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
         }
 
         [Fact]
+        public async Task Duration_BeforeAnySelect_IsNull()
+        {
+            await using var session = new VideoPlaybackSession("s19", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.Null(session.Duration);
+        }
+
+        [Fact]
+        public async Task Duration_AfterSelectAsync_MatchesTheSourcesOwnStreamInfo()
+        {
+            await using var session = new VideoPlaybackSession("s20", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughEncode);
+
+            await session.SelectAsync(TestSource);
+
+            var expected = TimeSpan.FromTicks(SyntheticVideoFrameSource.FrameDurations.Sum(duration => duration.Ticks));
+            Assert.Equal(expected, session.Duration);
+        }
+
+        [Fact]
+        public async Task SeekAsync_CalledTwice_IncrementsEpochByExactlyTwo()
+        {
+            await using var session = new VideoPlaybackSession("s21", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughEncode);
+
+            await session.SelectAsync(TestSource);
+            var baseline = session.Epoch;
+
+            await session.SeekAsync(TimeSpan.FromMilliseconds(10));
+            await session.SeekAsync(TimeSpan.FromMilliseconds(20));
+
+            Assert.Equal(baseline + 2, session.Epoch);
+        }
+
+        [Fact]
+        public async Task SeekAsync_WhilePaused_StillSeeks()
+        {
+            // Deliberately NOT FastOptions() here, and deliberately proving playback actually reached the
+            // stream (via TryDequeue) before pausing — see PauseAsync_StopsFurtherPublishing_UntilResumeAsync's
+            // own comment on why a blind Select-then-Pause with no synchronization is a real flake risk,
+            // not a hypothetical one. PlaybackRate 1.0 (near real-time) rather than that test's own 4.0:
+            // this test needs to reliably catch the stream still mid-playback after an extra WaitUntilAsync
+            // polling round-trip, and 4.0's own ~97ms real-time budget for the whole ~380ms of synthetic
+            // media proved too tight for that under real background load — 1.0 leaves close to the full
+            // ~380ms of margin instead.
+            var options = new VideoPlaybackSessionOptions { PlaybackRate = 1.0, PollInterval = TimeSpan.FromMilliseconds(2) };
+            await using var session = new VideoPlaybackSession("s22", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), options, PassthroughEncode);
+            session.Subscribe("viewer");
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.TryDequeue("viewer", out _), TimeSpan.FromSeconds(5));
+
+            await session.PauseAsync();
+            Assert.Equal(PlayState.Paused, session.State);
+
+            var epochBeforeSeek = session.Epoch;
+            await session.SeekAsync(TimeSpan.FromMilliseconds(10));
+
+            Assert.True(session.Epoch > epochBeforeSeek);
+        }
+
+        [Fact]
+        public async Task SeekAsync_NeverPublishesAnOldEpochPacket_AfterItCommits()
+        {
+            // #227's own AC: "No old-epoch frame/audio packet is published after seek." SwitchGenerationAsync
+            // (SeekAsync's own implementation) cancels and fully awaits the previous generation's decode/publish
+            // loops before returning, so by the time SeekAsync's Task completes, nothing enqueued afterward can
+            // possibly carry the prior epoch — proven here by draining every packet the whole run ever produces
+            // and asserting each one's own Epoch matches the epoch SeekAsync committed to, not the one before it.
+            await using var session = new VideoPlaybackSession("s23", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughEncode);
+            session.Subscribe("viewer");
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.TryDequeue("viewer", out _), TimeSpan.FromSeconds(5));
+            while (session.TryDequeue("viewer", out _)) { } // drain whatever the first generation already queued
+
+            var epochBeforeSeek = session.Epoch;
+            await session.SeekAsync(TimeSpan.Zero);
+            var epochAfterSeek = session.Epoch;
+
+            await WaitUntilAsync(() => session.State == PlayState.Ended, TimeSpan.FromSeconds(5));
+
+            var packets = new List<VideoFramePacket>();
+            while (session.TryDequeue("viewer", out var packet))
+                packets.Add(packet!);
+
+            Assert.True(epochAfterSeek > epochBeforeSeek);
+            Assert.NotEmpty(packets);
+            Assert.All(packets, p => Assert.Equal(epochAfterSeek, p.Epoch));
+        }
+
+        [Fact]
         public async Task TryClaimOrVerifyHost_FirstCaller_ClaimsHost()
         {
             await using var session = new VideoPlaybackSession("s15", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());

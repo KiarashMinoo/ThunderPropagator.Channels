@@ -106,6 +106,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         private volatile Exception? _fault;
         private Generation? _current;
         private VideoSource? _currentSource;
+        private VideoStreamInfo? _currentStreamInfo;
         private string? _hostConnectionId;
         private int _epoch;
         private long _nextFrameNumber;
@@ -158,6 +159,22 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
         /// <summary>The most recently selected source, or <see langword="null"/> if <see cref="SelectAsync"/> has never been called for this session. Distinct from <see cref="State"/>: a freshly constructed session is also <see cref="PlayState.Loading"/> before any source is ever selected, so this is the only reliable "has anything been selected yet" signal.</summary>
         public VideoSource? CurrentSource => _currentSource;
+
+        /// <summary>
+        /// The most recently opened source's own stream duration, or <see langword="null"/> if
+        /// <see cref="SelectAsync"/> has never successfully opened a source — #227's own scope, for
+        /// clamping a requested <see cref="SeekAsync"/> position. Mirrors <see cref="CurrentSource"/>'s
+        /// own lifecycle exactly (set once per successful open inside <see cref="SwitchGenerationAsync"/>,
+        /// not cleared when that generation later ends/faults) rather than reading through <c>_current</c>
+        /// — <c>_current</c> itself goes back to <see langword="null"/> the moment a generation finishes
+        /// on its own (see <see cref="SuperviseGenerationAsync"/>), which would otherwise make this go
+        /// <see langword="null"/> right when a caller needs it most: clamping a <see cref="SeekAsync"/>
+        /// issued after the video has already <see cref="PlayState.Ended"/>. Per
+        /// <see cref="VideoStreamInfo.Duration"/>'s own remarks, <see cref="TimeSpan.Zero"/> here means
+        /// "unknown/live," not "zero-length" — a caller clamping against this must treat zero the same as
+        /// <see langword="null"/> (no known upper bound), not as an upper bound of zero.
+        /// </summary>
+        public TimeSpan? Duration => _currentStreamInfo?.Duration;
 
         /// <summary>
         /// The connection id currently authorized for this session's host-only commands, or
@@ -393,7 +410,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 var newSource = _sourceFactory();
                 try
                 {
-                    await newSource.OpenAsync(source, cancellationToken).ConfigureAwait(false);
+                    _currentStreamInfo = await newSource.OpenAsync(source, cancellationToken).ConfigureAwait(false);
                 }
                 catch
                 {
