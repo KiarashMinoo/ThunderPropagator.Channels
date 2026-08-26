@@ -14,6 +14,29 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
     /// restarts or duplicates decoding — #220's own AC.
     /// </summary>
     /// <remarks>
+    /// <b>Concurrent command contract</b> — #232's own scope, "define idempotency/conflict responses":
+    /// every mutating lifecycle method (<see cref="SelectAsync"/>/<see cref="SeekAsync"/> via
+    /// <c>SwitchGenerationAsync</c>, <see cref="PauseAsync"/>, <see cref="ResumeAsync"/>,
+    /// <see cref="EndAsync"/>, <see cref="DisposeAsync"/>) is serialized against every other one by
+    /// <c>_lifecycleLock</c>, so at most one is ever mutating playback state at a time — this session's own
+    /// per-session async command coordinator, even though it isn't packaged as a separately-named type.
+    /// Non-mutating reads (<see cref="State"/>, <see cref="Epoch"/>, <see cref="PeekSnapshot"/>,
+    /// <see cref="Join"/>, <see cref="IsHost"/>, etc.) never take that lock, only the much cheaper
+    /// <c>_publishGate</c> (or nothing at all), so they always proceed even while a mutation is in flight.
+    /// Concurrent <see cref="SelectAsync"/>/<see cref="SeekAsync"/> calls apply in the order each one's own
+    /// fast, lock-held "claim an epoch" step actually runs — not the order their own (possibly slow)
+    /// source-open completes — so the call whose claim happens <i>last</i> always wins, and every
+    /// earlier-still-in-flight attempt is silently abandoned (its own opened source disposed, session state
+    /// left untouched) rather than erroring. <see cref="PauseAsync"/>/<see cref="ResumeAsync"/> are
+    /// idempotent no-ops when called while the timeline is already paused/already running, respectively
+    /// (see <see cref="FramePacer.Pause"/>/<see cref="FramePacer.Resume"/>'s own remarks) — calling either
+    /// repeatedly is always safe. <see cref="EndAsync"/> tears down whatever generation was active (a no-op
+    /// if none was) and always leaves the session in <see cref="PlayState.Ended"/>, so repeated calls are
+    /// likewise safe. None of these session-level semantics require a distinct "conflict" response type —
+    /// the pipeline layer (<c>Video/Play</c>/<c>Pause</c>/<c>Seek</c>/<c>Select</c>) already interprets
+    /// session state at the wire level to decide idempotent-success vs. rejection for its own callers; this
+    /// paragraph documents what actually happens underneath those decisions.
+    /// <para/>
     /// <b>Generations:</b> each call to <see cref="SelectAsync"/>/<see cref="SeekAsync"/> replaces the
     /// previously active source/buffer/pacer/loop-pair (a "generation") with a new one and increments
     /// <see cref="Epoch"/>. A generation stops in exactly one of three ways — an explicit lifecycle call
@@ -445,21 +468,44 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             return SwitchGenerationAsync(source, position, cancellationToken);
         }
 
+        /// <summary>
+        /// #232's own scope, "Avoid holding locks across arbitrary user/network callbacks": runs in three
+        /// phases rather than one long <see cref="_lifecycleLock"/>-held critical section, since opening a
+        /// source (<see cref="IVideoFrameSource.OpenAsync"/>) can take real, externally-controlled
+        /// wall-clock time (network, disk, decoder handshake) and previously blocked every other command
+        /// against this session for that whole duration. Phase 1 (locked) does only fast, local
+        /// mutations and captures this attempt's own epoch. Phase 2 (unlocked) does the slow work — stop
+        /// the previous generation, open the new source. Phase 3 (locked again, briefly) re-validates
+        /// nothing superseded this attempt while it was unlocked, and only then activates the new
+        /// generation.
+        /// <para/>
+        /// This preserves the same "last Phase-1-order wins" determinism concurrent
+        /// <see cref="SelectAsync"/>/<see cref="SeekAsync"/> calls already had when this was one
+        /// single-locked critical section (established and tested since #227): two concurrent attempts
+        /// both pass Phase 1 sequentially (still fully serialized), so whichever runs Phase 1 <i>second</i>
+        /// always captures the higher epoch; whichever captured the <i>lower</i> epoch always loses in
+        /// Phase 3, even if its own Phase 2 (opening) happened to finish first. Only one attempt's
+        /// Phase-1 call ever captures a non-null <c>previous</c> generation (whichever ran first observes
+        /// the real reference; every later concurrent attempt's own Phase 1 finds <c>_current</c> already
+        /// cleared to <see langword="null"/> and so has nothing of its own to stop) — <c>previous</c> is
+        /// always stopped exactly once regardless of how many attempts race through afterward.
+        /// </summary>
         private async Task SwitchGenerationAsync(VideoSource source, TimeSpan startPosition, CancellationToken cancellationToken)
         {
+            Generation? previous;
+            int myEpoch;
+
             await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
 
-                var previous = _current;
+                previous = _current;
                 _current = null;
                 SetState(PlayState.Loading);
 
-                if (previous is not null)
-                    await StopGenerationAsync(previous).ConfigureAwait(false);
-
                 Interlocked.Increment(ref _epoch);
+                myEpoch = Epoch;
                 Interlocked.Exchange(ref _nextFrameNumber, 0);
                 Interlocked.Exchange(ref _nextAudioPacketNumber, 0);
                 _audioEncodingRaw = -1;
@@ -472,30 +518,82 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                     _lastPublishedFrame = null;
                     _lastPublishedAudioPacket = null;
                 }
+            }
+            finally
+            {
+                _lifecycleLock.Release();
+            }
 
-                var newSource = _sourceFactory();
+            // Phase 2 — unlocked. Stopping the previous generation and opening the new source can both
+            // take real time (a stuck decode task's own cancellation responsiveness; real I/O), and
+            // neither needs _lifecycleLock held to be safe: this generation's own eventual activation (or
+            // abandonment) is re-validated against `myEpoch` under the lock again in Phase 3 below.
+            if (previous is not null)
+                await StopGenerationAsync(previous).ConfigureAwait(false);
+
+            var newSource = _sourceFactory();
+            VideoStreamInfo streamInfo;
+            try
+            {
+                streamInfo = await newSource.OpenAsync(source, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                await newSource.DisposeAsync().ConfigureAwait(false);
+
+                await _lifecycleLock.WaitAsync().ConfigureAwait(false);
                 try
                 {
-                    _currentStreamInfo = await newSource.OpenAsync(source, cancellationToken).ConfigureAwait(false);
+                    // Only fault if nothing has already superseded this attempt — a concurrent
+                    // Select/Seek that raced ahead and already started its own newer generation must
+                    // never have its state clobbered by this now-abandoned attempt's own failure.
+                    if (!_disposed && Epoch == myEpoch)
+                        SetState(PlayState.Faulted);
                 }
-                catch
+                finally { _lifecycleLock.Release(); }
+
+                throw;
+            }
+
+            var pacer = new FramePacer(_clock, _options.PlaybackRate);
+            pacer.Start(startPosition);
+
+            var generation = new Generation
+            {
+                Epoch = myEpoch,
+                Source = newSource,
+                Buffer = new DecodedFrameBuffer(_options.DecodeBufferCapacity, _onFrameDropped),
+                Pacer = pacer,
+                Cts = CancellationTokenSource.CreateLinkedTokenSource(_hostShutdownToken)
+            };
+
+            // Phase 3 — locked again, briefly.
+            await _lifecycleLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (_disposed || Epoch != myEpoch)
                 {
+                    // Superseded (or disposed) while unlocked in Phase 2 — this attempt lost the race.
+                    // Abandon it: dispose what was just opened rather than ever making it _current, and
+                    // never touch _state — whichever newer attempt is active now (or the disposal itself)
+                    // owns state, not this one.
                     await newSource.DisposeAsync().ConfigureAwait(false);
-                    SetState(PlayState.Faulted);
-                    throw;
+                    generation.Cts.Dispose();
+                    return;
                 }
 
-                var pacer = new FramePacer(_clock, _options.PlaybackRate);
-                pacer.Start(startPosition);
+                _currentStreamInfo = streamInfo;
 
-                var generation = new Generation
-                {
-                    Source = newSource,
-                    Buffer = new DecodedFrameBuffer(_options.DecodeBufferCapacity, _onFrameDropped),
-                    Pacer = pacer,
-                    Cts = CancellationTokenSource.CreateLinkedTokenSource(_hostShutdownToken)
-                };
-
+                // TryStartAudioAsync's own await audioSource.OpenAsync(...) still runs inside this
+                // Phase-3 lock, deliberately not given the same three-phase treatment as the video open
+                // above — #232's own scope. Unlike video, this call only ever runs once Phase 3 has
+                // already confirmed this generation is the winning, non-superseded attempt, so there is
+                // no correctness question here, only a possible (typically short) added latency for other
+                // commands during that one call. Audio's own open failure is already fault-tolerant (see
+                // this type's own remarks on audio always being best-effort relative to video), so a slow
+                // audio open blocking other commands briefly is judged an acceptable, secondary-path cost
+                // rather than one that justifies a second full split-phase treatment (which would itself
+                // need its own re-validation step, for comparatively little benefit).
                 await TryStartAudioAsync(generation, startPosition, cancellationToken).ConfigureAwait(false);
 
                 generation.DecodeTask = RunDecodeLoopAsync(generation, startPosition, generation.Cts.Token);
@@ -588,26 +686,38 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             }
         }
 
-        /// <summary>Stops playback normally and disposes media resources. Subscribers remain registered until <see cref="Unsubscribe"/>/<see cref="DisposeAsync"/>.</summary>
+        /// <summary>
+        /// Stops playback normally and disposes media resources. Subscribers remain registered until
+        /// <see cref="Unsubscribe"/>/<see cref="DisposeAsync"/>.
+        /// </summary>
+        /// <remarks>
+        /// #232's own scope, "no deadlocks occur during cancellation/disposal": <see cref="StopGenerationAsync"/>
+        /// runs outside <see cref="_lifecycleLock"/> (mirroring <see cref="DisposeAsync"/>'s own
+        /// already-correct shape, which this brings <see cref="EndAsync"/> in line with) — a decode/publish
+        /// task that responds to cancellation slowly (or never) can no longer wedge the lock itself,
+        /// blocking every other command against this session; only this one caller's own await might still
+        /// individually take a while.
+        /// </remarks>
         public async Task EndAsync(CancellationToken cancellationToken = default)
         {
+            Generation? current;
+
             await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
 
-                var current = _current;
+                current = _current;
                 _current = null;
-
-                if (current is not null)
-                    await StopGenerationAsync(current).ConfigureAwait(false);
-
                 SetState(PlayState.Ended);
             }
             finally
             {
                 _lifecycleLock.Release();
             }
+
+            if (current is not null)
+                await StopGenerationAsync(current).ConfigureAwait(false);
         }
 
         /// <summary>Cancels and disposes all media work and every subscriber's own queue. Safe to call more than once.</summary>
@@ -740,13 +850,24 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
         private void PublishAudioChunk(Generation generation, EncodedAudioChunk chunk)
         {
+            // #232's own AC, "Old-epoch tasks cannot publish after a successful seek/select/removal, even
+            // if cancellation is observed late." The only thing that stops a superseded generation's own
+            // publish loop is its CancellationTokenSource being observed — but that loop checks
+            // cancellation once per iteration, before dequeuing/publishing a chunk that was already
+            // sitting in the buffer, so a cancel racing that narrow window would otherwise still let this
+            // method run. generation.Epoch is fixed at creation (never the live, possibly-already-advanced
+            // session Epoch), so this comparison is the actual guard against a stale publish, not the
+            // token check alone.
+            if (generation.Epoch != Epoch)
+                return;
+
             var schedule = generation.Pacer.ComputeSchedule(chunk.PresentationTimestamp);
             var streamInfo = generation.AudioSource!.StreamInfo!;
 
             var packet = new AudioFramePacket
             {
                 SessionId = SessionId,
-                Epoch = Epoch,
+                Epoch = generation.Epoch,
                 PacketNumber = Interlocked.Increment(ref _nextAudioPacketNumber) - 1,
                 PresentationTimestamp = chunk.PresentationTimestamp,
                 Duration = chunk.Duration,
@@ -759,6 +880,12 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
             lock (_publishGate)
             {
+                // Re-checked inside the gate too: Epoch could have advanced in the narrow window between
+                // the check above and acquiring this lock (a switch could complete in between) — this
+                // closes that last sliver rather than leaving it to chance.
+                if (generation.Epoch != Epoch)
+                    return;
+
                 _lastPublishedAudioPacket = packet;
 
                 foreach (var subscriber in _audioSubscribers.Values)
@@ -768,12 +895,17 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
         private void PublishFrame(Generation generation, DecodedVideoFrame frame)
         {
+            // See PublishAudioChunk's own remarks on why this check exists and why it must use
+            // generation.Epoch (fixed at creation), not the live session Epoch.
+            if (generation.Epoch != Epoch)
+                return;
+
             var schedule = generation.Pacer.ComputeSchedule(frame.PresentationTimestamp);
 
             var packet = new VideoFramePacket
             {
                 SessionId = SessionId,
-                Epoch = Epoch,
+                Epoch = generation.Epoch,
                 FrameNumber = Interlocked.Increment(ref _nextFrameNumber) - 1,
                 PresentationTimestamp = frame.PresentationTimestamp,
                 Duration = frame.Duration,
@@ -789,6 +921,10 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             // unicast the last published frame" — see this type's own remarks.
             lock (_publishGate)
             {
+                // Re-checked inside the gate too — see PublishAudioChunk's own remarks.
+                if (generation.Epoch != Epoch)
+                    return;
+
                 _lastPublishedFrame = packet;
 
                 foreach (var subscriber in _subscribers.Values)
@@ -799,7 +935,13 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         /// <summary>Explicitly stops one generation (cancel, await every loop — video and audio alike, dispose once) — used by every lifecycle call that tears one down on purpose.</summary>
         private static async Task StopGenerationAsync(Generation generation)
         {
-            generation.Cts.Cancel();
+            // A generation that finished on its own (natural end/fault) just before this call can have
+            // already disposed its own Cts via SuperviseGenerationAsync's own EnsureCleanedUpOnceAsync
+            // call, racing this explicit stop for the same generation — #232's own "no deadlocks/crashes
+            // during cancellation" scope. Already-disposed means its tasks have already stopped on their
+            // own, so there is nothing left to cancel; safe to ignore rather than let it escape.
+            try { generation.Cts.Cancel(); }
+            catch (ObjectDisposedException) { }
 
             try { await generation.DecodeTask.ConfigureAwait(false); } catch { /* observed below or by the supervisor */ }
             try { await generation.PublishTask.ConfigureAwait(false); } catch { }
@@ -888,6 +1030,14 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         {
             private readonly TaskCompletionSource _cleanupCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
             private int _cleanedUp;
+
+            /// <summary>
+            /// This generation's own fixed epoch, captured once at creation from the session's live
+            /// <c>Epoch</c> at that moment — #232's own scope. Never re-read from the session afterward:
+            /// PublishFrame/PublishAudioChunk compare against this fixed value (not the session's live
+            /// Epoch, which may have already advanced past it) to detect and refuse a stale publish.
+            /// </summary>
+            public required int Epoch { get; init; }
 
             public required IVideoFrameSource Source { get; init; }
             public required DecodedFrameBuffer Buffer { get; init; }
