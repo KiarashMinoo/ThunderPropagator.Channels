@@ -1,5 +1,5 @@
-## [1.0.1-beta.93] — 2026-08-26
+## [1.0.1-beta.94] — 2026-08-26
 
-### 🚀 Features
+### ♻️ Refactoring
 
-- Restructure Channels/Demo/Games modules and Chat providers into role-based subfolders `(e53fbe5)` — Kiarash Minoo
+- fix namespace declaration for LateJoinSnapshot class `(5f158c1)` — Kiarash Minoo
