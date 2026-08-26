@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.95] — 2026-08-26
+
+### 🚀 Features
+
+- Implement host-only Video/Play `(b6c19d1)` — Kiarash Minoo
+
 ## [1.0.1-beta.94] — 2026-08-26
 
 ### ♻️ Refactoring
