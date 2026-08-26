@@ -14,9 +14,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Select
     /// <summary>
     /// Wire-facing entry point for <c>Video/Select</c> (see #228) — switches this channel's one shared
     /// <see cref="VideoPlaybackSession"/> to a different approved video, restricted to whichever
-    /// connection is that session's host — see <see cref="VideoPlaybackSession.TryClaimOrVerifyHost"/>'s
-    /// own remarks for the temporary minimal ownership model this enforces, pending #231's deterministic
-    /// design.
+    /// connection is that session's current host — see <see cref="VideoPlaybackSession.IsHost"/>'s own
+    /// remarks for #231's deterministic host-ownership design.
     /// </summary>
     /// <remarks>
     /// Unlike <c>Video/Play</c>/<c>Video/Pause</c>/<c>Video/Seek</c>, this pipeline never rejects based on
@@ -56,7 +55,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Select
                 var session = sessionManager.GetOrCreateSession(channelInfo.ChannelKey.ToString());
                 var connectionId = context.WebSocketConnectionInfo.ConnectionId;
 
-                if (!session.TryClaimOrVerifyHost(connectionId))
+                if (!session.IsHost(connectionId))
                     throw new VideoPlayerSelectReceiverPipelineUnauthorizedException();
 
                 var request = context.Request.GetRequestContentFormData<VideoPlayerSelectReceiverPipelineRequestDto>()!;

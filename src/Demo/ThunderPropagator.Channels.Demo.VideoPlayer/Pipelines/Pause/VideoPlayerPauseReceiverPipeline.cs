@@ -12,9 +12,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Pause
     /// <summary>
     /// Wire-facing entry point for <c>Video/Pause</c> (see #226) — freezes this channel's one shared
     /// <see cref="VideoPlaybackSession"/> at its current position for every viewer, restricted to
-    /// whichever connection is that session's host — see <see cref="VideoPlaybackSession.TryClaimOrVerifyHost"/>'s
-    /// own remarks for the temporary minimal ownership model this enforces, pending #231's deterministic
-    /// design. Only <see cref="PlayState.Playing"/>/<see cref="PlayState.Buffering"/> actually need a
+    /// whichever connection is that session's current host — see <see cref="VideoPlaybackSession.IsHost"/>'s
+    /// own remarks for #231's deterministic host-ownership design. Only <see cref="PlayState.Playing"/>/<see cref="PlayState.Buffering"/> actually need a
     /// <see cref="VideoPlaybackSession.PauseAsync"/> call; an already-<see cref="PlayState.Paused"/>
     /// session is this ticket's own "idempotent" AC — re-broadcasting the same retained snapshot rather
     /// than erroring. <see cref="PlayState.Loading"/> is rejected the same way as
@@ -40,7 +39,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Pause
                 var session = sessionManager.GetOrCreateSession(channelInfo.ChannelKey.ToString());
                 var connectionId = context.WebSocketConnectionInfo.ConnectionId;
 
-                if (!session.TryClaimOrVerifyHost(connectionId))
+                if (!session.IsHost(connectionId))
                     throw new VideoPlayerPauseReceiverPipelineUnauthorizedException();
 
                 if (session.CurrentSource is null || session.State is PlayState.Loading or PlayState.Ended or PlayState.Faulted)

@@ -13,9 +13,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Seek
     /// <summary>
     /// Wire-facing entry point for <c>Video/Seek</c> (see #227) — re-seeks this channel's one shared
     /// <see cref="VideoPlaybackSession"/> to a new position for every viewer, restricted to whichever
-    /// connection is that session's host — see <see cref="VideoPlaybackSession.TryClaimOrVerifyHost"/>'s
-    /// own remarks for the temporary minimal ownership model this enforces, pending #231's deterministic
-    /// design.
+    /// connection is that session's current host — see <see cref="VideoPlaybackSession.IsHost"/>'s own
+    /// remarks for #231's deterministic host-ownership design.
     /// </summary>
     /// <remarks>
     /// Almost everything this issue's own Scope section describes — cancelling old-epoch decode/pacing
@@ -51,7 +50,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.Seek
                 var session = sessionManager.GetOrCreateSession(channelInfo.ChannelKey.ToString());
                 var connectionId = context.WebSocketConnectionInfo.ConnectionId;
 
-                if (!session.TryClaimOrVerifyHost(connectionId))
+                if (!session.IsHost(connectionId))
                     throw new VideoPlayerSeekReceiverPipelineUnauthorizedException();
 
                 if (session.CurrentSource is null)

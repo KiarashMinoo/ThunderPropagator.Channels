@@ -71,6 +71,35 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             return false;
         }
 
+        /// <summary>
+        /// Finds whichever currently-tracked, already-constructed session <paramref name="connectionId"/>
+        /// is subscribed to, if any — #231's own scope, used by disconnect handling
+        /// (<c>VideoPlayerChannel.OnSubscriptionRemoved</c>), which knows only the departing connection,
+        /// not which session (or, in this single-channel-instance-per-key demo, which of possibly
+        /// several sessions) it belonged to. A linear scan over this manager's own tracked sessions,
+        /// which is never expected to be large — this demo's whole model is one session per running
+        /// channel instance.
+        /// </summary>
+        public bool TryFindSessionForConnection(string connectionId, out VideoPlaybackSession? session)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(connectionId);
+
+            foreach (var lazy in _sessions.Values)
+            {
+                if (!lazy.IsValueCreated)
+                    continue;
+
+                if (lazy.Value.IsSubscribed(connectionId))
+                {
+                    session = lazy.Value;
+                    return true;
+                }
+            }
+
+            session = null;
+            return false;
+        }
+
         /// <summary>Removes and disposes <paramref name="sessionId"/>'s own session — cancels and disposes all its media work. <see langword="false"/> if it was not registered.</summary>
         public async Task<bool> RemoveSessionAsync(string sessionId)
         {

@@ -14,7 +14,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Pipelines.React
     /// Wire-facing entry point for <c>Video/React</c> (see #229) — records a lightweight live reaction
     /// against this channel's one shared <see cref="VideoPlaybackSession"/>, for any currently subscribed
     /// viewer (not just its host — see <see cref="VideoPlaybackSession.IsSubscribed"/>, unlike every
-    /// other <c>Video/*</c> pipeline's own <c>TryClaimOrVerifyHost</c> gate). All the validation/rate-
+    /// other <c>Video/*</c> pipeline's own <c>IsHost</c> gate, #231). All the validation/rate-
     /// limiting/aggregation/expiry logic this ticket's own scope describes already lives in
     /// <see cref="VideoPlaybackSession.Reactions"/> (a <see cref="ReactionAggregator"/>) — this pipeline's
     /// own job is authorization, mapping a rejection reason to the right HTTP-equivalent status, and
