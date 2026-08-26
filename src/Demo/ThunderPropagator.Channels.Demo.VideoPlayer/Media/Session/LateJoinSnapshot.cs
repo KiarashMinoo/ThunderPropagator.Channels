@@ -1,8 +1,7 @@
 using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Video;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Messages;
 
 namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
-using ThunderPropagator.Channels.Demo.VideoPlayer.Messages;
-namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 {
     /// <summary>
     /// What <see cref="VideoPlaybackSession"/>'s own <c>Join</c> method hands back — enough for a caller to populate a
