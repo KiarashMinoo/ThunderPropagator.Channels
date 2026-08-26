@@ -52,6 +52,41 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
         }
 
         [Fact]
+        public async Task Join_ImmediatelyAfterSelect_NeverThrows_AndReturnsASelfConsistentSnapshot()
+        {
+            // #230's own "join during select" AC scenario — distinct from the sibling test above, which
+            // never calls SelectAsync at all. Whether frame 0 (always immediately due, since a playback
+            // rate only slows how fast *later* PTS values become due, never the first one) has actually
+            // been decoded and published by the time this runs is a genuine, unavoidable race against the
+            // decode loop's own async progress — not something a playback rate can pin down deterministically
+            // (an earlier version of this test assumed otherwise, and was itself flaky). Assert both
+            // possible outcomes are handled correctly instead of assuming one.
+            var options = new VideoPlaybackSessionOptions { PlaybackRate = 1.0, PollInterval = TimeSpan.FromMilliseconds(2) };
+            await using var session = new VideoPlaybackSession("s11", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), options, PassthroughEncode);
+
+            await session.SelectAsync(TestSource);
+            var snapshot = session.Join("viewer");
+
+            Assert.Equal(PlayState.Playing, snapshot.State);
+            Assert.True(session.IsSubscribed("viewer"));
+
+            if (snapshot.HasBootstrapFrame)
+            {
+                Assert.True(session.TryDequeue("viewer", out var bootstrap));
+                Assert.Equal(snapshot.FrameNumber, bootstrap!.FrameNumber);
+                Assert.Equal(snapshot.Epoch, bootstrap.Epoch);
+            }
+            else
+            {
+                // Not asserting TryDequeue is empty here: a frame could legitimately publish in the
+                // microseconds between Join returning and this line running (this viewer is already
+                // subscribed the instant Join registers it) — that's not a bug, just the same unavoidable
+                // race this test exists to tolerate on both sides of.
+                Assert.Equal(0, snapshot.FrameNumber);
+            }
+        }
+
+        [Fact]
         public async Task Join_AfterPlaybackHasAdvanced_BootstrapsTheCurrentFrame_NeverFrameZero()
         {
             // A slow-ish rate so the stream is still mid-flight (not yet Ended) when this joins.
