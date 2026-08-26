@@ -225,6 +225,66 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
             Assert.Equal(PlayState.Ended, session.State); // the stale first generation's own completion must never have clobbered this
         }
 
+        [Fact]
+        public async Task CurrentSource_BeforeAnySelect_IsNull()
+        {
+            await using var session = new VideoPlaybackSession("s13", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.Null(session.CurrentSource);
+        }
+
+        [Fact]
+        public async Task CurrentSource_AfterSelectAsync_IsTheSelectedSource()
+        {
+            await using var session = new VideoPlaybackSession("s14", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughEncode);
+
+            await session.SelectAsync(TestSource);
+
+            Assert.Same(TestSource, session.CurrentSource);
+        }
+
+        [Fact]
+        public async Task TryClaimOrVerifyHost_FirstCaller_ClaimsHost()
+        {
+            await using var session = new VideoPlaybackSession("s15", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
+            Assert.Equal("connection-a", session.HostConnectionId);
+        }
+
+        [Fact]
+        public async Task TryClaimOrVerifyHost_SameConnectionAgain_StaysHost()
+        {
+            await using var session = new VideoPlaybackSession("s16", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
+            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
+            Assert.Equal("connection-a", session.HostConnectionId);
+        }
+
+        [Fact]
+        public async Task TryClaimOrVerifyHost_DifferentConnection_OnceHostIsSet_IsRejected()
+        {
+            await using var session = new VideoPlaybackSession("s17", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            Assert.True(session.TryClaimOrVerifyHost("connection-a"));
+            Assert.False(session.TryClaimOrVerifyHost("connection-b"));
+            Assert.Equal("connection-a", session.HostConnectionId); // rejection must not disturb the existing host
+        }
+
+        [Fact]
+        public async Task TryClaimOrVerifyHost_ConcurrentFirstClaims_SettleOnExactlyOneWinner()
+        {
+            await using var session = new VideoPlaybackSession("s18", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            var connectionIds = Enumerable.Range(0, 20).Select(i => $"connection-{i}").ToArray();
+            var results = await Task.WhenAll(connectionIds.Select(id => Task.Run(() => (id, claimed: session.TryClaimOrVerifyHost(id)))));
+
+            Assert.Single(results, r => r.claimed);
+            Assert.NotNull(session.HostConnectionId);
+            Assert.Contains(session.HostConnectionId, connectionIds);
+        }
+
         private sealed class FaultingVideoFrameSource : IVideoFrameSource
         {
             public bool Disposed { get; private set; }

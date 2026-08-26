@@ -106,6 +106,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         private volatile Exception? _fault;
         private Generation? _current;
         private VideoSource? _currentSource;
+        private string? _hostConnectionId;
         private int _epoch;
         private long _nextFrameNumber;
         private long _nextAudioPacketNumber;
@@ -154,6 +155,38 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
         /// <summary>The current stream epoch — incremented by every <see cref="SelectAsync"/>/<see cref="SeekAsync"/> call that actually starts a new generation.</summary>
         public int Epoch => Volatile.Read(ref _epoch);
+
+        /// <summary>The most recently selected source, or <see langword="null"/> if <see cref="SelectAsync"/> has never been called for this session. Distinct from <see cref="State"/>: a freshly constructed session is also <see cref="PlayState.Loading"/> before any source is ever selected, so this is the only reliable "has anything been selected yet" signal.</summary>
+        public VideoSource? CurrentSource => _currentSource;
+
+        /// <summary>
+        /// The connection id currently authorized for this session's host-only commands, or
+        /// <see langword="null"/> if none has been established yet. Safe to read from any thread without
+        /// external locking.
+        /// </summary>
+        /// <remarks>
+        /// Temporary minimal ownership model — #225's own scope, pending #231's deterministic
+        /// host-ownership/command-authorization design. This only tracks "who claimed host first";
+        /// it has no concept of explicit transfer, disconnect-driven release, or multiple simultaneous
+        /// claim attempts beyond a single atomic first-writer-wins race. Do not build further host logic
+        /// on top of this without expecting it to be replaced by #231.
+        /// </remarks>
+        public string? HostConnectionId => Volatile.Read(ref _hostConnectionId);
+
+        /// <summary>
+        /// Atomically claims host status for <paramref name="connectionId"/> if no host is set yet
+        /// (first caller to invoke any host-only command becomes host), or verifies it already matches
+        /// if one is set. See <see cref="HostConnectionId"/>'s own remarks — this is a temporary minimal
+        /// ownership model pending #231.
+        /// </summary>
+        /// <returns><see langword="true"/> if <paramref name="connectionId"/> is (now, or already was) this session's host; <see langword="false"/> if a different connection already holds it.</returns>
+        public bool TryClaimOrVerifyHost(string connectionId)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(connectionId);
+
+            var existing = Interlocked.CompareExchange(ref _hostConnectionId, connectionId, null);
+            return existing is null || existing == connectionId;
+        }
 
         /// <summary>
         /// The codec the current generation's audio is encoded with, or <see langword="null"/> if audio
