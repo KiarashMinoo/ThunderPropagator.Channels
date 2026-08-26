@@ -2,6 +2,7 @@ using ThunderPropagator.Channels.Demo.Quiz;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.Channels.Demo.Quiz.Game.Enums;
 using ThunderPropagator.Channels.Demo.Quiz.Game.Exceptions;
+using ThunderPropagator.Channels.Demo.Quiz.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz.Game
 {

@@ -1,5 +1,6 @@
 using ThunderPropagator.Application.Collections;
 using ThunderPropagator.BuildingBlocks.Application.Collections;
+using ThunderPropagator.Channels.Notifications.Messages;
 
 namespace ThunderPropagator.Channels.Notifications.Pipelines.Acknowledge
 {

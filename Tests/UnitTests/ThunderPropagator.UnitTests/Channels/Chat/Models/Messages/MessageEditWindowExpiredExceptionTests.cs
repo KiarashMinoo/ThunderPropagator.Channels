@@ -1,5 +1,6 @@
 using System.Net;
 using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Models.Messages
 {

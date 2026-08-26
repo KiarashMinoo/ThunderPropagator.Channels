@@ -17,20 +17,4 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="ChatChannelFeederMessage.cs">
-            <DependentUpon>ChatChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="ChatChannelMetadata.cs">
-            <DependentUpon>ChatChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="ChatChannelConfiguration.cs">
-            <DependentUpon>ChatChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Pipelines\Messages\"/>
-    </ItemGroup>
-
 </Project>

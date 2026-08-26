@@ -6,6 +6,7 @@ using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Chat.Channel;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines
 {

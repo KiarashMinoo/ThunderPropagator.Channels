@@ -1,4 +1,5 @@
 using ThunderPropagator.Channels.Demo.VideoPlayer;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.VideoPlayer
 {

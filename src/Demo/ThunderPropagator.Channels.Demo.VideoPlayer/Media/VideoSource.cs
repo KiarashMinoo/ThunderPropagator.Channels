@@ -1,5 +1,6 @@
 using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Video;
 
+using ThunderPropagator.Channels.Demo.VideoPlayer.Messages;
 namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media
 {
     /// <summary>

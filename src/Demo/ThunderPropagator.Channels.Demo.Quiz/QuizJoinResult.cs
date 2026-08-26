@@ -1,4 +1,5 @@
 using ThunderPropagator.Application.Channels.Subscribers;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
 
 namespace ThunderPropagator.Channels.Demo.Quiz
 {

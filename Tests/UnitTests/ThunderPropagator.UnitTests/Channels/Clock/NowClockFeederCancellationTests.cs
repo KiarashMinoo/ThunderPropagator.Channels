@@ -2,6 +2,10 @@ using NSubstitute;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Channels.Clock;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.Clock.Channel;
+using ThunderPropagator.Channels.Clock.Configuration;
+using ThunderPropagator.Channels.Clock.Feeders;
+using ThunderPropagator.Channels.Clock.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Clock
 {

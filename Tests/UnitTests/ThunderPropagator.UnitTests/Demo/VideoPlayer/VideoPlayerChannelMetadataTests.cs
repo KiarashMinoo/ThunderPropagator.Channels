@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ThunderPropagator.Application.Channels.ChannelProgramsDescriptors.DataTypes;
 using ThunderPropagator.Channels.Demo.VideoPlayer;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Channel;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Configuration;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.VideoPlayer
 {

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Feeders;
 
 namespace ThunderPropagator.UnitTests.Channels.Notifications
 {

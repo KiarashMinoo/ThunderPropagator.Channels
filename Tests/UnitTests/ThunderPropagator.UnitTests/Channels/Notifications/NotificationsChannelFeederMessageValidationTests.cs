@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Channel;
+using ThunderPropagator.Channels.Notifications.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Notifications
 {

@@ -9,6 +9,8 @@ using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Messages;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Logout
 {

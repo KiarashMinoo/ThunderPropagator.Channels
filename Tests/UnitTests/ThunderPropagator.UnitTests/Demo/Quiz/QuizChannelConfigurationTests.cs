@@ -1,4 +1,6 @@
 using ThunderPropagator.Channels.Demo.Quiz;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
+using ThunderPropagator.Channels.Demo.Quiz.Extensions;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz
 {

@@ -1,8 +1,9 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.Channels.TimeZones.WeatherApi.Models;
+using ThunderPropagator.Channels.TimeZones.Feeders;
 
 namespace ThunderPropagator.Channels.TimeZones.WeatherApi
 {

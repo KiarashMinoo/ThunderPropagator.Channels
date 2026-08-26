@@ -9,6 +9,8 @@ using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Channels.Demo.Portfolio.Pipelines.Dtos;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Demo.Portfolio.Channel;
+using ThunderPropagator.Channels.Demo.Portfolio.Messages;
 
 namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
 {

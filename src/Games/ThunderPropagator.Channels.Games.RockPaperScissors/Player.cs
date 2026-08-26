@@ -1,4 +1,5 @@
-﻿using ThunderPropagator.Application.Channels.Subscribers;
+using ThunderPropagator.Application.Channels.Subscribers;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Messages;
 
 namespace ThunderPropagator.Channels.Games.RockPaperScissors
 {

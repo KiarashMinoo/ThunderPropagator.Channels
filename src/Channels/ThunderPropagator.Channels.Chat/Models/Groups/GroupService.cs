@@ -1,4 +1,5 @@
 using ThunderPropagator.Channels.Chat.Models.Users;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.Channels.Chat.Models.Groups
 {

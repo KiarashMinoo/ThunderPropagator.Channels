@@ -7,6 +7,8 @@ using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Pipelines;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat
 {

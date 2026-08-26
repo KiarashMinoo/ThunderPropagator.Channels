@@ -6,16 +6,4 @@
         <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="TicTacToeChannelFeederMessage.cs">
-            <DependentUpon>TicTacToeChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="TicTacToeChannelMetadata.cs">
-            <DependentUpon>TicTacToeChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="TicTacToeChannelConfiguration.cs">
-            <DependentUpon>TicTacToeChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
 </Project>

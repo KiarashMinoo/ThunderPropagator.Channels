@@ -1,5 +1,6 @@
 using ThunderPropagator.Application.Collections;
 using ThunderPropagator.BuildingBlocks.Application.Collections;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.History
 {

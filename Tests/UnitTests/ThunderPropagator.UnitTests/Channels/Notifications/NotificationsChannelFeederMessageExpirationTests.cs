@@ -1,4 +1,5 @@
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Notifications
 {

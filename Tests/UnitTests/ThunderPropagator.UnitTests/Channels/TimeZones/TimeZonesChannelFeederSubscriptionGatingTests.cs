@@ -4,6 +4,10 @@ using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Channels.TimeZones;
 using ThunderPropagator.Channels.TimeZones.WeatherApi;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.TimeZones.Channel;
+using ThunderPropagator.Channels.TimeZones.Configuration;
+using ThunderPropagator.Channels.TimeZones.Feeders;
+using ThunderPropagator.Channels.TimeZones.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.TimeZones
 {

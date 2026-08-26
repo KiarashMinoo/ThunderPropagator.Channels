@@ -5,6 +5,7 @@ using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Chat.Channel;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Search
 {

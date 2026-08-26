@@ -1,4 +1,8 @@
-﻿﻿using NSubstitute;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
+using ThunderPropagator.Channels.Chat.Messages;
+using ThunderPropagator.Channels.Chat.Metadata;
+﻿using NSubstitute;
 using Xunit;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat
@@ -8,28 +12,28 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
         [Fact]
         public void ChatChannel_IsPublic()
         {
-            var type = typeof(ThunderPropagator.Channels.Chat.ChatChannel);
+            var type = typeof(ThunderPropagator.Channels.Chat.Channel.ChatChannel);
             Assert.True(type.IsPublic);
         }
 
         [Fact]
         public void ChatChannelConfiguration_IsPublic()
         {
-            var type = typeof(ThunderPropagator.Channels.Chat.ChatChannelConfiguration);
+            var type = typeof(ThunderPropagator.Channels.Chat.Configuration.ChatChannelConfiguration);
             Assert.True(type.IsPublic);
         }
 
         [Fact]
         public void ChatChannelMetadata_IsPublic()
         {
-            var type = typeof(ThunderPropagator.Channels.Chat.ChatChannelMetadata);
+            var type = typeof(ThunderPropagator.Channels.Chat.Metadata.ChatChannelMetadata);
             Assert.True(type.IsPublic);
         }
 
         [Fact]
         public void ChatChannelFeederMessage_IsInternal()
         {
-            var type = typeof(ThunderPropagator.Channels.Chat.ChatChannelFeederMessage);
+            var type = typeof(ThunderPropagator.Channels.Chat.Messages.ChatChannelFeederMessage);
             Assert.True(type.IsNotPublic);
         }
 

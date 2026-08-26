@@ -1,3 +1,4 @@
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
 namespace ThunderPropagator.Channels.Demo.Quiz.Game.Enums
 {
     /// <summary>

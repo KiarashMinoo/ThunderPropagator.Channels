@@ -5,6 +5,10 @@ using ThunderPropagator.BuildingBlocks.Infrastructure.SystemResourceMonitor.Metr
 using ThunderPropagator.BuildingBlocks.Infrastructure.SystemResourceMonitor.Metrics.Memory;
 using ThunderPropagator.Channels.ResourceMonitoring;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.ResourceMonitoring.Channel;
+using ThunderPropagator.Channels.ResourceMonitoring.Configuration;
+using ThunderPropagator.Channels.ResourceMonitoring.Feeders;
+using ThunderPropagator.Channels.ResourceMonitoring.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.ResourceMonitoring
 {

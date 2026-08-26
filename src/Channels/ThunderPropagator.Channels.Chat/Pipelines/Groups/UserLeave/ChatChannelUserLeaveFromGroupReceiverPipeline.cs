@@ -6,6 +6,8 @@ using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Messages;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.UserLeave
 {

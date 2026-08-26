@@ -10,6 +10,9 @@ using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Search;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
+using ThunderPropagator.Channels.Chat.Messages;
 
 namespace ThunderPropagator.Channels.Chat.Endpoints
 {

@@ -1,4 +1,5 @@
 using System.Net;
+using ThunderPropagator.Channels.Chat.Channel;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines
 {

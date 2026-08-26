@@ -16,6 +16,8 @@ using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.Send;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Search;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
 {

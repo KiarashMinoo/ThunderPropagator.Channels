@@ -3,6 +3,10 @@ using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Infrastructure.SystemResourceMonitor;
 using ThunderPropagator.Channels.ResourceMonitoring;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.ResourceMonitoring.Channel;
+using ThunderPropagator.Channels.ResourceMonitoring.Configuration;
+using ThunderPropagator.Channels.ResourceMonitoring.Feeders;
+using ThunderPropagator.Channels.ResourceMonitoring.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.ResourceMonitoring
 {

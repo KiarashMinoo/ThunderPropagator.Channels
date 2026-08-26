@@ -6,16 +6,4 @@
         <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="PortfolioDemoChannelFeederMessage.cs">
-            <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="PortfolioDemoChannelMetadata.cs">
-            <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="PortfolioDemoChannelConfiguration.cs">
-            <DependentUpon>PortfolioDemoChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
 </Project>

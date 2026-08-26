@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using ThunderPropagator.Channels.Chat.EntityFrameworkCore;
+using ThunderPropagator.Channels.Chat.EntityFrameworkCore.Context;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 {

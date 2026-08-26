@@ -10,6 +10,8 @@ using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.Channels.Demo.Portfolio.Pipelines.Dtos;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Demo.Portfolio.Channel;
+using ThunderPropagator.Channels.Demo.Portfolio.Messages;
 
 namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
 {

@@ -3,6 +3,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Channel;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Configuration;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Extensions;
 
 namespace ThunderPropagator.Channels.Demo.VideoPlayer.UnitTests
 {

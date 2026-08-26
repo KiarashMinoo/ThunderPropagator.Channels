@@ -1,6 +1,10 @@
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Channels.Demo.StockListBasic;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.Demo.StockListBasic.Channel;
+using ThunderPropagator.Channels.Demo.StockListBasic.Configuration;
+using ThunderPropagator.Channels.Demo.StockListBasic.Feeders;
+using ThunderPropagator.Channels.Demo.StockListBasic.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.StockListBasic
 {

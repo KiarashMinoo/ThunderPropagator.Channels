@@ -1,6 +1,10 @@
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Channels.NetworkMonitoring;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.NetworkMonitoring.Channel;
+using ThunderPropagator.Channels.NetworkMonitoring.Configuration;
+using ThunderPropagator.Channels.NetworkMonitoring.Feeders;
+using ThunderPropagator.Channels.NetworkMonitoring.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.NetworkMonitoring
 {

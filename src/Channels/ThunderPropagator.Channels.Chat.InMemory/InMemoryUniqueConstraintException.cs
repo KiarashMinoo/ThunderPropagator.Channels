@@ -1,3 +1,4 @@
+using ThunderPropagator.Channels.Chat.InMemory.Context;
 namespace ThunderPropagator.Channels.Chat.InMemory
 {
     /// <summary>

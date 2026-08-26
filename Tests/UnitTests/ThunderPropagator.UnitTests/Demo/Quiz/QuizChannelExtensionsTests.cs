@@ -7,6 +7,11 @@ using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Channels.Demo.Quiz;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
+using ThunderPropagator.Channels.Demo.Quiz.Extensions;
+using ThunderPropagator.Channels.Demo.Quiz.Feeders;
+using ThunderPropagator.Channels.Demo.Quiz.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz
 {

@@ -1,5 +1,6 @@
 using ThunderPropagator.Application.Collections;
 using ThunderPropagator.BuildingBlocks.Application.Collections;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
 
 namespace ThunderPropagator.Channels.Demo.Quiz.Pipelines.Join
 {

@@ -5,22 +5,4 @@
         <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="ClockChannelFeederMessage.cs">
-            <DependentUpon>ClockChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="ClockChannelMetadata.cs">
-            <DependentUpon>ClockChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NowClockFeederConfiguration.cs">
-            <DependentUpon>NowClockFeeder.cs</DependentUpon>
-        </Compile>
-        <Compile Update="UtcNowClockFeederConfiguration.cs">
-            <DependentUpon>UtcNowClockFeeder.cs</DependentUpon>
-        </Compile>
-        <Compile Update="ClockChannelConfiguration.cs">
-            <DependentUpon>ClockChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
 </Project>

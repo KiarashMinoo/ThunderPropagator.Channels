@@ -1,4 +1,8 @@
-﻿﻿using Xunit;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Channel;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Configuration;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Messages;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Metadata;
+﻿using Xunit;
 
 namespace ThunderPropagator.UnitTests.Games.RockPaperScissors
 {
@@ -7,28 +11,28 @@ namespace ThunderPropagator.UnitTests.Games.RockPaperScissors
         [Fact]
         public void RockPaperScissorsChannel_IsPublic()
         {
-            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.RockPaperScissorsChannel);
+            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.Channel.RockPaperScissorsChannel);
             Assert.True(type.IsPublic);
         }
 
         [Fact]
         public void RockPaperScissorsChannelConfiguration_IsPublic()
         {
-            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.RockPaperScissorsChannelConfiguration);
+            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.Configuration.RockPaperScissorsChannelConfiguration);
             Assert.True(type.IsPublic);
         }
 
         [Fact]
         public void RockPaperScissorsChannelMetadata_IsPublic()
         {
-            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.RockPaperScissorsChannelMetadata);
+            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.Metadata.RockPaperScissorsChannelMetadata);
             Assert.True(type.IsPublic);
         }
 
         [Fact]
         public void RockPaperScissorsChannelFeederMessage_IsInternal()
         {
-            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.RockPaperScissorsChannelFeederMessage);
+            var type = typeof(ThunderPropagator.Channels.Games.RockPaperScissors.Messages.RockPaperScissorsChannelFeederMessage);
             Assert.True(type.IsNotPublic);
         }
 
