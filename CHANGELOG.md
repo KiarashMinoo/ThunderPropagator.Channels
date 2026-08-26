@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.97] — 2026-08-26
+
+### 🚀 Features
+
+- Implement epoch-safe host-only Video/Seek `(05b8db1)` — Kiarash Minoo
+
 ## [1.0.1-beta.96] — 2026-08-26
 
 ### 🚀 Features
