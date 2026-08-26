@@ -1,5 +1,5 @@
-## [1.0.1-beta.100] — 2026-08-26
+## [1.0.1-beta.101] — 2026-08-26
 
 ### 🚀 Features
 
-- Implement Video/Join at the current live position `(c4c56fd)` — Kiarash Minoo
+- Implement deterministic host ownership and command authorization `(a307b65)` — Kiarash Minoo

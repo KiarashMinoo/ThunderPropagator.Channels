@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.101] — 2026-08-26
+
+### 🚀 Features
+
+- Implement deterministic host ownership and command authorization `(a307b65)` — Kiarash Minoo
+
 ## [1.0.1-beta.100] — 2026-08-26
 
 ### 🚀 Features
