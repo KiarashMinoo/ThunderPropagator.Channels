@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.99] — 2026-08-26
+
+### 🚀 Features
+
+- Implement Video/React aggregation outside the media hot path `(802b2a7)` — Kiarash Minoo
+
 ## [1.0.1-beta.98] — 2026-08-26
 
 ### 🚀 Features
