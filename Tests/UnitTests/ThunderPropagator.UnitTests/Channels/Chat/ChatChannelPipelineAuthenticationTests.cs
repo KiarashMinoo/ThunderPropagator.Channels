@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Pipelines;
+using ThunderPropagator.Channels.Chat.Channel;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat
 {

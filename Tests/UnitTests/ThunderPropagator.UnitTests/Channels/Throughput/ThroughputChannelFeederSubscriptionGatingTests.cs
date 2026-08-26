@@ -1,6 +1,10 @@
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Channels.Throughput;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.Throughput.Channel;
+using ThunderPropagator.Channels.Throughput.Configuration;
+using ThunderPropagator.Channels.Throughput.Feeders;
+using ThunderPropagator.Channels.Throughput.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Throughput
 {

@@ -1,4 +1,5 @@
 using ThunderPropagator.Channels.Chat.Pipelines.Messages.History;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.Pipelines
 {

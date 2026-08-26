@@ -8,6 +8,7 @@ using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
 
 namespace ThunderPropagator.Channels.Demo.Quiz.Pipelines.Join
 {

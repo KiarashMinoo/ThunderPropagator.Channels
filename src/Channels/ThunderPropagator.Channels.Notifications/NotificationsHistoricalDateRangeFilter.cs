@@ -1,3 +1,5 @@
+using ThunderPropagator.Channels.Notifications.Channel;
+using ThunderPropagator.Channels.Notifications.Messages;
 namespace ThunderPropagator.Channels.Notifications
 {
     /// <summary>

@@ -14,37 +14,4 @@
         <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="NotificationPriority.cs">
-            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationContentType.cs">
-            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationCategory.cs">
-            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationDeliveryState.cs">
-            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationAudience.cs">
-            <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationsChannelFeederMessage.cs">
-            <DependentUpon>NotificationsChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationsChannelMetadata.cs">
-            <DependentUpon>NotificationsChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationsFeederConfiguration.cs">
-            <DependentUpon>NotificationsChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationsChannelFeederMessageValidationException.cs">
-          <DependentUpon>NotificationsChannelFeederMessage.cs</DependentUpon>
-        </Compile>
-        <Compile Update="NotificationsChannelUnknownNotificationException.cs">
-          <DependentUpon>NotificationsChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
 </Project>

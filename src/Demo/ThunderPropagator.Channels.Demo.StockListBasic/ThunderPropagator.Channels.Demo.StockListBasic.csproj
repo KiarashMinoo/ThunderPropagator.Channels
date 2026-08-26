@@ -6,19 +6,4 @@
         <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
-    <ItemGroup>
-        <Compile Update="StockListBasicDemoChannelFeederMessage.cs">
-            <DependentUpon>StockListBasicDemoChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="StockListBasicDemoChannelMetadata.cs">
-            <DependentUpon>StockListBasicDemoChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="StockListBasicDemoChannelFeederConfiguration.cs">
-            <DependentUpon>StockListBasicDemoChannelFeeder.cs</DependentUpon>
-        </Compile>
-        <Compile Update="StockListBasicDemoChannelConfiguration.cs">
-            <DependentUpon>StockListBasicDemoChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
 </Project>

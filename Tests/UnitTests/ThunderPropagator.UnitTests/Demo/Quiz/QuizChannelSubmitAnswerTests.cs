@@ -6,6 +6,9 @@ using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Demo.Quiz;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.Channels.Demo.Quiz.Game.Enums;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
+using ThunderPropagator.Channels.Demo.Quiz.Feeders;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz
 {

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.BuildingBlocks.Application;
+using ThunderPropagator.Channels.Chat.Extensions;
 
 namespace ThunderPropagator.Channels.Chat.Models
 {

@@ -1,6 +1,8 @@
-﻿using System.Security.Authentication;
+using System.Security.Authentication;
 using Microsoft.AspNetCore.Identity;
 using ThunderPropagator.Channels.Chat.Models.Groups;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.Channels.Chat.Models.Users
 {

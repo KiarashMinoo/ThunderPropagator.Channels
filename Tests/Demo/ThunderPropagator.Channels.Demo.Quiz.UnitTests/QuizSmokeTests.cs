@@ -3,6 +3,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
+using ThunderPropagator.Channels.Demo.Quiz.Extensions;
 
 namespace ThunderPropagator.Channels.Demo.Quiz.UnitTests
 {

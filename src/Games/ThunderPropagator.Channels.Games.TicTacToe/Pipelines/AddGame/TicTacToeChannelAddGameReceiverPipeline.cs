@@ -8,6 +8,7 @@ using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Games.TicTacToe.Channel;
 
 namespace ThunderPropagator.Channels.Games.TicTacToe.Pipelines.AddGame
 {

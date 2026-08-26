@@ -1,4 +1,5 @@
 using ThunderPropagator.Channels.Demo.Quiz.Game.Exceptions;
+using ThunderPropagator.Channels.Demo.Quiz.Messages;
 
 namespace ThunderPropagator.Channels.Demo.Quiz.Game
 {

@@ -6,6 +6,10 @@ using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Demo.Quiz;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.Channels.Demo.Quiz.Game.Exceptions;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
+using ThunderPropagator.Channels.Demo.Quiz.Messages;
+using ThunderPropagator.Channels.Games.TicTacToe.Channel;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz
 {

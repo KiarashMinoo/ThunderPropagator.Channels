@@ -11,18 +11,6 @@
         <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="FFmpeg.AutoGen" />
         <PackageReference Include="SkiaSharp" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Compile Update="VideoPlayerChannelFeederMessage.cs">
-            <DependentUpon>VideoPlayerChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="VideoPlayerChannelMetadata.cs">
-            <DependentUpon>VideoPlayerChannel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="VideoPlayerChannelConfiguration.cs">
-            <DependentUpon>VideoPlayerChannel.cs</DependentUpon>
-        </Compile>
-    </ItemGroup>
+    </ItemGroup>   
 
 </Project>

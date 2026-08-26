@@ -6,6 +6,8 @@ using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Demo.Quiz;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.Channels.Demo.Quiz.Pipelines.Join;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz.Pipelines.Join
 {

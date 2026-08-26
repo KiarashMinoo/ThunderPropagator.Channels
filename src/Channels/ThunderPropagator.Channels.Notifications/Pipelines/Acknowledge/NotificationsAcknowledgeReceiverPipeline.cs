@@ -5,6 +5,7 @@ using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Notifications.Channel;
 
 namespace ThunderPropagator.Channels.Notifications.Pipelines.Acknowledge
 {

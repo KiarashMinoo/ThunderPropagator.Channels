@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Feeders;
 
 namespace ThunderPropagator.Channels.Demo.Quiz.Game
 {

@@ -7,6 +7,9 @@ using ThunderPropagator.Channels.Clock;
 using ThunderPropagator.Infrastructure.Channels;
 using ThunderPropagator.Infrastructure.Extensions;
 using ThunderPropagator.Infrastructure.Feeders;
+using ThunderPropagator.Channels.Clock.Channel;
+using ThunderPropagator.Channels.Clock.Extensions;
+using ThunderPropagator.Channels.Clock.Feeders;
 
 namespace ThunderPropagator.UnitTests.Feeders
 {

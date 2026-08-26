@@ -11,6 +11,8 @@ using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Application.Connections;
 using ThunderPropagator.BuildingBlocks.Application.Enums;
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Channel;
+using ThunderPropagator.Channels.Notifications.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Notifications
 {

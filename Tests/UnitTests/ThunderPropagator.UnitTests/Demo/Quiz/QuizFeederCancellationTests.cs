@@ -1,6 +1,11 @@
 using ThunderPropagator.Channels.Demo.Quiz;
 using ThunderPropagator.Channels.Demo.Quiz.Game;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.Clock.Feeders;
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Configuration;
+using ThunderPropagator.Channels.Demo.Quiz.Feeders;
+using ThunderPropagator.Channels.Demo.Quiz.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.Quiz
 {

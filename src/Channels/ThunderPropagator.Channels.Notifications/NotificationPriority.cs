@@ -1,4 +1,5 @@
-﻿namespace ThunderPropagator.Channels.Notifications
+using ThunderPropagator.Channels.Notifications.Feeders;
+namespace ThunderPropagator.Channels.Notifications
 {
     /// <summary>
     /// Relative importance of a notification. Purely descriptive — this package does not change

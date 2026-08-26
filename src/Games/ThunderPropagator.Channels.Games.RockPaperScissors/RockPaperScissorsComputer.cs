@@ -1,5 +1,7 @@
-﻿using Bogus;
+using Bogus;
 using ThunderPropagator.Application.Channels.Subscribers;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Channel;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Messages;
 
 namespace ThunderPropagator.Channels.Games.RockPaperScissors
 {

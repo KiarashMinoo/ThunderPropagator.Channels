@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
+using ThunderPropagator.Channels.Throughput.Feeders;
 
 namespace ThunderPropagator.UnitTests.Channels.Throughput
 {

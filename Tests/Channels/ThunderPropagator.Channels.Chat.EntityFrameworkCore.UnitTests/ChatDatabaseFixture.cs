@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using ThunderPropagator.Channels.Chat.EntityFrameworkCore;
+using ThunderPropagator.Channels.Chat.EntityFrameworkCore.Context;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
 {

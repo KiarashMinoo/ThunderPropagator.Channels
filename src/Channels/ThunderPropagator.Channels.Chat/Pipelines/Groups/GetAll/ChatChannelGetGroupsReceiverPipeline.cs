@@ -4,6 +4,7 @@ using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Chat.Channel;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.GetAll
 {

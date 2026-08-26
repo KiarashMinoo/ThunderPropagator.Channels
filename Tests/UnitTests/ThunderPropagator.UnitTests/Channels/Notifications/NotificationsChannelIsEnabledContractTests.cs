@@ -6,6 +6,8 @@ using NSubstitute;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Channels.Exceptions;
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Channel;
+using ThunderPropagator.Channels.Notifications.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Notifications
 {

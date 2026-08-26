@@ -1,5 +1,6 @@
 using System.Net;
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Channel;
 
 namespace ThunderPropagator.Channels.Notifications.Pipelines.Acknowledge
 {

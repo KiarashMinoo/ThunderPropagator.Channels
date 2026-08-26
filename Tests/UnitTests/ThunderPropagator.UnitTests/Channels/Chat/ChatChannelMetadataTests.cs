@@ -6,6 +6,10 @@ using NSubstitute;
 using ThunderPropagator.Application.Channels.ChannelProgramsDescriptors;
 using ThunderPropagator.BuildingBlocks.Application.Enums;
 using ThunderPropagator.Channels.Chat;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
+using ThunderPropagator.Channels.Chat.Messages;
+using ThunderPropagator.Channels.Chat.Metadata;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat
 {

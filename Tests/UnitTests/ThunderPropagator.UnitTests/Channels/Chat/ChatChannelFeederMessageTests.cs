@@ -1,5 +1,6 @@
 using ThunderPropagator.Channels.Chat;
 using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Messages;
 
 namespace ThunderPropagator.UnitTests.Channels.Chat
 {

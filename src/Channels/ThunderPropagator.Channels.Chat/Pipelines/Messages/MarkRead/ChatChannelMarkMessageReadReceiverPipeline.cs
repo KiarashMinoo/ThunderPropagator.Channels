@@ -4,6 +4,9 @@ using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Infrastructure.Channels;
+using ThunderPropagator.Channels.Chat.Channel;
+using ThunderPropagator.Channels.Chat.Configuration;
+using ThunderPropagator.Channels.Chat.Messages;
 
 namespace ThunderPropagator.Channels.Chat.Pipelines.Messages.MarkRead
 {

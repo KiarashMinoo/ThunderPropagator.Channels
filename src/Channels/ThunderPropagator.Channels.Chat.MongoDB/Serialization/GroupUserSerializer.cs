@@ -3,6 +3,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using ThunderPropagator.Channels.Chat.Models.Groups;
+using ThunderPropagator.Channels.Chat.MongoDB.Context;
 
 namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
 {

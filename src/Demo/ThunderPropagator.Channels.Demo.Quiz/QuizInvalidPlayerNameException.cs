@@ -1,3 +1,5 @@
+using ThunderPropagator.Channels.Demo.Quiz.Channel;
+using ThunderPropagator.Channels.Demo.Quiz.Messages;
 namespace ThunderPropagator.Channels.Demo.Quiz
 {
     /// <summary>

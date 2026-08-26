@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ThunderPropagator.Channels.Chat.EntityFrameworkCore;
+using ThunderPropagator.Channels.Chat.EntityFrameworkCore.Context;
 
 #nullable disable
 

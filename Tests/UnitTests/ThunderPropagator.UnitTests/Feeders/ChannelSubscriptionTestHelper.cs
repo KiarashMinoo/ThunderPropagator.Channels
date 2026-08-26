@@ -1,4 +1,5 @@
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Channels.Clock.Feeders;
 
 namespace ThunderPropagator.UnitTests.Feeders
 {

@@ -1,4 +1,5 @@
 using System.Net;
+using ThunderPropagator.Channels.Chat.Configuration;
 
 namespace ThunderPropagator.Channels.Chat.Models.Users;
 

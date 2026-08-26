@@ -2,6 +2,10 @@ using System.Diagnostics;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Channels.Demo.Airport;
 using ThunderPropagator.UnitTests.Feeders;
+using ThunderPropagator.Channels.Demo.Airport.Channel;
+using ThunderPropagator.Channels.Demo.Airport.Configuration;
+using ThunderPropagator.Channels.Demo.Airport.Feeders;
+using ThunderPropagator.Channels.Demo.Airport.Messages;
 
 namespace ThunderPropagator.UnitTests.Demo.Airport
 {

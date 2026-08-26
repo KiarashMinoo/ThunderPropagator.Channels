@@ -1,5 +1,9 @@
-﻿using Xunit;
+using Xunit;
 using ThunderPropagator.Channels.Notifications;
+using ThunderPropagator.Channels.Notifications.Channel;
+using ThunderPropagator.Channels.Notifications.Feeders;
+using ThunderPropagator.Channels.Notifications.Messages;
+using ThunderPropagator.Channels.Notifications.Metadata;
 
 namespace ThunderPropagator.UnitTests.Channels.Notifications
 {

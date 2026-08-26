@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Application.Events.Receivers;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Channel;
 
 namespace ThunderPropagator.Channels.Games.RockPaperScissors
 {
