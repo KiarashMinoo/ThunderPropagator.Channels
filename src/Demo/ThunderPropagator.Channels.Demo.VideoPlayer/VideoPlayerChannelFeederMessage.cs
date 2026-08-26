@@ -4,7 +4,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer
 {
     /// <summary>
     /// This channel's JSON control/snapshot state — entirely separate from the binary
-    /// <see cref="Media.VideoFramePacket"/> transport (#214) carrying actual pixel data. Deliberately
+    /// <see cref="Media.Video.VideoFramePacket"/> transport (#214) carrying actual pixel data. Deliberately
     /// excludes any field naming the server-side media source (no URL, file path, or credential of any
     /// kind) — #215's own AC: "No client-facing state exposes the original source location."
     /// </summary>
@@ -67,8 +67,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer
 
         /// <summary>
         /// This session's current stream epoch — incremented by a seek or source change so clients (and
-        /// in-flight <see cref="Media.VideoFramePacket"/>s) from before that change can be recognized as
-        /// stale. See <see cref="Media.VideoFramePacket.Epoch"/>'s own remarks.
+        /// in-flight <see cref="Media.Video.VideoFramePacket"/>s) from before that change can be recognized as
+        /// stale. See <see cref="Media.Video.VideoFramePacket.Epoch"/>'s own remarks.
         /// </summary>
         public int Epoch
         {
