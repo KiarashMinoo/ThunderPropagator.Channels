@@ -210,6 +210,60 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
         }
 
         [Fact]
+        public async Task PeekSnapshot_WithNothingPublishedYet_ReturnsASnapshotWithoutABootstrapFrame()
+        {
+            await using var session = new VideoPlaybackSession("s8", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock());
+
+            var snapshot = session.PeekSnapshot();
+
+            Assert.False(snapshot.HasBootstrapFrame);
+            Assert.Equal(PlayState.Loading, snapshot.State);
+            Assert.Equal(0, snapshot.FrameNumber);
+            Assert.Equal(TimeSpan.Zero, snapshot.MediaPosition);
+            Assert.Equal(TimeSpan.Zero, snapshot.SyncTime);
+        }
+
+        [Fact]
+        public async Task PeekSnapshot_AfterPlaybackHasAdvanced_ReturnsTheCurrentFramesIdentity()
+        {
+            var options = new VideoPlaybackSessionOptions { PlaybackRate = 3.0, PollInterval = TimeSpan.FromMilliseconds(2) };
+            await using var session = new VideoPlaybackSession("s9", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), options, PassthroughEncode);
+
+            session.Subscribe("probe");
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() =>
+            {
+                var sawAnother = false;
+                while (session.TryDequeue("probe", out var packet))
+                    sawAnother = packet!.FrameNumber > 0;
+
+                return sawAnother;
+            }, TimeSpan.FromSeconds(20));
+
+            var snapshot = session.PeekSnapshot();
+
+            Assert.True(snapshot.HasBootstrapFrame);
+            Assert.True(snapshot.FrameNumber > 0, "a peek after playback has advanced must reflect the current position, not frame 0");
+            Assert.Equal(session.Epoch, snapshot.Epoch);
+        }
+
+        [Fact]
+        public async Task PeekSnapshot_NeverRegistersANewSubscriber()
+        {
+            await using var session = new VideoPlaybackSession("s10", () => new SyntheticVideoFrameSource(), new SystemMonotonicClock(), FastOptions(), PassthroughEncode);
+            session.Subscribe("existingViewer");
+
+            await session.SelectAsync(TestSource);
+            await WaitUntilAsync(() => session.TryDequeue("existingViewer", out _), TimeSpan.FromSeconds(20));
+
+            var viewerCountBefore = session.ViewerCount;
+            session.PeekSnapshot();
+            var viewerCountAfter = session.ViewerCount;
+
+            Assert.Equal(viewerCountBefore, viewerCountAfter);
+        }
+
+        [Fact]
         public async Task Join_ConcurrentlyWithSeek_NeverThrows_AndProducesASelfConsistentSnapshot()
         {
             var options = new VideoPlaybackSessionOptions { PlaybackRate = 50_000, PollInterval = TimeSpan.FromMilliseconds(1) };
