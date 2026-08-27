@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.110] — 2026-08-27
+
+### 🐛 Bug Fixes
+
+- Fix async void Simulate() silently swallowing exceptions `(f4d591f)` — Kiarash Minoo
+
+### 🧪 Tests
+
+- Fix unresolved XML doc cref in TimeoutAudioFrameSourceTests `(c8fd255)` — Kiarash Minoo
+
 ## [1.0.1-beta.109] — 2026-08-27
 
 ### 🚀 Features

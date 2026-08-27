@@ -1,5 +1,9 @@
-## [1.0.1-beta.109] — 2026-08-27
+## [1.0.1-beta.110] — 2026-08-27
 
-### 🚀 Features
+### 🐛 Bug Fixes
 
-- Remove hardcoded WeatherAPI key default `(4180104)` — Kiarash Minoo
+- Fix async void Simulate() silently swallowing exceptions `(f4d591f)` — Kiarash Minoo
+
+### 🧪 Tests
+
+- Fix unresolved XML doc cref in TimeoutAudioFrameSourceTests `(c8fd255)` — Kiarash Minoo
