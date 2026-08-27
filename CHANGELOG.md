@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.104] — 2026-08-27
+
+### 🚀 Features
+
+- Add validated VideoPlayer configuration and safe defaults `(1fd468c)` — Kiarash Minoo
+
 ## [1.0.1-beta.103] — 2026-08-27
 
 ### 🚀 Features
