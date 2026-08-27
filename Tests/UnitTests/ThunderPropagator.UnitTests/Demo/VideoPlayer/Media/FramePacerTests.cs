@@ -97,6 +97,34 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media
             }
         }
 
+        // #236's own scope, "Cover PTS ordering for CFR/VFR" — the VFR counterpart above already exists
+        // (#218's own AC); this proves the same non-decreasing-schedule property holds for a constant
+        // frame rate too, since ComputeSchedule makes no CFR/VFR distinction of its own.
+        [Fact]
+        public void ComputeSchedule_ForConstantFrameRatePts_PreservesNonDecreasingOrder()
+        {
+            var frameDuration = TimeSpan.FromMilliseconds(1000.0 / 30); // a typical 30fps CFR cadence
+            const int frameCount = 10;
+
+            var clock = new FakeMonotonicClock();
+            var pacer = new FramePacer(clock);
+            pacer.Start(TimeSpan.Zero);
+
+            var pts = TimeSpan.Zero;
+            TimeSpan? previousDue = null;
+
+            for (var i = 0; i < frameCount; i++)
+            {
+                var schedule = pacer.ComputeSchedule(pts);
+
+                if (previousDue is not null)
+                    Assert.True(schedule.DueElapsed > previousDue.Value);
+
+                previousDue = schedule.DueElapsed;
+                pts += frameDuration;
+            }
+        }
+
         [Fact]
         public void ComputeSchedule_AfterAPriorFrameWasPublishedLate_DoesNotShiftLaterFrames()
         {

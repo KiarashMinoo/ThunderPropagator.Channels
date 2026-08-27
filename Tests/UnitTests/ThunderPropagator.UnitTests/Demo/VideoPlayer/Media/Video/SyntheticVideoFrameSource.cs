@@ -33,6 +33,9 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Video
         /// <summary>How many frames this instance has produced have since had <see cref="DecodedVideoFrame.Dispose"/> called on them exactly once.</summary>
         public int DisposedFrameCount => Volatile.Read(ref _disposedFrameCount);
 
+        /// <summary>Whether <see cref="DisposeAsync"/> has been called on this instance — #236's own scope, "no decoder/resource leak after session removal."</summary>
+        public bool Disposed { get; private set; }
+
         public VideoStreamInfo? StreamInfo { get; private set; }
 
         public Task<VideoStreamInfo> OpenAsync(VideoSource source, CancellationToken cancellationToken = default)
@@ -89,6 +92,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Video
         public ValueTask DisposeAsync()
         {
             _opened = false;
+            Disposed = true;
             return ValueTask.CompletedTask;
         }
     }
