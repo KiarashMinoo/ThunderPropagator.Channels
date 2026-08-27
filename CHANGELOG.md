@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.111] — 2026-08-27
+
+### 🐛 Bug Fixes
+
+- Fix and re-enable RockPaperScissors gameplay with sessions and push notifications `(5c1d072)` — Kiarash Minoo
+
 ## [1.0.1-beta.110] — 2026-08-27
 
 ### 🐛 Bug Fixes
