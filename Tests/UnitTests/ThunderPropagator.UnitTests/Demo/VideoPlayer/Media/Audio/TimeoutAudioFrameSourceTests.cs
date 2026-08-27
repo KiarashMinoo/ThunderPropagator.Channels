@@ -6,7 +6,11 @@ using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Video;
 
 namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Audio
 {
-    /// <summary>The audio-side counterpart to <see cref="TimeoutVideoFrameSourceTests"/> — see that type's own remarks.</summary>
+    /// <summary>
+    /// The audio-side counterpart to
+    /// <see cref="ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Video.TimeoutVideoFrameSourceTests"/>
+    /// — see that type's own remarks.
+    /// </summary>
     public sealed class TimeoutAudioFrameSourceTests
     {
         private static readonly VideoSource TestSource = new() { Location = "synthetic://test" };
