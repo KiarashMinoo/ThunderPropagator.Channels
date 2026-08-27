@@ -121,3 +121,9 @@ __pycache__/
 .env.*
 !.env.example
 *.local
+
+# -----------------------------------------------------------------------------
+# Generated local test fixtures (#237) — synthetic, locally-generated media used only by opt-in
+# FFmpeg integration tests; never checked in, see Tests/.../Media/Video/Fixtures/README.md.
+# -----------------------------------------------------------------------------
+Tests/**/Media/Video/Fixtures/generated/
