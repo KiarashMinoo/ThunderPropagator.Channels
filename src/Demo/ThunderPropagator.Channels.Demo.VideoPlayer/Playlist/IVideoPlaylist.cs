@@ -4,8 +4,10 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Playlist
     /// The server's approved video allow-list — #228's own scope, resolving a client-safe
     /// <see cref="VideoPlaylistEntry.VideoId"/> to its actual <see cref="Media.VideoSource"/> so no
     /// client-supplied path or URL can ever reach a decoder. This contract is deliberately minimal (a
-    /// raw lookup only, no add/remove/persistence) so #233's own "approved server-side video playlist"
-    /// work can build a fuller management system on top of it rather than replace it.
+    /// raw lookup only, no add/remove/persistence) — #233 built policy-based startup validation
+    /// (<see cref="VideoPlaylistEntryValidator"/>/<see cref="VideoPlaylistPolicy"/>) on top of this
+    /// contract via <see cref="InMemoryVideoPlaylist"/> rather than replacing it; any future fuller
+    /// management system (persistence, admin API, dynamic reconfiguration) can do the same.
     /// </summary>
     public interface IVideoPlaylist
     {
