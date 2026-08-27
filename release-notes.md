@@ -1,5 +1,5 @@
-## [1.0.1-beta.102] — 2026-08-26
+## [1.0.1-beta.103] — 2026-08-27
 
 ### 🚀 Features
 
-- Serialize session commands and cancel superseded epochs `(0446e6c)` — Kiarash Minoo
+- Implement an approved server-side video playlist `(baae15b)` — Kiarash Minoo

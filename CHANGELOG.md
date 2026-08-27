@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.103] — 2026-08-27
+
+### 🚀 Features
+
+- Implement an approved server-side video playlist `(baae15b)` — Kiarash Minoo
+
 ## [1.0.1-beta.102] — 2026-08-26
 
 ### 🚀 Features
