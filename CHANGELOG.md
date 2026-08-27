@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.109] — 2026-08-27
+
+### 🚀 Features
+
+- Remove hardcoded WeatherAPI key default `(4180104)` — Kiarash Minoo
+
 ## [1.0.1-beta.108] — 2026-08-27
 
 ### 🚀 Features

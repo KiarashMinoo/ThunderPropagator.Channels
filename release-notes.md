@@ -1,5 +1,5 @@
-## [1.0.1-beta.108] — 2026-08-27
+## [1.0.1-beta.109] — 2026-08-27
 
 ### 🚀 Features
 
-- Add DI registration and server documentation for VideoPlayer `(6f9576b)` — Kiarash Minoo
+- Remove hardcoded WeatherAPI key default `(4180104)` — Kiarash Minoo
