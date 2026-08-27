@@ -3,7 +3,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Playlist
     /// <summary>
     /// A static, in-memory <see cref="IVideoPlaylist"/> built once from whatever entries the caller
     /// supplies — deliberately the simplest possible implementation of the contract (no add/remove,
-    /// no persistence, no runtime reconfiguration) pending #233's own fuller server-side playlist
+    /// no persistence, no runtime reconfiguration) pending any future fuller server-side playlist
     /// management. How those entries actually get here (configuration binding, a hardcoded list, etc.)
     /// and how this type gets registered in DI are both out of this ticket's own scope — #238's job,
     /// same as <c>VideoPlaybackSessionManager</c>'s own registration.
@@ -12,20 +12,33 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Playlist
     {
         private readonly IReadOnlyDictionary<string, VideoPlaylistEntry> _entriesByVideoId;
 
+        /// <summary>
+        /// Validates every entry against <paramref name="policy"/> (see
+        /// <see cref="VideoPlaylistEntryValidator"/>) and checks for duplicate
+        /// <see cref="VideoPlaylistEntry.VideoId"/>s, all before this constructor returns — #233's own
+        /// scope, "validate... at startup": a playlist that fails validation fails to construct at all
+        /// rather than lazily failing on first use. <paramref name="policy"/> is required, not optional —
+        /// #233's own scope, "define local-file root restrictions and remote-fetch protections" — there
+        /// is deliberately no way to construct a playlist that silently skips policy validation.
+        /// </summary>
         /// <exception cref="ArgumentException">
         /// Two entries share the same <see cref="VideoPlaylistEntry.VideoId"/> — for a security-relevant
         /// allow-list, silently letting one shadow the other (last-wins) would mask a configuration
         /// mistake far more dangerously than just failing loudly at construction time.
         /// </exception>
-        public InMemoryVideoPlaylist(IEnumerable<VideoPlaylistEntry> entries)
+        /// <exception cref="VideoPlaylistValidationException">An entry's own source does not satisfy <paramref name="policy"/>.</exception>
+        public InMemoryVideoPlaylist(IEnumerable<VideoPlaylistEntry> entries, VideoPlaylistPolicy policy)
         {
             ArgumentNullException.ThrowIfNull(entries);
+            ArgumentNullException.ThrowIfNull(policy);
 
             var byId = new Dictionary<string, VideoPlaylistEntry>();
             foreach (var entry in entries)
             {
                 if (!byId.TryAdd(entry.VideoId, entry))
                     throw new ArgumentException($"Duplicate {nameof(VideoPlaylistEntry.VideoId)} '{entry.VideoId}'.", nameof(entries));
+
+                VideoPlaylistEntryValidator.Validate(entry, policy);
             }
 
             _entriesByVideoId = byId;
