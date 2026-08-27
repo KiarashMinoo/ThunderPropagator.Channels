@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Audio;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Diagnostics;
 using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Video;
 
 namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
@@ -101,6 +104,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         private readonly Func<DecodedVideoFrame, ReadOnlyMemory<byte>> _encodeFrame;
         private readonly VideoPlaybackSessionOptions _options;
         private readonly Action<FrameDropReason>? _onFrameDropped;
+        private readonly VideoPlaybackTelemetry? _telemetry;
+        private readonly ILogger? _logger;
         private readonly CancellationToken _hostShutdownToken;
         private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
         private readonly ConcurrentDictionary<string, SubscriberFrameQueue<VideoFramePacket>> _subscribers = new();
@@ -163,7 +168,9 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             Action<FrameDropReason>? onFrameDropped = null,
             CancellationToken hostShutdownToken = default,
             Func<IAudioFrameSource>? audioSourceFactory = null,
-            Func<int, int, AudioFramePacketEncoding, IAudioEncoder>? audioEncoderFactory = null)
+            Func<int, int, AudioFramePacketEncoding, IAudioEncoder>? audioEncoderFactory = null,
+            VideoPlaybackTelemetry? telemetry = null,
+            ILogger? logger = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
             ArgumentNullException.ThrowIfNull(sourceFactory);
@@ -183,6 +190,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             _clock = clock;
             _encodeFrame = encodeFrame ?? (frame => VideoFrameEncoder.Encode(frame, _options.Encoding, _options.Quality));
             _onFrameDropped = onFrameDropped;
+            _telemetry = telemetry;
+            _logger = logger;
             _hostShutdownToken = hostShutdownToken;
 
             Reactions = new ReactionAggregator(clock, _options.AllowedReactions, _options.ReactionWindow, _options.MaxReactionsPerViewerPerWindow);
@@ -304,18 +313,42 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
         /// </summary>
         private void RegisterSubscriber(string viewerId)
         {
-            _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+            // Read before either GetOrAdd below — RegisterSubscriber is documented as a no-op for an
+            // already-subscribed viewer, so this is what tells RecordSubscriberJoined apart from a
+            // reconnect. A benign race under concurrent first-joins for the same id (already covered by
+            // this type's own concurrency tests) could over-count by at most one per race — acceptable for
+            // a gauge, not worth extra synchronization on this hot-enough path.
+            var isNewSubscriber = !_subscribers.ContainsKey(viewerId);
+
+            _subscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<VideoFramePacket>(_options.SubscriberQueueCapacity, onFrameDropped: CreateDropCallback(VideoPlaybackMediaType.Video)));
             // Always registered, even for a session that never activates audio — an idle, never-published-to
             // queue is harmless, and keeping Subscribe a single call for "this viewer" (rather than one call
             // per track) is simpler for a caller than conditionally subscribing to audio separately.
-            _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: _onFrameDropped));
+            _audioSubscribers.GetOrAdd(viewerId, _ => new SubscriberFrameQueue<AudioFramePacket>(_options.AudioSubscriberQueueCapacity, onFrameDropped: CreateDropCallback(VideoPlaybackMediaType.Audio)));
             _subscriberJoinOrder.GetOrAdd(viewerId, _ => Interlocked.Increment(ref _nextJoinSequence));
+
+            if (isNewSubscriber)
+                _telemetry?.RecordSubscriberJoined();
 
             lock (_hostLock)
             {
                 _hostConnectionId ??= viewerId;
             }
         }
+
+        /// <summary>
+        /// Combines this session's own caller-supplied <c>onFrameDropped</c> (still invoked verbatim, for
+        /// callers that observed drops before #235) with recording it into <see cref="_telemetry"/>, tagged
+        /// by <paramref name="mediaType"/> — #235's own scope, "aggregating FrameDropReason occurrences
+        /// into real metrics." One combined delegate per media type rather than one per buffer/queue
+        /// instance, since every video buffer/queue this session ever creates shares the same tag and
+        /// likewise for audio.
+        /// </summary>
+        private Action<FrameDropReason> CreateDropCallback(VideoPlaybackMediaType mediaType) => reason =>
+        {
+            _onFrameDropped?.Invoke(reason);
+            _telemetry?.RecordFrameDropped(reason, mediaType);
+        };
 
         /// <summary>Whether <paramref name="viewerId"/> is currently subscribed via <see cref="Subscribe"/>/<see cref="Join"/> — #229's own scope, "Validate viewer/session membership," which needs a way to check membership without the side effect both of those calls otherwise have.</summary>
         public bool IsSubscribed(string viewerId) => _subscribers.ContainsKey(viewerId);
@@ -348,6 +381,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 return false;
 
             queue.Dispose();
+            _telemetry?.RecordSubscriberLeft();
             return true;
         }
 
@@ -537,9 +571,17 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             {
                 streamInfo = await newSource.OpenAsync(source, cancellationToken).ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex)
             {
                 await newSource.DisposeAsync().ConfigureAwait(false);
+
+                // #235's own AC, "Emit structured state-transition and source failure logs with
+                // redaction": logs SessionId/Epoch and the exception only — never `source` itself.
+                // FfmpegVideoFrameSource's own VideoFrameSourceException messages already never
+                // interpolate VideoSource.Location (only a generic FFmpeg error description), so ex.Message
+                // is safe to log verbatim here without any extra scrubbing.
+                _telemetry?.RecordSessionFailure("open");
+                _logger?.LogError(ex, "VideoPlaybackSession {SessionId} failed to open a source for epoch {Epoch}", SessionId, myEpoch);
 
                 await _lifecycleLock.WaitAsync().ConfigureAwait(false);
                 try
@@ -562,7 +604,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             {
                 Epoch = myEpoch,
                 Source = newSource,
-                Buffer = new DecodedFrameBuffer(_options.DecodeBufferCapacity, _onFrameDropped),
+                Buffer = new DecodedFrameBuffer(_options.DecodeBufferCapacity, CreateDropCallback(VideoPlaybackMediaType.Video)),
                 Pacer = pacer,
                 Cts = CancellationTokenSource.CreateLinkedTokenSource(_hostShutdownToken)
             };
@@ -630,7 +672,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
                 generation.AudioSource = audioSource;
                 generation.AudioEncoding = resolvedEncoding;
-                generation.AudioBuffer = new DecodedAudioBuffer(_options.AudioDecodeBufferCapacity, _onFrameDropped);
+                generation.AudioBuffer = new DecodedAudioBuffer(_options.AudioDecodeBufferCapacity, CreateDropCallback(VideoPlaybackMediaType.Audio));
                 generation.AudioEncoder = _audioEncoderFactory(audioStreamInfo.SampleRate, audioStreamInfo.Channels, resolvedEncoding);
                 generation.AudioDecodeTask = RunAudioDecodeLoopAsync(generation, startPosition, generation.Cts.Token);
                 generation.AudioPublishTask = RunAudioPublishLoopAsync(generation, generation.Cts.Token);
@@ -759,12 +801,35 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             _lifecycleLock.Dispose();
         }
 
-        private void SetState(PlayState state) => _state = state;
+        // #235's own AC, "Emit structured state-transition ... logs with redaction": every transition is
+        // logged with SessionId + the two PlayState values only — never the selected VideoSource.
+        private void SetState(PlayState state)
+        {
+            var previous = _state;
+            _state = state;
+
+            if (previous != state)
+                _logger?.LogInformation("VideoPlaybackSession {SessionId} transitioned from {PreviousState} to {State}", SessionId, previous, state);
+        }
 
         private async Task RunDecodeLoopAsync(Generation generation, TimeSpan startPosition, CancellationToken token)
         {
+            // Stopwatch only allocated when telemetry is actually wired up — #235's own AC, "Telemetry
+            // overhead is bounded": a session with no VideoPlaybackTelemetry pays a single null check per
+            // frame here, matching every other _telemetry?.-guarded call site in this type.
+            var stopwatch = _telemetry is null ? null : Stopwatch.StartNew();
+
             await foreach (var frame in generation.Source.ReadFramesAsync(startPosition, token).ConfigureAwait(false))
+            {
+                if (stopwatch is not null)
+                {
+                    _telemetry!.RecordDecodeDuration(stopwatch.Elapsed, VideoPlaybackMediaType.Video);
+                    _telemetry.RecordFrameDecoded(VideoPlaybackMediaType.Video);
+                    stopwatch.Restart();
+                }
+
                 generation.Buffer.Enqueue(frame);
+            }
         }
 
         private async Task RunPublishLoopAsync(Generation generation, CancellationToken token)
@@ -804,8 +869,19 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
         private async Task RunAudioDecodeLoopAsync(Generation generation, TimeSpan startPosition, CancellationToken token)
         {
+            var stopwatch = _telemetry is null ? null : Stopwatch.StartNew();
+
             await foreach (var frame in generation.AudioSource!.ReadFramesAsync(startPosition, token).ConfigureAwait(false))
+            {
+                if (stopwatch is not null)
+                {
+                    _telemetry!.RecordDecodeDuration(stopwatch.Elapsed, VideoPlaybackMediaType.Audio);
+                    _telemetry.RecordFrameDecoded(VideoPlaybackMediaType.Audio);
+                    stopwatch.Restart();
+                }
+
                 generation.AudioBuffer!.Enqueue(frame);
+            }
         }
 
         // Mirrors RunPublishLoopAsync's own shape exactly (same pacer-driven polling, same
@@ -827,8 +903,20 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 if (generation.AudioBuffer!.TryTakeCurrent(generation.Pacer.CurrentMediaPosition, out var frame))
                 {
                     IReadOnlyList<EncodedAudioChunk> chunks;
-                    using (frame)
-                        chunks = generation.AudioEncoder!.Encode(frame!);
+                    if (_telemetry is null)
+                    {
+                        using (frame)
+                            chunks = generation.AudioEncoder!.Encode(frame!);
+                    }
+                    else
+                    {
+                        var encodeStopwatch = Stopwatch.StartNew();
+                        using (frame)
+                            chunks = generation.AudioEncoder!.Encode(frame!);
+
+                        _telemetry.RecordEncodeDuration(encodeStopwatch.Elapsed, VideoPlaybackMediaType.Audio);
+                        _telemetry.RecordFrameEncoded(VideoPlaybackMediaType.Audio);
+                    }
 
                     foreach (var chunk in chunks)
                         PublishAudioChunk(generation, chunk);
@@ -838,7 +926,19 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
                 if (generation.AudioDecodeTask.IsCompleted && generation.AudioBuffer.Count == 0)
                 {
-                    foreach (var chunk in generation.AudioEncoder!.Flush())
+                    IReadOnlyList<EncodedAudioChunk> flushed;
+                    if (_telemetry is null)
+                    {
+                        flushed = generation.AudioEncoder!.Flush();
+                    }
+                    else
+                    {
+                        var encodeStopwatch = Stopwatch.StartNew();
+                        flushed = generation.AudioEncoder!.Flush();
+                        _telemetry.RecordEncodeDuration(encodeStopwatch.Elapsed, VideoPlaybackMediaType.Audio);
+                    }
+
+                    foreach (var chunk in flushed)
                         PublishAudioChunk(generation, chunk);
 
                     return;
@@ -860,6 +960,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             // token check alone.
             if (generation.Epoch != Epoch)
                 return;
+
+            var publishStopwatch = _telemetry is null ? null : Stopwatch.StartNew();
 
             var schedule = generation.Pacer.ComputeSchedule(chunk.PresentationTimestamp);
             var streamInfo = generation.AudioSource!.StreamInfo!;
@@ -891,6 +993,20 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 foreach (var subscriber in _audioSubscribers.Values)
                     subscriber.Enqueue(packet);
             }
+
+            if (_telemetry is not null)
+            {
+                var pacingDrift = generation.Pacer.GetPacingError(chunk.PresentationTimestamp);
+                publishStopwatch!.Stop();
+
+                _telemetry.RecordFramePublished(VideoPlaybackMediaType.Audio, packet.Payload.Length);
+                _telemetry.RecordPacingDrift(pacingDrift, VideoPlaybackMediaType.Audio);
+                _telemetry.RecordPublishLatency(publishStopwatch.Elapsed, VideoPlaybackMediaType.Audio);
+
+                using var activity = _telemetry.StartSampledFrameActivity(
+                    VideoPlaybackMediaType.Audio, SessionId, packet.Epoch, packet.PacketNumber,
+                    chunk.PresentationTimestamp, pacingDrift, publishStopwatch.Elapsed, packet.Payload.Length);
+            }
         }
 
         private void PublishFrame(Generation generation, DecodedVideoFrame frame)
@@ -900,7 +1016,25 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             if (generation.Epoch != Epoch)
                 return;
 
+            // Spans the whole publish operation (encode + fan-out below) — #235's own "publish latency"
+            // signal, deliberately distinct from decode/encode duration since it also captures fan-out cost,
+            // which grows with subscriber count.
+            var publishStopwatch = _telemetry is null ? null : Stopwatch.StartNew();
+
             var schedule = generation.Pacer.ComputeSchedule(frame.PresentationTimestamp);
+
+            ReadOnlyMemory<byte> payload;
+            if (_telemetry is null)
+            {
+                payload = _encodeFrame(frame);
+            }
+            else
+            {
+                var encodeStopwatch = Stopwatch.StartNew();
+                payload = _encodeFrame(frame);
+                _telemetry.RecordEncodeDuration(encodeStopwatch.Elapsed, VideoPlaybackMediaType.Video);
+                _telemetry.RecordFrameEncoded(VideoPlaybackMediaType.Video);
+            }
 
             var packet = new VideoFramePacket
             {
@@ -913,7 +1047,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 Width = frame.Width,
                 Height = frame.Height,
                 Encoding = _options.Encoding,
-                Payload = _encodeFrame(frame)
+                Payload = payload
             };
 
             // Recording "this is now the last published frame" and delivering it to every currently
@@ -929,6 +1063,20 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
 
                 foreach (var subscriber in _subscribers.Values)
                     subscriber.Enqueue(packet);
+            }
+
+            if (_telemetry is not null)
+            {
+                var pacingDrift = generation.Pacer.GetPacingError(frame.PresentationTimestamp);
+                publishStopwatch!.Stop();
+
+                _telemetry.RecordFramePublished(VideoPlaybackMediaType.Video, packet.Payload.Length);
+                _telemetry.RecordPacingDrift(pacingDrift, VideoPlaybackMediaType.Video);
+                _telemetry.RecordPublishLatency(publishStopwatch.Elapsed, VideoPlaybackMediaType.Video);
+
+                using var activity = _telemetry.StartSampledFrameActivity(
+                    VideoPlaybackMediaType.Video, SessionId, packet.Epoch, packet.FrameNumber,
+                    frame.PresentationTimestamp, pacingDrift, publishStopwatch.Elapsed, packet.Payload.Length);
             }
         }
 
@@ -996,6 +1144,11 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 {
                     _fault = fault;
                     SetState(PlayState.Faulted);
+
+                    // See SwitchGenerationAsync's own catch block for why logging `fault` verbatim here
+                    // never leaks a source URL/path.
+                    _telemetry?.RecordSessionFailure("playback");
+                    _logger?.LogError(fault, "VideoPlaybackSession {SessionId} faulted at epoch {Epoch}", SessionId, generation.Epoch);
                 }
                 else
                 {
