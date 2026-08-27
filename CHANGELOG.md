@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.107] — 2026-08-27
+
+### ⚙️ CI / Tooling
+
+- Add opt-in FFmpeg integration coverage with a local media fixture `(7490772)` — Kiarash Minoo
+
 ## [1.0.1-beta.106] — 2026-08-27
 
 ### 🧪 Tests

@@ -1,5 +1,5 @@
-## [1.0.1-beta.106] — 2026-08-27
+## [1.0.1-beta.107] — 2026-08-27
 
-### 🧪 Tests
+### ⚙️ CI / Tooling
 
-- Close remaining gaps in deterministic media-clock/backpressure/lifecycle tests `(a435af4)` — Kiarash Minoo
+- Add opt-in FFmpeg integration coverage with a local media fixture `(7490772)` — Kiarash Minoo
