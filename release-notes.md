@@ -1,5 +1,5 @@
-## [1.0.1-beta.105] — 2026-08-27
+## [1.0.1-beta.106] — 2026-08-27
 
-### 🚀 Features
+### 🧪 Tests
 
-- Add media pipeline metrics and sampled diagnostics `(e8acdd1)` — Kiarash Minoo
+- Close remaining gaps in deterministic media-clock/backpressure/lifecycle tests `(a435af4)` — Kiarash Minoo

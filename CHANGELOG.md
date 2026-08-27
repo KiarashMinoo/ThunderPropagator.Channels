@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.106] — 2026-08-27
+
+### 🧪 Tests
+
+- Close remaining gaps in deterministic media-clock/backpressure/lifecycle tests `(a435af4)` — Kiarash Minoo
+
 ## [1.0.1-beta.105] — 2026-08-27
 
 ### 🚀 Features
