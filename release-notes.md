@@ -1,5 +1,5 @@
-## [1.0.1-beta.107] — 2026-08-27
+## [1.0.1-beta.108] — 2026-08-27
 
-### ⚙️ CI / Tooling
+### 🚀 Features
 
-- Add opt-in FFmpeg integration coverage with a local media fixture `(7490772)` — Kiarash Minoo
+- Add DI registration and server documentation for VideoPlayer `(6f9576b)` — Kiarash Minoo

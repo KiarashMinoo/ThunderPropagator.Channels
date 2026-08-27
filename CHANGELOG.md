@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.108] — 2026-08-27
+
+### 🚀 Features
+
+- Add DI registration and server documentation for VideoPlayer `(6f9576b)` — Kiarash Minoo
+
 ## [1.0.1-beta.107] — 2026-08-27
 
 ### ⚙️ CI / Tooling
