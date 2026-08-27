@@ -21,9 +21,17 @@ public
         set => Set(value);
     }
 
-    public string WeatherApiKey
+    /// <summary>
+    /// The WeatherAPI.com API key <see cref="WeatherApi.WeatherApiService"/> authenticates with. No
+    /// default — must be supplied via configuration (environment variable, user secrets, or a secrets
+    /// manager) before the TimeZones feeder is enabled; <see cref="Extensions.TimeZonesChannelExtensions.AddTimeZonesChannel"/>
+    /// throws at startup if it is missing while <see cref="AbstractFeederConfiguration.IsEnabled"/> is
+    /// <see langword="true"/>. A real key must never be hardcoded here or anywhere else in source — see
+    /// https://github.com/KiarashMinoo/ThunderPropagator.Channels/issues/10.
+    /// </summary>
+    public string? WeatherApiKey
     {
-        get => Get("24660490d3384f0abb2113538241408");
+        get => Get<string>();
         set => Set(value);
     }
 

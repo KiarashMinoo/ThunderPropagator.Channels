@@ -21,6 +21,16 @@ namespace ThunderPropagator.Channels.TimeZones.Extensions
             TimeZonesChannelConfiguration timeZonesChannelConfiguration = new();
             channelConfigurator?.Invoke(timeZonesChannelConfiguration);
 
+            // #10's own scope: WeatherApiKey no longer ships a hardcoded default, so a feeder a consumer
+            // actually enables without supplying one now fails host startup with a clear,
+            // property-specific message instead of shipping a shared key baked into source (and every
+            // compiled binary/package) or silently making unauthenticated WeatherAPI calls at runtime.
+            // Gated on IsEnabled rather than unconditional: a consumer that registers this channel while
+            // leaving the feeder disabled (the default) has no runtime path that ever uses this key, so
+            // requiring one anyway would be an unrelated breaking change, not a security fix.
+            if (timeZonesChannelConfiguration.FeederConfiguration.IsEnabled && string.IsNullOrWhiteSpace(timeZonesChannelConfiguration.FeederConfiguration.WeatherApiKey))
+                throw new TimeZonesChannelConfigurationValidationException(nameof(TimeZonesChannelFeederConfiguration.WeatherApiKey), "must be supplied via configuration (environment variable, user secrets, or a secrets manager) when the TimeZones feeder is enabled.");
+
             services
                 .AddSingleton(timeZonesChannelConfiguration)
                 .AddChannel<TimeZonesChannel>()
