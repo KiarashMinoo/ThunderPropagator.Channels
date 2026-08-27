@@ -1,0 +1,50 @@
+name: VideoPlayer FFmpeg integration (opt-in)
+
+# #237's own AC, "CI has a documented opt-in job or environment": this repo's main ci.yml pipeline has
+# no native FFmpeg libraries available and doesn't need them -- every other VideoPlayer test runs
+# deterministically against the synthetic sources under
+# Tests/.../Demo/VideoPlayer/Media/Video|Audio/Synthetic*FrameSource.cs. This job is the opt-in
+# counterpart: it installs real FFmpeg, generates the local synthetic fixtures documented in
+# Tests/.../Demo/VideoPlayer/Media/Video/Fixtures/README.md, and runs only the fixture-gated tests
+# against them. It never runs on a normal push/PR -- manual dispatch only.
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ffmpeg-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          # ThunderPropagator.UnitTests.csproj targets net10.0 only (see its own <TargetFramework>) --
+          # that's the sole SDK this job's dotnet test call needs, even though the VideoPlayer src
+          # project itself multi-targets net8.0/9.0/10.0 for consumers.
+          dotnet-version: 10.0.x
+
+      # ubuntu-latest's own apt repository ships a recent FFmpeg build with libx264/aac and the lavfi
+      # source filters enabled -- everything Generate-VideoPlayerFixtures.ps1 needs, and (as the shared
+      # libavformat/libavcodec/libavutil/libswscale/libswresample packages ffmpeg itself depends on)
+      # everything FFmpeg.AutoGen's own P/Invoke calls need too.
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Generate local test fixtures
+        shell: pwsh
+        run: ./Tests/UnitTests/ThunderPropagator.UnitTests/Demo/VideoPlayer/Media/Video/Fixtures/Generate-VideoPlayerFixtures.ps1
+
+      - name: Run opt-in FFmpeg integration tests
+        shell: pwsh
+        env:
+          THUNDERPROPAGATOR_VIDEOPLAYER_CFR_FIXTURE: ${{ github.workspace }}/Tests/UnitTests/ThunderPropagator.UnitTests/Demo/VideoPlayer/Media/Video/Fixtures/generated/cfr-fixture.mp4
+          THUNDERPROPAGATOR_VIDEOPLAYER_VFR_FIXTURE: ${{ github.workspace }}/Tests/UnitTests/ThunderPropagator.UnitTests/Demo/VideoPlayer/Media/Video/Fixtures/generated/vfr-fixture.mp4
+          THUNDERPROPAGATOR_VIDEOPLAYER_AV_FIXTURE: ${{ github.workspace }}/Tests/UnitTests/ThunderPropagator.UnitTests/Demo/VideoPlayer/Media/Video/Fixtures/generated/cfr-fixture.mp4
+        run: dotnet test Tests/UnitTests/ThunderPropagator.UnitTests/ThunderPropagator.UnitTests.csproj --filter "FullyQualifiedName~Fixture"
