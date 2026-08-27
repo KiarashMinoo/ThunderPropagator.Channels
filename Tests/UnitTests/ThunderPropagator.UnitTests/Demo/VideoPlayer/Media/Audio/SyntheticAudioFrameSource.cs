@@ -35,6 +35,9 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Audio
         /// <summary>The <see cref="AudioStreamInfo.SourceCodecName"/> this instance reports on <see cref="OpenAsync"/> — settable so tests can exercise a <see cref="VideoPlaybackSession"/>'s own auto-detection without a real source. Default: <c>"synthetic"</c>.</summary>
         public string SourceCodecName { get; set; } = "synthetic";
 
+        /// <summary>Whether <see cref="DisposeAsync"/> has been called on this instance — mirrors <see cref="SyntheticVideoFrameSource.Disposed"/>'s own remarks.</summary>
+        public bool Disposed { get; private set; }
+
         public AudioStreamInfo? StreamInfo { get; private set; }
 
         public Task<AudioStreamInfo> OpenAsync(VideoSource source, CancellationToken cancellationToken = default)
@@ -91,6 +94,7 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Audio
         public ValueTask DisposeAsync()
         {
             _opened = false;
+            Disposed = true;
             return ValueTask.CompletedTask;
         }
     }

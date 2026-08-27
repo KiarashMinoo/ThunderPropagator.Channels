@@ -4,9 +4,10 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Playlist
     /// A static, in-memory <see cref="IVideoPlaylist"/> built once from whatever entries the caller
     /// supplies — deliberately the simplest possible implementation of the contract (no add/remove,
     /// no persistence, no runtime reconfiguration) pending any future fuller server-side playlist
-    /// management. How those entries actually get here (configuration binding, a hardcoded list, etc.)
-    /// and how this type gets registered in DI are both out of this ticket's own scope — #238's job,
-    /// same as <c>VideoPlaybackSessionManager</c>'s own registration.
+    /// management. <c>AddVideoPlayerChannel</c> (#238) constructs and registers the one instance a
+    /// deployment actually uses, from <see cref="Configuration.VideoPlayerChannelConfiguration.PlaylistEntries"/>/
+    /// <see cref="Configuration.VideoPlayerChannelConfiguration.PlaylistPolicy"/> — this type itself has
+    /// no opinion on where those values come from.
     /// </summary>
     public sealed class InMemoryVideoPlaylist : IVideoPlaylist
     {
