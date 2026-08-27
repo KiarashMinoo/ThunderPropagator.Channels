@@ -15,6 +15,12 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Extensions
         {
             VideoPlayerChannelConfiguration videoPlayerChannelConfiguration = new();
             channelConfigurator?.Invoke(videoPlayerChannelConfiguration);
+            // Issue #234: fails host startup immediately, with a property-specific message, rather
+            // than letting an out-of-range value surface later as a confusing runtime failure — mirrors
+            // AddChatChannel's own ChatChannelConfiguration.Validate() call. No IVideoPlaylist exists in
+            // DI yet to cross-check DefaultVideoId against (#238's own unfulfilled scope), so that one
+            // specific check is skipped here — see VideoPlayerChannelConfiguration.Validate's own remarks.
+            videoPlayerChannelConfiguration.Validate();
 
             services
                 .AddSingleton(videoPlayerChannelConfiguration)
