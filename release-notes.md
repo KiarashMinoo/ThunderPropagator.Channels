@@ -1,5 +1,5 @@
-## [1.0.1-beta.104] — 2026-08-27
+## [1.0.1-beta.105] — 2026-08-27
 
 ### 🚀 Features
 
-- Add validated VideoPlayer configuration and safe defaults `(1fd468c)` — Kiarash Minoo
+- Add media pipeline metrics and sampled diagnostics `(e8acdd1)` — Kiarash Minoo
