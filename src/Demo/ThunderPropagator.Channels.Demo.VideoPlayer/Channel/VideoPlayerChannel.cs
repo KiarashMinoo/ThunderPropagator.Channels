@@ -14,12 +14,11 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Channel
 #endif
         class VideoPlayerChannel : AbstractChannel<VideoPlayerChannelMetadata, VideoPlayerChannelConfiguration>
     {
-        // Resolved optionally, not via GetRequiredService — VideoPlaybackSessionManager isn't
-        // registered in DI yet (#238's own unfulfilled scope, same as every pipeline in this family
-        // already taking it via constructor injection with nothing registering it). Mirrors
-        // NotificationsChannel's own constructor, which resolves an unrelated optional dependency the
-        // same gracefully-degrading way. OnSubscriptionRemoved below simply no-ops while this is null —
-        // there is no session to reassign a host for if nothing is wired up to track one yet.
+        // Resolved optionally, not via GetRequiredService — AddVideoPlayerChannel (#238) always
+        // registers VideoPlaybackSessionManager, but this channel type can still be constructed directly
+        // in a test/host that never called it. Mirrors NotificationsChannel's own constructor, which
+        // resolves an unrelated optional dependency the same gracefully-degrading way.
+        // OnSubscriptionRemoved below simply no-ops while this is null.
         private readonly VideoPlaybackSessionManager? _sessionManager;
 
         public VideoPlayerChannel(IServiceProvider serviceProvider) : base(serviceProvider)

@@ -1,4 +1,5 @@
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Channels.Demo.VideoPlayer.Media;
 using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Audio;
 using ThunderPropagator.Channels.Demo.VideoPlayer.Media.Video;
 using ThunderPropagator.Channels.Demo.VideoPlayer.Messages;
@@ -12,11 +13,11 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Configuration
     /// server-side VideoPlayer setting. Most of the individual values here already existed scattered
     /// across <see cref="Media.Session.VideoPlaybackSessionOptions"/>/<see cref="FfmpegVideoFrameSourceOptions"/>/
     /// <see cref="FfmpegAudioFrameSourceOptions"/> (#216-224) — this type aggregates them into one
-    /// coherent, validated surface an operator actually configures. Mapping these values into those
-    /// lower-level options types when constructing a real session, same as constructing
-    /// <see cref="Media.Session.VideoPlaybackSessionManager"/>/<see cref="IVideoPlaylist"/> at all, is
-    /// DI-wiring work for #238 — this type only defines, documents, and validates the settings
-    /// themselves.
+    /// coherent, validated surface an operator actually configures. <see cref="Extensions.VideoPlayerChannelExtensions.AddVideoPlayerChannel"/>
+    /// (#238) is what actually maps these values into those lower-level options types when constructing
+    /// a real session, and constructs <see cref="Media.Session.VideoPlaybackSessionManager"/>/
+    /// <see cref="IVideoPlaylist"/> from <see cref="PlaylistEntries"/>/<see cref="PlaylistPolicy"/> — this
+    /// type itself still only defines, documents, and validates the settings themselves.
     /// </summary>
     public
 #if !DEBUG
@@ -73,6 +74,31 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Configuration
         /// enabled entry). Max length matches <see cref="VideoPlayerChannelFeederMessage.VideoIdMaxLength"/>.
         /// </summary>
         public string? DefaultVideoId { get; set; }
+
+        /// <summary>
+        /// The server's approved video allow-list, by <see cref="VideoPlaylistEntry.VideoId"/> — #238's
+        /// own scope, actually constructing the <see cref="IVideoPlaylist"/> <c>AddVideoPlayerChannel</c>
+        /// registers (an <see cref="Playlist.InMemoryVideoPlaylist"/> built from exactly these entries and
+        /// <see cref="PlaylistPolicy"/>). Every entry is validated against <see cref="PlaylistPolicy"/>
+        /// (and checked for duplicate <see cref="VideoPlaylistEntry.VideoId"/>s) at that construction time
+        /// — see <see cref="Playlist.InMemoryVideoPlaylist"/>'s own constructor remarks — so a
+        /// misconfigured entry fails host startup the same way every other invalid setting here does,
+        /// rather than surfacing later as a confusing runtime rejection. Default: empty — no video is
+        /// selectable until an operator configures at least one entry, the correct default posture for a
+        /// security-relevant allow-list (see <see cref="PlaylistPolicy"/>'s own remarks on deny-by-default).
+        /// </summary>
+        public IReadOnlyList<VideoPlaylistEntry> PlaylistEntries { get; set; } = [];
+
+        /// <summary>
+        /// The scheme/host/local-file-root rules every <see cref="PlaylistEntries"/> entry's own
+        /// <see cref="VideoPlaylistEntry.Source"/> must satisfy — passed straight through to
+        /// <see cref="Playlist.InMemoryVideoPlaylist"/>'s own constructor alongside
+        /// <see cref="PlaylistEntries"/>. Default: <see cref="VideoPlaylistPolicy"/>'s own default (only
+        /// <c>"file"</c> scheme allowed, no <see cref="VideoPlaylistPolicy.LocalFileRoot"/> configured, no
+        /// remote hosts allowed) — approves nothing until explicitly configured, matching that type's own
+        /// deny-by-default remarks.
+        /// </summary>
+        public VideoPlaylistPolicy PlaylistPolicy { get; set; } = new();
 
         /// <summary>
         /// Maximum output frame width, in pixels — mirrors <see cref="FfmpegVideoFrameSourceOptions.MaxWidth"/>.
@@ -198,13 +224,14 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Configuration
 
         /// <summary>
         /// How long a source open (<see cref="IVideoFrameSource.OpenAsync"/>/<see cref="IAudioFrameSource.OpenAsync"/>)
-        /// may take before it should be treated as failed, or <see langword="null"/> for no timeout (the
-        /// actual current behavior — nothing in this codebase constructs a bounded token for this call
-        /// today). Actually applying this as a <see cref="CancellationTokenSource"/> timeout around
-        /// <c>OpenAsync</c> is DI-construction wiring for #238; this property only defines and validates
-        /// it. Default: 30 seconds — generous for a local file or a healthy remote source, without
-        /// leaving a genuinely stuck open blocking a <c>Video/Select</c>/<c>Video/Seek</c> caller
-        /// indefinitely once #238 wires it in.
+        /// may take before it should be treated as failed, or <see langword="null"/> for no timeout.
+        /// Applied by wrapping the real source in <see cref="Media.Video.TimeoutVideoFrameSource"/>/
+        /// <see cref="Media.Audio.TimeoutAudioFrameSource"/> (#238) — see those types' own remarks on why
+        /// this depends on the wrapped source actually observing its own cancellation token (true for
+        /// <see cref="FfmpegVideoFrameSource"/>/<see cref="FfmpegAudioFrameSource"/>, both already wired
+        /// to FFmpeg's own AVIOInterruptCB mechanism). Default: 30 seconds — generous for a local file or
+        /// a healthy remote source, without leaving a genuinely stuck open blocking a
+        /// <c>Video/Select</c>/<c>Video/Seek</c> caller indefinitely.
         /// </summary>
         public TimeSpan? SourceOpenTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
@@ -233,11 +260,13 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Configuration
         /// <c>channelConfigurator</c> callback runs, so a misconfigured value fails host startup with a
         /// property-specific message rather than surfacing later as a confusing runtime failure — #234's
         /// own AC, "Invalid dimensions, quality, timeouts, encoding, or playlist references fail startup
-        /// clearly." <paramref name="playlist"/> is optional: nothing in this codebase constructs an
-        /// <see cref="IVideoPlaylist"/> in DI yet (#238's own unfulfilled scope, same as every other
-        /// not-yet-wired dependency in this family), so <see cref="DefaultVideoId"/> is only cross-checked
-        /// against a real playlist when one happens to be supplied — omitting it skips only that one
-        /// check, not every other validation here.
+        /// clearly." <paramref name="playlist"/> remains optional on this method's own signature (this
+        /// type has no dependency on <see cref="IVideoPlaylist"/> otherwise, and stays independently
+        /// testable without one), but <c>AddVideoPlayerChannel</c> (#238) always supplies the real
+        /// <see cref="Playlist.InMemoryVideoPlaylist"/> it builds from <see cref="PlaylistEntries"/>/
+        /// <see cref="PlaylistPolicy"/>, so <see cref="DefaultVideoId"/> is always cross-checked against
+        /// it in practice — omitting <paramref name="playlist"/> only matters for a caller invoking this
+        /// method directly (e.g. a test).
         /// </summary>
         /// <exception cref="ArgumentOutOfRangeException">A numeric/duration setting is outside its valid range, or an encoding is not a defined enum value.</exception>
         /// <exception cref="ArgumentException"><see cref="DefaultVideoId"/> is set but does not resolve to a known, enabled entry in <paramref name="playlist"/>.</exception>
