@@ -82,6 +82,53 @@ namespace ThunderPropagator.UnitTests.Demo.VideoPlayer.Media.Session
             Assert.Equal(0, manager.SessionCount);
         }
 
+        // #236's own scope, "Tests verify no decoder/resource leak after session removal" — the existing
+        // RemoveSessionAsync test above only proved the manager forgot the session; this proves the
+        // underlying IVideoFrameSource itself was actually disposed on the normal (non-faulted) path,
+        // which nothing previously checked.
+        [Fact]
+        public async Task RemoveSessionAsync_DisposesTheUnderlyingVideoFrameSource_NotJustTheManagerEntry()
+        {
+            var source = new SyntheticVideoFrameSource();
+            await using var manager = new VideoPlaybackSessionManager(id => new VideoPlaybackSession(id, () => source, new SystemMonotonicClock()));
+
+            var session = manager.GetOrCreateSession("to-remove");
+            await session.SelectAsync(new VideoSource { Location = "synthetic://test" });
+
+            await manager.RemoveSessionAsync("to-remove");
+
+            Assert.True(source.Disposed);
+        }
+
+        // #236's own scope: a single removal proving disposal isn't enough to rule out a slow leak
+        // (e.g. a source held onto somewhere and only released "eventually") — this repeats the
+        // create-then-remove cycle and asserts every single source across every cycle was disposed, and
+        // that the manager itself never accumulates entries across cycles.
+        [Fact]
+        public async Task RepeatedCreateAndRemoveCycles_DisposeEverySourceExactlyOnce_WithNoAccumulatedSessions()
+        {
+            const int cycles = 25;
+            var openedSources = new List<SyntheticVideoFrameSource>();
+
+            await using var manager = new VideoPlaybackSessionManager(id =>
+            {
+                var source = new SyntheticVideoFrameSource();
+                openedSources.Add(source);
+                return new VideoPlaybackSession(id, () => source, new SystemMonotonicClock());
+            });
+
+            for (var i = 0; i < cycles; i++)
+            {
+                var session = manager.GetOrCreateSession($"session-{i}");
+                await session.SelectAsync(new VideoSource { Location = "synthetic://test" });
+                await manager.RemoveSessionAsync($"session-{i}");
+            }
+
+            Assert.Equal(0, manager.SessionCount);
+            Assert.Equal(cycles, openedSources.Count);
+            Assert.All(openedSources, s => Assert.True(s.Disposed));
+        }
+
         [Fact]
         public async Task RemoveSessionAsync_ForAnUnknownId_ReturnsFalse()
         {
