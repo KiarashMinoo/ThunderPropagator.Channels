@@ -1,6 +1,7 @@
 using Bogus;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Channels.Exceptions;
 using ThunderPropagator.Application.Channels.Subscribers;
@@ -22,12 +23,27 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
         public const string PortfolioDemoItems = nameof(PortfolioDemoItems);
 
         private readonly CancellationToken _cancellationToken;
+        private readonly ILogger<PortfolioDemoChannel> _logger;
 
         public PortfolioDemoChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _cancellationToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+            _logger = serviceProvider.GetRequiredService<ILogger<PortfolioDemoChannel>>();
 
-            new Thread(Simulate).Start();
+            // Issue #11: SimulateAsync's own returned Task is deliberately never awaited here (a
+            // constructor can't be async) — but it must still be observed, not merely fired and
+            // forgotten, so a fault inside the loop is logged instead of silently disappearing (the
+            // previous async void Simulate() either crashed the process via the synchronization context
+            // in ASP.NET Core, or vanished with no trace in other hosts). OnlyOnFaulted deliberately
+            // excludes the loop's own normal exit path: an unhandled OperationCanceledException escaping
+            // an async method always completes its Task as Canceled, never Faulted, regardless of which
+            // token it carries — so graceful shutdown (the loop's while condition/Task.Delay observing
+            // _cancellationToken) never logs an error here.
+            _ = SimulateAsync().ContinueWith(
+                task => _logger.LogError(task.Exception, "PortfolioDemoChannel's background simulation loop faulted and stopped running."),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
         }
 
         internal static decimal GeneratePrice() => new Faker().Random.Decimal(1M, 100M);
@@ -81,7 +97,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
             }
         }
 
-        private async void Simulate()
+        private async Task SimulateAsync()
         {
             while (!_cancellationToken.IsCancellationRequested)
             {
@@ -112,7 +128,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
 
                     portfolioDemoChannelFeederMessage.Time = DateTime.UtcNow.TimeOfDay;
 
-                    EmitMessage(portfolioDemoChannelFeederMessage);
+                    await EmitMessageAsync(portfolioDemoChannelFeederMessage, _cancellationToken);
                 }
             }
         }
