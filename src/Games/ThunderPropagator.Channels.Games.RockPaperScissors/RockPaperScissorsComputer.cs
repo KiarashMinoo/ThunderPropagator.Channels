@@ -1,5 +1,4 @@
 using Bogus;
-using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Channels.Games.RockPaperScissors.Channel;
 using ThunderPropagator.Channels.Games.RockPaperScissors.Messages;
 
@@ -18,7 +17,9 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
             _channel = channel;
         }
 
-        //-1,0,1
+        // -1 = moveKind beats compareTo, 0 = draw, 1 = moveKind loses to compareTo. Verified against
+        // real Rock-Paper-Scissors rules for all six non-draw pairs (Rock beats Scissor, Scissor beats
+        // Paper, Paper beats Rock, and their reverses).
         private static int CompareTo(MoveKind moveKind, MoveKind compareTo) => moveKind switch
         {
             MoveKind.Paper => compareTo switch
@@ -45,50 +46,85 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
         private static MoveKind Move()
         {
             var array = Enum.GetValues<MoveKind>().Cast<int>().ToArray();
-            var random = Random.Shared.Next(0, array.Length - 1);
+            // Issue #12's own fix: Random.Shared.Next's own upper bound is exclusive, so the previous
+            // `Next(0, array.Length - 1)` could only ever return index 0 or 1 (Rock or Paper) — the
+            // computer could never actually pick Scissor (index 2).
+            var random = Random.Shared.Next(0, array.Length);
             return (MoveKind)array[random];
         }
 
-        private async Task Play(Player firstPlayer, Player secondPlayer, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// The single entry point <see cref="RockPaperScissorsChannelReceiveEvent"/> calls once a new
+        /// subscription is registered — issue #12's own scope, "keep a session for the game and push
+        /// notification to all of them": resolves the subscribing connection's own
+        /// <see cref="Player"/>, routes to a computer or human match per that player's own
+        /// <see cref="RockPaperScissors.Player.RequestedOpponent"/> (issue #12's own fix — see that
+        /// property's own remarks for why the original code's routing check could never actually select
+        /// a computer match), and lets <see cref="Play"/> record the session and push results. A no-op if
+        /// <paramref name="connectionId"/> is not (or no longer) a subscriber — e.g. a receive event
+        /// racing a near-simultaneous unsubscribe.
+        /// </summary>
+        public void HandleSubscription(string connectionId)
         {
-            var winningValue = firstPlayer.Move.CompareTo(secondPlayer.Move);
+            var subscription = _channel.FindSubscription(connectionId);
+            if (subscription is null)
+                return;
 
-            await SendPlayResponseAsync(firstPlayer.Subscription!, secondPlayer, winningValue == -1, winningValue == 0);
+            var player = new Player(subscription);
+
+            if (player.RequestedOpponent == PlayerType.Computer)
+                PlayWithComputer(player);
+            else
+                PlayWithHuman(player);
+        }
+
+        internal void PlayWithComputer(Player player) =>
+            Play(player, new Player(new Person().FullName, PlayerType.Computer, Move()));
+
+        internal void PlayWithHuman(Player player)
+        {
+            var opponentSubscription = _channel.PeekRandomPlayer(player.Subscription?.ConnectionInfo.ConnectionId);
+            if (opponentSubscription is null)
+                return;
+
+            Play(player, new Player(opponentSubscription));
+        }
+
+        private void Play(Player firstPlayer, Player secondPlayer)
+        {
+            // Issue #12's own fix: this must call the RPS-aware static CompareTo above, not
+            // firstPlayer.Move.CompareTo(secondPlayer.Move) (the original code's own call, which resolves
+            // to MoveKind's built-in enum comparison — comparing the enum's underlying int values 1/2/3 —
+            // and has nothing to do with who actually wins a round).
+            var winningValue = CompareTo(firstPlayer.Move, secondPlayer.Move);
+
+            _channel.RecordSession(firstPlayer, secondPlayer);
+
+            SendPlayResponse(firstPlayer, secondPlayer, winningValue == -1, winningValue == 0);
+
+            // A synthetic computer opponent has no real subscriber/connection to notify.
             if (secondPlayer.PlayerType != PlayerType.Computer)
-            {
-                await SendPlayResponseAsync(secondPlayer.Subscription!, firstPlayer, winningValue == 1, winningValue == 0);
-            }
-
-            return;
-
-            async Task SendPlayResponseAsync(Subscription subscription, Player opponent, bool isWin, bool isDraw)
-            {
-                var firstPlayerMessage = new RockPaperScissorsChannelFeederMessage
-                {
-                    OpponentName = opponent.Name,
-                    OpponentMove = opponent.Move,
-                    IsWin = isWin,
-                    IsDraw = isDraw
-                };
-                await _channel.SendAsync(subscription, firstPlayerMessage, cancellationToken: cancellationToken);
-            }
+                SendPlayResponse(secondPlayer, firstPlayer, winningValue == 1, winningValue == 0);
         }
 
-        public Task PlayWithComputer(Player player, CancellationToken cancellationToken = default)
+        private void SendPlayResponse(Player recipient, Player opponent, bool isWin, bool isDraw)
         {
-            return Play(player,
-                new Player(new Person().FullName, PlayerType.Computer, Move()),
-                cancellationToken);
-        }
-
-        public async Task PlayWithHuman(Player player, CancellationToken cancellationToken = default)
-        {
-            var opponentSubscription = _channel.PeekRandomPlayer();
-            if (opponentSubscription is not null)
+            // PlayerName/Opponent/Move must echo the recipient's own original subscribed keys exactly
+            // (see RockPaperScissorsChannelMetadata's own ChannelProgramsDescriptors) for
+            // RockPaperScissorsChannel.PushResult's key-based routing to deliver this to them, and only
+            // them.
+            var message = new RockPaperScissorsChannelFeederMessage
             {
-                var opponent = new Player(opponentSubscription);
-                await Play(player, opponent, cancellationToken);
-            }
+                PlayerName = recipient.Name,
+                Opponent = recipient.RequestedOpponent,
+                Move = recipient.Move,
+                OpponentName = opponent.Name,
+                OpponentMove = opponent.Move,
+                IsWin = isWin,
+                IsDraw = isDraw
+            };
+
+            _channel.PushResult(message);
         }
     }
 }
