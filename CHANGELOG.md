@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.121] — 2026-08-30
+
+### 🐛 Bug Fixes
+
+- Fix IDOR: require group membership before AddUser/RemoveUser/Rename/SetIcon `(0e6e984)` — Kiarash Minoo
+
 ## [1.0.1-beta.120] — 2026-08-30
 
 ### 🚀 Features

@@ -1,5 +1,5 @@
-## [1.0.1-beta.120] — 2026-08-30
+## [1.0.1-beta.121] — 2026-08-30
 
-### 🚀 Features
+### 🐛 Bug Fixes
 
-- Make AirportDemoChannelFeeder's departure comparisons midnight-safe `(e479a04)` — Kiarash Minoo
+- Fix IDOR: require group membership before AddUser/RemoveUser/Rename/SetIcon `(0e6e984)` — Kiarash Minoo
