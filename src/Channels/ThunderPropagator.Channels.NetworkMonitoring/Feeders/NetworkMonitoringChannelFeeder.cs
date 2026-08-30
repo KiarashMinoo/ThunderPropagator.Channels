@@ -54,15 +54,19 @@ namespace ThunderPropagator.Channels.NetworkMonitoring.Feeders
             var bytesReceived = networkInterfaces.Sum(networkInterface => networkInterface.IPStatistics.BytesReceived);
             var bytesSent = networkInterfaces.Sum(networkInterface => networkInterface.IPStatistics.BytesSent);
 
+            // Interlocked.Exchange (see #20) rather than a plain assignment: `long` can't be marked
+            // volatile in C# (only pointer-sized-or-smaller types support it), so this is the correct
+            // way to guard against a stale read/torn write of these fields, and conveniently returns
+            // the previous value atomically in the same operation the delta below needs anyway.
+            var previousBytesReceived = Interlocked.Exchange(ref _lastBytesReceived, bytesReceived);
+            var previousBytesSent = Interlocked.Exchange(ref _lastBytesSent, bytesSent);
+
             var networkMonitoringChannelFeederMessage = new NetworkMonitoringChannelFeederMessage
             {
                 DateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                BytesReceived = bytesReceived - _lastBytesReceived,
-                BytesSent = bytesSent - _lastBytesSent
+                BytesReceived = bytesReceived - previousBytesReceived,
+                BytesSent = bytesSent - previousBytesSent
             };
-
-            _lastBytesReceived = bytesReceived;
-            _lastBytesSent = bytesSent;
 
             yield return networkMonitoringChannelFeederMessage;
         }
