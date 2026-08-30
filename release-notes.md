@@ -1,5 +1,5 @@
-## [1.0.1-beta.114] — 2026-08-30
+## [1.0.1-beta.115] — 2026-08-30
 
 ### 🚀 Features
 
-- Replace SlidingExpiration with AbsoluteExpirationRelativeToNow in CachedWeatherHandler `(eb1ab99)` — Kiarash Minoo
+- Make WeatherApiService's semaphore an instance field `(b4eeffe)` — Kiarash Minoo
