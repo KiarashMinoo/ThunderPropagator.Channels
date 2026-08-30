@@ -5,6 +5,10 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
 {
     public sealed class CachedWeatherHandler : DelegatingHandler
     {
+        // A sliding expiration never lapses for a continuously-queried city, serving stale weather
+        // data indefinitely (see #16); an absolute expiration guarantees a refresh at least this often.
+        private static readonly TimeSpan CacheFreshnessInterval = TimeSpan.FromMinutes(15);
+
         private readonly IDistributedCache _distributedCache;
 
         public CachedWeatherHandler(IDistributedCache distributedCache)
@@ -29,7 +33,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
                 await _distributedCache.SetStringAsync(request.RequestUri!.ToString(),
                     content,
-                    new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(60 - DateTime.UtcNow.Minute) },
+                    new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheFreshnessInterval },
                     cancellationToken);
             }
 
