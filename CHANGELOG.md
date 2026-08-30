@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.117] — 2026-08-30
+
+### 🚀 Features
+
+- Use Interlocked.Exchange for _lastBytesReceived/_lastBytesSent `(e5de814)` — Kiarash Minoo
+
 ## [1.0.1-beta.116] — 2026-08-30
 
 ### 🚀 Features
