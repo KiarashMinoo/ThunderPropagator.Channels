@@ -82,6 +82,7 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
                 .Produces<ChatChannelSentMessageResponseDto>(StatusCodes.Status201Created)
                 .ProducesValidationProblem()
                 .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
                 .Produces(StatusCodes.Status404NotFound);
 
             chat.MapDelete("/messages/{messageId}", DeleteMessageAsync)
@@ -415,16 +416,16 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
         }
 
         // Issue #133: reuses MessageService.SendMessageAsync/SendMessageToGroupAsync — the same calls
-        // the WebSocket Messages/Send pipeline makes — including that pipeline's own lack of a
-        // group-membership check on send (SendMessageToGroupAsync fans out to every current member
-        // without verifying the sender is one); adding that check here only for REST would give the
-        // two transports different rules for the exact case this issue's AC says must match. Emits
-        // through ChatChannel.EmitMessage for every persisted row, same as the pipeline, so a message
-        // sent over REST still reaches WebSocket-connected recipients in real time — the parent
-        // issue's "WebSocket and REST transports ... produce equivalent state" requirement. The
-        // sender is only ever TryGetCurrentUserId's resolved identity; there is no field on the
-        // request body a client could set instead.
-        internal static async Task<Results<Created<ChatChannelSentMessageResponseDto>, ValidationProblem, UnauthorizedHttpResult, NotFound>> SendMessageAsync(
+        // the WebSocket Messages/Send pipeline makes. Issue #33 added a group-membership check to
+        // SendMessageToGroupAsync itself (it used to fan out to every current member without
+        // verifying the sender was one), so both transports inherit the same rule from the one shared
+        // call rather than needing it duplicated here. Emits through ChatChannel.EmitMessage for every
+        // persisted row, same as the pipeline, so a message sent over REST still reaches
+        // WebSocket-connected recipients in real time — the parent issue's "WebSocket and REST
+        // transports ... produce equivalent state" requirement. The sender is only ever
+        // TryGetCurrentUserId's resolved identity; there is no field on the request body a client
+        // could set instead.
+        internal static async Task<Results<Created<ChatChannelSentMessageResponseDto>, ValidationProblem, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> SendMessageAsync(
             [FromServices] MessageService messageService,
             [FromServices] ChatChannel chatChannel,
             ClaimsPrincipal principal,
@@ -495,6 +496,10 @@ namespace ThunderPropagator.Channels.Chat.Endpoints
             catch (GroupNotFoundException)
             {
                 return TypedResults.NotFound();
+            }
+            catch (GroupAccessDeniedException)
+            {
+                return TypedResults.Forbid();
             }
         }
 
