@@ -24,11 +24,15 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
             }
 
             var response = await base.SendAsync(request, cancellationToken);
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
-            await _distributedCache.SetStringAsync(request.RequestUri!.ToString(),
-                content,
-                new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(60 - DateTime.UtcNow.Minute) },
-                cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                await _distributedCache.SetStringAsync(request.RequestUri!.ToString(),
+                    content,
+                    new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(60 - DateTime.UtcNow.Minute) },
+                    cancellationToken);
+            }
+
             return response;
         }
     }
