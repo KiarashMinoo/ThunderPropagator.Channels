@@ -1,5 +1,5 @@
-## [1.0.1-beta.111] — 2026-08-27
+## [1.0.1-beta.112] — 2026-08-30
 
-### 🐛 Bug Fixes
+### 🚀 Features
 
-- Fix and re-enable RockPaperScissors gameplay with sessions and push notifications `(5c1d072)` — Kiarash Minoo
+- Remove GetAwaiter().GetResult() blocking calls in PortfolioDemoChannel subscription hooks `(1fa1c5a)` — Kiarash Minoo

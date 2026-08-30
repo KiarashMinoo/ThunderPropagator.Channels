@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.112] — 2026-08-30
+
+### 🚀 Features
+
+- Remove GetAwaiter().GetResult() blocking calls in PortfolioDemoChannel subscription hooks `(1fa1c5a)` — Kiarash Minoo
+
 ## [1.0.1-beta.111] — 2026-08-27
 
 ### 🐛 Bug Fixes
