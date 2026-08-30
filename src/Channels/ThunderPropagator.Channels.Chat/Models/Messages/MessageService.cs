@@ -26,6 +26,10 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             return chatContext.CreateAsync(message, cancellationToken);
         }
 
+        // Issue #33: unlike GetGroupMessageHistoryAsync below (which already checks this), this fanned
+        // a message out to every member of any group the caller named, with no check that senderId was
+        // actually one of them — any authenticated user could send into a group they don't belong to
+        // just by knowing its GroupId. Same membership check as GetGroupMessageHistoryAsync's own.
         public async Task<IReadOnlyCollection<Message>> SendMessageToGroupAsync(Guid senderId, Guid groupId, string body, CancellationToken cancellationToken = default)
         {
             ValidateBodyLength(body);
@@ -35,6 +39,9 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
             var group = await chatContext.GetAsync<Group, Guid>(groupId, cancellationToken) ?? throw new GroupNotFoundException();
             if (group.IsDeleted)
                 throw new GroupNotFoundException();
+
+            if (group.GroupUsers.All(groupUser => groupUser.UserId != senderId))
+                throw new GroupAccessDeniedException();
 
             foreach (var groupUser in group.GroupUsers)
             {

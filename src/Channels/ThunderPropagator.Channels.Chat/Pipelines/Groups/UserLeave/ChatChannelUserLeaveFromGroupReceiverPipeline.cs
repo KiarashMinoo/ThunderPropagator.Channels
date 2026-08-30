@@ -35,21 +35,24 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.UserLeave
             var userLeaveRequest = context.Request.GetRequestContentFormData<ChatChannelUserLeaveFromGroupReceiverPipelineRequestDto>()!;
 
             var user = await userService.GetByIdAsync(currentUserId, cancellationToken) ?? throw new UserNotFoundException();
+            var group = await groupService.GetGroupDetailsAsync(currentUserId, userLeaveRequest.GroupId, cancellationToken);
 
-            var group = await groupService.RemoveUserFromGroupAsync(currentUserId, userLeaveRequest.GroupId, user.Id, cancellationToken);
-
-            //Send Added Message To User
-            chatChannel.EmitMessage(new ChatChannelFeederMessage(
-                await messageService.SendMessageAsync(user.Id, user.Id, $"you have left from group {group.Name}.", cancellationToken)
-            ));
-
-            //Send Add Message To Group
+            // Issue #33: sent before the removal below, not after — MessageService.SendMessageToGroupAsync
+            // now requires the sender to be a current member of the group, and by the time the user has
+            // actually left, they no longer are.
             var messages = await messageService.SendMessageToGroupAsync(currentUserId, group.Id, $"User {user.Name} has left from group.", cancellationToken);
             await Task.WhenAll(messages.Select(message =>
             {
                 chatChannel.EmitMessage(new ChatChannelFeederMessage(message));
                 return Task.CompletedTask;
             }));
+
+            await groupService.RemoveUserFromGroupAsync(currentUserId, group.Id, user.Id, cancellationToken);
+
+            //Send Added Message To User
+            chatChannel.EmitMessage(new ChatChannelFeederMessage(
+                await messageService.SendMessageAsync(user.Id, user.Id, $"you have left from group {group.Name}.", cancellationToken)
+            ));
 
             context.Response.ResponseCode = (int)HttpStatusCode.OK;
             context.Response.ResponseContent = "Left";

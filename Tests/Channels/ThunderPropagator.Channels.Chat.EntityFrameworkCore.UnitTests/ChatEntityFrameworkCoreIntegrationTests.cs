@@ -87,7 +87,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             // MessageService.SendMessageToGroupAsync loads the Group by id and enumerates
             // group.GroupUsers in memory — this only works end to end if the GroupUsers navigation
             // is populated by the read, which is exactly what GroupConfiguration's AutoInclude proves.
-            var sent = await messages.SendMessageToGroupAsync(sender.Id, group.Id, "hello group", CancellationToken.None);
+            var sent = await messages.SendMessageToGroupAsync(memberA.Id, group.Id, "hello group", CancellationToken.None);
 
             Assert.Equal(2, sent.Count);
             Assert.Contains(sent, message => message.ReceiverId == memberA.Id);
@@ -270,7 +270,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var member = await users.RegisterAsync($"group-update-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
             var group = await groups.CreateAsync("Update Spy Group", sender.Id, [member.Id], CancellationToken.None);
 
-            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "hello group", CancellationToken.None);
+            await messages.SendMessageToGroupAsync(member.Id, group.Id, "hello group", CancellationToken.None);
 
             Assert.DoesNotContain(typeof(Group), spy.UpdatedTypes);
         }
@@ -321,7 +321,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, messages, _) = CreateServices(fixture);
             var sender = await users.RegisterAsync($"exclude-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"exclude-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
-            var group = await groups.CreateAsync("Exclude Group", sender.Id, [member.Id], CancellationToken.None);
+            var group = await groups.CreateAsync("Exclude Group", sender.Id, [sender.Id, member.Id], CancellationToken.None);
             await messages.SendMessageToGroupAsync(sender.Id, group.Id, "group message", CancellationToken.None);
             await messages.SendMessageAsync(sender.Id, member.Id, "direct message", CancellationToken.None);
 
@@ -352,8 +352,8 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var sender = await users.RegisterAsync($"group-history-sender-{Guid.NewGuid():N}", "password", "Sender", CancellationToken.None);
             var member = await users.RegisterAsync($"group-history-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
             var group = await groups.CreateAsync("History Group", sender.Id, [member.Id], CancellationToken.None);
-            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "first", CancellationToken.None);
-            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "second", CancellationToken.None);
+            await messages.SendMessageToGroupAsync(member.Id, group.Id, "first", CancellationToken.None);
+            await messages.SendMessageToGroupAsync(member.Id, group.Id, "second", CancellationToken.None);
 
             var page = await messages.GetGroupMessageHistoryAsync(member.Id, group.Id, page: 1, pageSize: 10, CancellationToken.None);
 
@@ -369,7 +369,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var member = await users.RegisterAsync($"nonmember-member-{Guid.NewGuid():N}", "password", "Member", CancellationToken.None);
             var outsider = await users.RegisterAsync($"nonmember-outsider-{Guid.NewGuid():N}", "password", "Outsider", CancellationToken.None);
             var group = await groups.CreateAsync("Members Only Group", sender.Id, [member.Id], CancellationToken.None);
-            await messages.SendMessageToGroupAsync(sender.Id, group.Id, "secret", CancellationToken.None);
+            await messages.SendMessageToGroupAsync(member.Id, group.Id, "secret", CancellationToken.None);
 
             await Assert.ThrowsAsync<GroupAccessDeniedException>(
                 () => messages.GetGroupMessageHistoryAsync(outsider.Id, group.Id, page: 1, pageSize: 10, CancellationToken.None));
