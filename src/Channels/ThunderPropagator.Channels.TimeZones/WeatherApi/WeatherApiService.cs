@@ -13,7 +13,13 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
 #endif
         class WeatherApiService
     {
-        private static readonly SemaphoreSlim Semaphore = new(1, 1);
+        // Instance-scoped (see #17): a static semaphore serializes every WeatherApiService instance
+        // in the process — including one constructed directly in a test, outside DI — rather than
+        // only concurrent calls through the single registered instance. WeatherApiService is
+        // registered as a singleton (see TimeZonesChannelExtensions.AddTimeZonesChannel), so this is
+        // behaviorally identical for that real usage; it only removes the unintended cross-instance
+        // coupling.
+        private readonly SemaphoreSlim _semaphore = new(1, 1);
 
         private readonly ILogger<WeatherApiService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -30,7 +36,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
         {
             try
             {
-                await Semaphore.WaitAsync(cancellationToken);
+                await _semaphore.WaitAsync(cancellationToken);
 
                 using var client = _httpClientFactory.CreateClient(nameof(WeatherApiService));
                 var weatherResponse = await client.GetAsync($"current.json?key={_configuration.WeatherApiKey}&q={query}", cancellationToken);
@@ -46,7 +52,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
             }
             finally
             {
-                Semaphore.Release();
+                _semaphore.Release();
             }
         }
 
@@ -54,7 +60,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
         {
             try
             {
-                await Semaphore.WaitAsync(cancellationToken);
+                await _semaphore.WaitAsync(cancellationToken);
 
                 using var client = _httpClientFactory.CreateClient(nameof(WeatherApiService));
                 var weatherRequestContent = new StringContent(request.ToNJson(), Encoding.UTF8, "application/json");
@@ -71,7 +77,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
             }
             finally
             {
-                Semaphore.Release();
+                _semaphore.Release();
             }
         }
     }
