@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,6 +32,51 @@ namespace ThunderPropagator.Channels.Demo.Airport.UnitTests.Feeders
             var airportDemoChannelFeeder = new AirportDemoChannelFeeder(airportDemoChannel, airportDemoChannelFeederConfiguration, feederHandler, serviceProvider);
 
             Assert.NotNull(airportDemoChannelFeeder);
+        }
+
+        private static TimeSpan InvokeSignedWrappedDelta(TimeSpan from, TimeSpan to)
+        {
+            var method = typeof(AirportDemoChannelFeeder).GetMethod("SignedWrappedDelta", BindingFlags.NonPublic | BindingFlags.Static)!;
+            return (TimeSpan)method.Invoke(null, [from, to])!;
+        }
+
+        // Issue #25's own bug: comparisons using a plain `to - from` on Departure/TimeOfDay values
+        // broke the instant one side crossed midnight relative to the other. These exercise the
+        // midnight-safe replacement directly against the exact shape of that failure.
+        [Fact]
+        public void SignedWrappedDelta_SameDay_ReturnsPlainDifference()
+        {
+            var delta = InvokeSignedWrappedDelta(TimeSpan.FromHours(10), TimeSpan.FromHours(13));
+
+            Assert.Equal(TimeSpan.FromHours(3), delta);
+        }
+
+        [Fact]
+        public void SignedWrappedDelta_ToCrossesMidnightForward_ReturnsShortPositiveDelta()
+        {
+            // "to" (00:10) is numerically far less than "from" (23:50), but is actually only 20
+            // minutes later once midnight is crossed - not ~23h40m in the past.
+            var delta = InvokeSignedWrappedDelta(TimeSpan.FromHours(23) + TimeSpan.FromMinutes(50), TimeSpan.FromMinutes(10));
+
+            Assert.Equal(TimeSpan.FromMinutes(20), delta);
+        }
+
+        [Fact]
+        public void SignedWrappedDelta_FromCrossesMidnightForward_ReturnsShortNegativeDelta()
+        {
+            // The reverse of the case above: "from" (00:10) is numerically far less than "to" (23:50),
+            // but "to" is actually only 20 minutes in the past once midnight is crossed.
+            var delta = InvokeSignedWrappedDelta(TimeSpan.FromMinutes(10), TimeSpan.FromHours(23) + TimeSpan.FromMinutes(50));
+
+            Assert.Equal(TimeSpan.FromMinutes(-20), delta);
+        }
+
+        [Fact]
+        public void SignedWrappedDelta_SameValue_ReturnsZero()
+        {
+            var delta = InvokeSignedWrappedDelta(TimeSpan.FromHours(12), TimeSpan.FromHours(12));
+
+            Assert.Equal(TimeSpan.Zero, delta);
         }
     }
 }
