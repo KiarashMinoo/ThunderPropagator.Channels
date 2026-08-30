@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.113] — 2026-08-30
+
+### 🚀 Features
+
+- Don't cache failed weather API responses `(e15a83b)` — Kiarash Minoo
+
 ## [1.0.1-beta.112] — 2026-08-30
 
 ### 🚀 Features

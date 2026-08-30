@@ -1,5 +1,5 @@
-## [1.0.1-beta.112] — 2026-08-30
+## [1.0.1-beta.113] — 2026-08-30
 
 ### 🚀 Features
 
-- Remove GetAwaiter().GetResult() blocking calls in PortfolioDemoChannel subscription hooks `(1fa1c5a)` — Kiarash Minoo
+- Don't cache failed weather API responses `(e15a83b)` — Kiarash Minoo
