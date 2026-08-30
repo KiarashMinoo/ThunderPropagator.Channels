@@ -32,7 +32,9 @@ namespace ThunderPropagator.Channels.TimeZones.UnitTests.WeatherApi
             await distributedCache.Received(1).SetAsync(
                 "https://example.test/weather",
                 Arg.Any<byte[]>(),
-                Arg.Any<DistributedCacheEntryOptions>(),
+                Arg.Is<DistributedCacheEntryOptions>(options =>
+                    options.AbsoluteExpirationRelativeToNow.HasValue &&
+                    options.SlidingExpiration == null),
                 Arg.Any<CancellationToken>());
         }
 
