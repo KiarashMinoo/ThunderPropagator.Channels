@@ -48,16 +48,44 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
 
         internal static decimal GeneratePrice() => new Faker().Random.Decimal(1M, 100M);
 
+        // Issue #14: Subscribe()/Unsubscribe() (which invoke these hooks) are synchronous,
+        // non-awaitable base-class APIs with no async counterpart, and the only snapshot search
+        // available is Task-returning — so the search and its follow-up work can't be awaited here
+        // without blocking the calling thread. Fire-and-forget mirrors the pattern already used for
+        // NotificationsChannel.OnSubscriptionAdded (#58) and this channel's own constructor (#11):
+        // failures are caught and logged instead of propagating synchronously. The trade-off is that
+        // the duplicate-key check and the deleted-item cleanup emission below now complete
+        // asynchronously (after Subscribe()/Unsubscribe() has already returned) rather than
+        // synchronously gating the caller.
         protected override void OnSubscriptionAdded(Subscription subscription)
         {
             base.OnSubscriptionAdded(subscription);
 
             var key = subscription.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
 
-            var snapshotEntries = SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Snapshot.ContainsKey(key), 0, 0, _cancellationToken)
-                .ConfigureAwait(false)
-                .GetAwaiter()
-                .GetResult();
+            _ = HandleSubscriptionAddedAsync(key).ContinueWith(
+                task => _logger.LogError(task.Exception, "Failed to handle new subscription for key {Key} on channel {ChannelName}.", key, Metadata.ChannelName),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+        }
+
+        protected override void OnSubscriptionRemoved(Subscription subscription)
+        {
+            base.OnSubscriptionRemoved(subscription);
+
+            var key = subscription.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
+
+            _ = HandleSubscriptionRemovedAsync(key).ContinueWith(
+                task => _logger.LogError(task.Exception, "Failed to handle subscription removal for key {Key} on channel {ChannelName}.", key, Metadata.ChannelName),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+        }
+
+        private async Task HandleSubscriptionAddedAsync(string key)
+        {
+            var snapshotEntries = await SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Snapshot.ContainsKey(key), 0, 0, _cancellationToken).ConfigureAwait(false);
 
             if (snapshotEntries.Length > 0)
                 throw new DuplicatedKeyException(nameof(PortfolioDemoChannelFeederMessage.Key), key);
@@ -72,28 +100,18 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
                 .ToArray();
 
             foreach (var portfolioDemoChannelFeederMessage in portfolioDemoChannelFeederMessages)
-                EmitMessage(portfolioDemoChannelFeederMessage);
+                await EmitMessageAsync(portfolioDemoChannelFeederMessage, _cancellationToken);
         }
 
-        protected override void OnSubscriptionRemoved(Subscription subscription)
+        private async Task HandleSubscriptionRemovedAsync(string key)
         {
-            base.OnSubscriptionRemoved(subscription);
+            var snapshotEntries = await SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Snapshot.ContainsKey(key), 0, 0, _cancellationToken).ConfigureAwait(false);
 
-            var key = subscription.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
-
-            var snapshotEntries = SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Snapshot.ContainsKey(key), 0, 0, _cancellationToken)
-                .ConfigureAwait(false)
-                .GetAwaiter()
-                .GetResult();
-
-            if (snapshotEntries.Length > 0)
+            foreach (var snapshotEntry in snapshotEntries)
             {
-                foreach (var snapshotEntry in snapshotEntries)
-                {
-                    PortfolioDemoChannelFeederMessage portfolioDemoChannelFeederMessage = new(snapshotEntry.Snapshot);
-                    portfolioDemoChannelFeederMessage.IsDeleted = true;
-                    EmitMessage(snapshotEntry.HashKey, CastType.Unicast, portfolioDemoChannelFeederMessage, typeof(PortfolioDemoChannelFeederMessage));
-                }
+                PortfolioDemoChannelFeederMessage portfolioDemoChannelFeederMessage = new(snapshotEntry.Snapshot);
+                portfolioDemoChannelFeederMessage.IsDeleted = true;
+                EmitMessage(snapshotEntry.HashKey, CastType.Unicast, portfolioDemoChannelFeederMessage, typeof(PortfolioDemoChannelFeederMessage));
             }
         }
 
