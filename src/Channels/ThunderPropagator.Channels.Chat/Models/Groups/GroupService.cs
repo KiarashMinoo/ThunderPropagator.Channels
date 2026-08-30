@@ -23,12 +23,23 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
         // delete/moderation authority, not blanket visibility into a group they've left.
         public async Task<Group> GetGroupDetailsAsync(Guid currentUserId, Guid groupId, CancellationToken cancellationToken = default)
         {
-            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
-            if (group.IsDeleted)
-                throw new GroupNotFoundException();
+            var group = await GetExistingGroupAsync(groupId, cancellationToken);
 
             if (group.GroupUsers.All(groupUser => groupUser.UserId != currentUserId))
                 throw new GroupAccessDeniedException();
+
+            return group;
+        }
+
+        // Existence + not-deleted only, no membership check — shared by GetGroupDetailsAsync (which
+        // adds membership) and by the self-join/self-leave paths below (see #31's own remarks on
+        // AddUserToGroupAsync/RemoveUserFromGroupAsync), which must not require the caller to already
+        // be a member of a group they're in the middle of joining.
+        private async Task<Group> GetExistingGroupAsync(Guid groupId, CancellationToken cancellationToken)
+        {
+            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
+            if (group.IsDeleted)
+                throw new GroupNotFoundException();
 
             return group;
         }
@@ -89,42 +100,53 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
         public async Task<IReadOnlyCollection<Group>> GetAllAsync(CancellationToken cancellationToken = default)
             => await chatContext.GetAllAsync<Group>(group => !group.IsDeleted, cancellationToken);
 
-        public async Task AddUserToGroupAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default)
+        // Issue #31: used to fetch the group with plain GetByIdAsync (existence + soft-delete only)
+        // and mutate it with no check that currentUserId was actually a member — an IDOR letting any
+        // authenticated caller add an arbitrary user to a group they don't belong to. Adding someone
+        // else now requires currentUserId to already be a member (GetGroupDetailsAsync's own
+        // existence + not-deleted + membership check); adding yourself (self-join — the WebSocket
+        // Groups/Join pipeline's only use of this method, currentUserId == userId) is exempt from the
+        // membership half of that check by construction, since requiring it would make joining a group
+        // you're not yet in impossible.
+        public async Task<Group> AddUserToGroupAsync(Guid currentUserId, Guid groupId, Guid userId, CancellationToken cancellationToken = default)
         {
-            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
-            if (group.IsDeleted)
-                throw new GroupNotFoundException();
+            var group = currentUserId == userId
+                ? await GetExistingGroupAsync(groupId, cancellationToken)
+                : await GetGroupDetailsAsync(currentUserId, groupId, cancellationToken);
 
             group.AddUser(userId);
             await chatContext.UpdateAsync(group, cancellationToken);
+            return group;
         }
 
-        public async Task RemoveUserFromGroupAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default)
+        // Issue #31: same IDOR as AddUserToGroupAsync above, and the same self-exception — removing
+        // yourself (self-leave — the WebSocket Groups/UserLeave pipeline's only use of this method,
+        // currentUserId == userId) doesn't require already being confirmed a member first, since
+        // leaving a group you're not a member of is a harmless no-op (see Group.RemoveUser), not a
+        // privilege to guard. Removing someone else requires currentUserId to already be a member.
+        public async Task<Group> RemoveUserFromGroupAsync(Guid currentUserId, Guid groupId, Guid userId, CancellationToken cancellationToken = default)
         {
-            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
-            if (group.IsDeleted)
-                throw new GroupNotFoundException();
+            var group = currentUserId == userId
+                ? await GetExistingGroupAsync(groupId, cancellationToken)
+                : await GetGroupDetailsAsync(currentUserId, groupId, cancellationToken);
 
             group.RemoveUser(userId);
             await chatContext.UpdateAsync(group, cancellationToken);
+            return group;
         }
 
-        public async Task<Group> RenameGroupAsync(Guid groupId, string name, CancellationToken cancellationToken = default)
+        public async Task<Group> RenameGroupAsync(Guid currentUserId, Guid groupId, string name, CancellationToken cancellationToken = default)
         {
-            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
-            if (group.IsDeleted)
-                throw new GroupNotFoundException();
+            var group = await GetGroupDetailsAsync(currentUserId, groupId, cancellationToken);
 
             group.SetName(name);
             await chatContext.UpdateAsync(group, cancellationToken);
             return group;
         }
 
-        public async Task<Group> SetGroupIconAsync(Guid groupId, string icon, CancellationToken cancellationToken = default)
+        public async Task<Group> SetGroupIconAsync(Guid currentUserId, Guid groupId, string icon, CancellationToken cancellationToken = default)
         {
-            var group = await GetByIdAsync(groupId, cancellationToken) ?? throw new GroupNotFoundException();
-            if (group.IsDeleted)
-                throw new GroupNotFoundException();
+            var group = await GetGroupDetailsAsync(currentUserId, groupId, cancellationToken);
 
             group.SetGroupIcon(icon);
             await chatContext.UpdateAsync(group, cancellationToken);

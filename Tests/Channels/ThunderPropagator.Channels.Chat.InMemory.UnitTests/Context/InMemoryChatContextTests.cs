@@ -227,7 +227,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory.Context
             var member = await users.RegisterAsync("joiner", "password", "Joiner", CancellationToken.None);
             var group = await groups.CreateAsync("Membership Group", member.Id, [], CancellationToken.None);
 
-            await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
+            await groups.AddUserToGroupAsync(member.Id, group.Id, member.Id, CancellationToken.None);
             var memberGroups = await users.GetUserGroupsAsync(member.Id, CancellationToken.None);
 
             Assert.Contains(memberGroups, g => g.Id == group.Id);
@@ -239,12 +239,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory.Context
             var (users, groups, _, _) = CreateServices();
             var member = await users.RegisterAsync("twice", "password", "Twice", CancellationToken.None);
             var group = await groups.CreateAsync("Duplicate Membership Group", member.Id, [], CancellationToken.None);
-            await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
+            await groups.AddUserToGroupAsync(member.Id, group.Id, member.Id, CancellationToken.None);
 
             // Group.AddUser has no in-memory duplicate check of its own (GroupUser doesn't override
             // Equals/GetHashCode) — the store's unique constraint is the only thing that prevents this.
             await Assert.ThrowsAsync<InMemoryUniqueConstraintException>(
-                () => groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None));
+                () => groups.AddUserToGroupAsync(member.Id, group.Id, member.Id, CancellationToken.None));
         }
 
         [Fact]

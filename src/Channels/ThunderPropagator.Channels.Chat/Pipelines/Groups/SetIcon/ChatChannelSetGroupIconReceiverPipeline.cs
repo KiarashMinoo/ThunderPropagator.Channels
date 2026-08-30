@@ -36,9 +36,8 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.SetIcon
             var setGroupIconRequest = context.Request.GetRequestContentFormData<ChatChannelSetGroupIconReceiverPipelineRequestDto>()!;
 
             var user = await userService.GetByIdAsync(currentUserId, cancellationToken) ?? throw new UserNotFoundException();
-            var group = await groupService.GetByIdAsync(setGroupIconRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
 
-            var newGroup = await groupService.SetGroupIconAsync(group.Id, setGroupIconRequest.Icon, cancellationToken);
+            var newGroup = await groupService.SetGroupIconAsync(currentUserId, setGroupIconRequest.GroupId, setGroupIconRequest.Icon, cancellationToken);
 
             //Send Added Message To User
             chatChannel.EmitMessage(new ChatChannelFeederMessage(
@@ -46,7 +45,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.SetIcon
             ));
 
             //Send Add Message To Group
-            var messages = await messageService.SendMessageToGroupAsync(currentUserId, group.Id, $"User {user.Name} changed group icon to {newGroup.GroupIcon}.", cancellationToken);
+            var messages = await messageService.SendMessageToGroupAsync(currentUserId, newGroup.Id, $"User {user.Name} changed group icon to {newGroup.GroupIcon}.", cancellationToken);
             await Task.WhenAll(messages.Select(message =>
             {
                 chatChannel.EmitMessage(new ChatChannelFeederMessage(message));

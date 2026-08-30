@@ -222,7 +222,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var member = await users.RegisterAsync($"joiner-{Guid.NewGuid():N}", "password", "Joiner", CancellationToken.None);
             var group = await groups.CreateAsync("Membership Group", member.Id, [], CancellationToken.None);
 
-            await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
+            await groups.AddUserToGroupAsync(member.Id, group.Id, member.Id, CancellationToken.None);
             var memberGroups = await users.GetUserGroupsAsync(member.Id, CancellationToken.None);
 
             Assert.Contains(memberGroups, g => g.Id == group.Id);
@@ -234,12 +234,12 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.EntityFrameworkCore
             var (users, groups, _, _) = CreateServices(fixture);
             var member = await users.RegisterAsync($"twice-{Guid.NewGuid():N}", "password", "Twice", CancellationToken.None);
             var group = await groups.CreateAsync("Duplicate Membership Group", member.Id, [], CancellationToken.None);
-            await groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None);
+            await groups.AddUserToGroupAsync(member.Id, group.Id, member.Id, CancellationToken.None);
 
             // Group.AddUser has no in-memory duplicate check of its own (see GroupUserConfiguration's
             // comment) — the unique index is the only thing that actually prevents this.
             // AddUserToGroupAsync saves immediately, so the second call itself is what throws.
-            await Assert.ThrowsAsync<DbUpdateException>(() => groups.AddUserToGroupAsync(group.Id, member.Id, CancellationToken.None));
+            await Assert.ThrowsAsync<DbUpdateException>(() => groups.AddUserToGroupAsync(member.Id, group.Id, member.Id, CancellationToken.None));
         }
 
         [Fact]
