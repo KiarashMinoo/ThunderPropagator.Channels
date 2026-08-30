@@ -457,11 +457,41 @@ namespace ThunderPropagator.Channels.Demo.Airport.Feeders
                         var min = f.IndexFaker * minuteFlag;
                         var max = min + minuteFlag;
                         var minutesToAdd = Random.Shared.Next(min, max);
-                        return minDeparture.Add(TimeSpan.FromMinutes(minutesToAdd));
+
+                        // Issue #25: minDeparture chains off the previous batch's own max Departure
+                        // every time this runs, so without normalizing back into a single day here, a
+                        // long-running feeder's Departure values would keep climbing past 24 hours
+                        // (showing a nonsensical "time of day" to subscribers) rather than staying a
+                        // real time-of-day value.
+                        var ticks = minDeparture.Add(TimeSpan.FromMinutes(minutesToAdd)).Ticks % TimeSpan.TicksPerDay;
+                        return TimeSpan.FromTicks(ticks);
                     })
                     .Generate(terminalGenerationCount)
                     .ToList())
                 .ToHashSet();
+        }
+
+        /// <summary>
+        /// Issue #25: <see cref="AirportDemoChannelFeederMessage.Departure"/> is only ever a
+        /// time-of-day, so a plain <c>to - from</c> subtraction breaks the instant one side crosses
+        /// midnight relative to the other (e.g. a 00:30 departure looks earlier than a 23:50 "now",
+        /// when it's actually ~40 minutes away rather than ~23 hours in the past). Returns the signed
+        /// difference from <paramref name="from"/> to <paramref name="to"/> along whichever direction
+        /// around the 24-hour clock is shorter — positive when <paramref name="to"/> is ahead,
+        /// negative when it's behind — which is well-defined as long as the two values are never more
+        /// than 12 hours apart on an actual calendar, true here since flights are only ever generated
+        /// within a few hours of "now".
+        /// </summary>
+        private static TimeSpan SignedWrappedDelta(TimeSpan from, TimeSpan to)
+        {
+            var ticks = (to - from).Ticks % TimeSpan.TicksPerDay;
+
+            if (ticks > TimeSpan.TicksPerDay / 2)
+                ticks -= TimeSpan.TicksPerDay;
+            else if (ticks < -TimeSpan.TicksPerDay / 2)
+                ticks += TimeSpan.TicksPerDay;
+
+            return TimeSpan.FromTicks(ticks);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<AirportDemoChannelFeederMessage>> ReceiveAsync(
@@ -472,8 +502,15 @@ namespace ThunderPropagator.Channels.Demo.Airport.Feeders
             if (Volatile.Read(ref _activeSubscriptions) <= 0)
                 yield break;
 
+            var now = DateTime.UtcNow.TimeOfDay;
+
+            // Issue #25: was `airport.Departure < DateTime.UtcNow.AddHours(-1).TimeOfDay`, a plain
+            // TimeSpan comparison that breaks the moment Departure and "an hour ago" fall on opposite
+            // sides of midnight (e.g. a 00:30 departure looks "before" 23:00 and gets removed as stale
+            // even though it's actually still ~1.5 hours away). SignedWrappedDelta's negative range is
+            // exactly "how long ago", midnight-safe.
             var flightsToRemove = _flights
-                .Where(airport => airport.Departure < DateTime.UtcNow.AddHours(-1).TimeOfDay)
+                .Where(airport => SignedWrappedDelta(now, airport.Departure) < TimeSpan.FromHours(-1))
                 .ToArray();
 
             if (flightsToRemove.Length > 0)
@@ -492,9 +529,13 @@ namespace ThunderPropagator.Channels.Demo.Airport.Feeders
 
             var faker = new Faker();
             var flag = faker.Random.Int(1, 100);
+            // Issue #25: was `(flight.Departure - DateTime.UtcNow.TimeOfDay).TotalHours > 3`, which
+            // goes deeply negative (wrongly excluding the flight) whenever Departure has already
+            // wrapped past midnight relative to "now". SignedWrappedDelta's positive range is exactly
+            // "how long until", midnight-safe.
             var flights = _flights
                 .Where(flight => flight.Status is not (Statuses.LandedOnTime or Statuses.LandedDelayed or Statuses.Cancelled))
-                .Where(flight => (flight.Departure - DateTime.UtcNow.TimeOfDay).TotalHours > 3)
+                .Where(flight => SignedWrappedDelta(now, flight.Departure).TotalHours > 3)
                 .ToArray();
 
             foreach (var flight in flights)
@@ -504,7 +545,9 @@ namespace ThunderPropagator.Channels.Demo.Airport.Feeders
                     case 23:
                         //Statuses.ScheduledDelayed
                         flight.Status = Statuses.ScheduledDelayed;
-                        flight.Departure = flight.Departure.Add(TimeSpan.FromMinutes(faker.Random.Int(30, 180)));
+                        // Normalized back into a single day (see GenerateAirports) so a delay pushing
+                        // past midnight doesn't leave Departure growing past 24 hours either.
+                        flight.Departure = TimeSpan.FromTicks(flight.Departure.Add(TimeSpan.FromMinutes(faker.Random.Int(30, 180))).Ticks % TimeSpan.TicksPerDay);
                         break;
                     case 42:
                         //Statuses.Cancelled
@@ -512,8 +555,10 @@ namespace ThunderPropagator.Channels.Demo.Airport.Feeders
                         break;
                     default:
                     {
-                        //Statuses.LandedOnTime | Statuses.LandedDelayed 
-                        if (flight.Departure < DateTime.UtcNow.TimeOfDay)
+                        //Statuses.LandedOnTime | Statuses.LandedDelayed
+                        // Issue #25: was `flight.Departure < DateTime.UtcNow.TimeOfDay`, the same
+                        // midnight-unsafe comparison as the removal filter above.
+                        if (SignedWrappedDelta(now, flight.Departure) < TimeSpan.Zero)
                         {
                             flight.Status = flight.Status == Statuses.ScheduledDelayed ? Statuses.LandedDelayed : Statuses.LandedOnTime;
                         }
