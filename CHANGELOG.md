@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.123] — 2026-08-30
+
+### 🚀 Features
+
+- Enable ChatChannelMetadata's transport-level authentication flag `(eb05f39)` — Kiarash Minoo
+
 ## [1.0.1-beta.122] — 2026-08-30
 
 ### 🐛 Bug Fixes

@@ -1,5 +1,5 @@
-## [1.0.1-beta.122] — 2026-08-30
+## [1.0.1-beta.123] — 2026-08-30
 
-### 🐛 Bug Fixes
+### 🚀 Features
 
-- Fix IDOR: require group membership before fanning out a group message `(6ce7eed)` — Kiarash Minoo
+- Enable ChatChannelMetadata's transport-level authentication flag `(eb05f39)` — Kiarash Minoo
