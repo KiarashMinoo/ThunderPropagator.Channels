@@ -20,11 +20,9 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors.Channel
 
         // ConnectionIds already consumed by a resolved session (as either player) — PeekRandomPlayer
         // excludes these so a subscriber who has already played is never handed out as a second player's
-        // own opponent again. A narrow, accepted race remains: two concurrent PlayWithHuman calls could
-        // both pick the same not-yet-recorded opponent before either call's own RecordSession runs: this
-        // module has no distributed/per-match lock, matching this codebase's own established demo-quality
-        // bar elsewhere (e.g. PortfolioDemoChannel's own search-then-mutate snapshot calls aren't atomic
-        // across the whole operation either).
+        // own opponent again. Issue #21: also doubles as the atomic reservation gate PeekRandomPlayer
+        // itself uses (via TryAdd) to select and claim a candidate in one step, so two concurrent
+        // PlayWithHuman calls can never both walk away with the same not-yet-recorded opponent.
         private readonly ConcurrentDictionary<string, byte> _matchedConnectionIds = new();
 
         public RockPaperScissorsChannel(IServiceProvider serviceProvider) : base(serviceProvider)
@@ -43,14 +41,29 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors.Channel
         /// fix: the original implementation could hand out an already-played subscriber as a second
         /// player's own opponent, indefinitely). <see langword="null"/> if nobody is currently eligible.
         /// </summary>
+        /// <remarks>
+        /// Issue #21: selection and reservation happen as one atomic step — the returned player's
+        /// ConnectionId is already added to <see cref="_matchedConnectionIds"/> by the time this
+        /// returns, via <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd"/> racing against any other
+        /// concurrent call. Candidates are shuffled and tried in order, falling through to the next one
+        /// if a concurrent caller wins the race for a given candidate first, so two simultaneous callers
+        /// can never both walk away with the same opponent.
+        /// </remarks>
         internal Subscription? PeekRandomPlayer(string? excludeConnectionId)
         {
             var candidates = Subscriptions.Subscriptions
                 .Where(subscription => subscription.ConnectionInfo.ConnectionId != excludeConnectionId
                     && !_matchedConnectionIds.ContainsKey(subscription.ConnectionInfo.ConnectionId))
+                .OrderBy(_ => Random.Shared.Next())
                 .ToArray();
 
-            return candidates.Length == 0 ? null : candidates[Random.Shared.Next(candidates.Length)];
+            foreach (var candidate in candidates)
+            {
+                if (_matchedConnectionIds.TryAdd(candidate.ConnectionInfo.ConnectionId, 0))
+                    return candidate;
+            }
+
+            return null;
         }
 
         /// <summary>Records a resolved match — issue #12's own scope, "keep a session for the game" — and marks both real (non-computer) players as no longer eligible for future matchmaking.</summary>
