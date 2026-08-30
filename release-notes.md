@@ -1,5 +1,5 @@
-## [1.0.1-beta.119] — 2026-08-30
+## [1.0.1-beta.120] — 2026-08-30
 
-### 🐛 Bug Fixes
+### 🚀 Features
 
-- Fix swapped DownStreamSize/DownStreamDuration metrics in ThroughputChannelFeeder `(9fe824c)` — Kiarash Minoo
+- Make AirportDemoChannelFeeder's departure comparisons midnight-safe `(e479a04)` — Kiarash Minoo

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.120] — 2026-08-30
+
+### 🚀 Features
+
+- Make AirportDemoChannelFeeder's departure comparisons midnight-safe `(e479a04)` — Kiarash Minoo
+
 ## [1.0.1-beta.119] — 2026-08-30
 
 ### 🐛 Bug Fixes
