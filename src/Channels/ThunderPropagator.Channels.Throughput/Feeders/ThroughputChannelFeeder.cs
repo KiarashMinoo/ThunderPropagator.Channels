@@ -95,12 +95,19 @@ namespace ThunderPropagator.Channels.Throughput.Feeders
             if (Volatile.Read(ref _activeSubscriptions) <= 0)
                 yield break;
 
+            // Issue #22: DownStreamSize and DownStreamDuration each read the other's collector —
+            // pushedMessageSizeMeasurementSnapshot (the size histogram) belongs to DownStreamSize, and
+            // feedersHandledDurationMeasurementSnapshot (the duration histogram) belongs to
+            // DownStreamDuration. Only the two snapshot variables are swapped; each field keeps its own
+            // existing aggregation (Average for the double-typed size field, Sum for the long-typed
+            // duration field) since Average's double result and Sum-of-longs' long result are what
+            // already matched each property's type without a cast.
             yield return new ThroughputChannelFeederMessage
             {
                 UpStreamHandled = feedersHandledMeasurementSnapshot?.Count ?? 0,
                 DownStreamHandled = pushedMessageMeasurementSnapshot?.Count ?? 0,
-                DownStreamSize = feedersHandledDurationMeasurementSnapshot?.Count > 0 ? feedersHandledDurationMeasurementSnapshot.Average(x => x.Value) : 0,
-                DownStreamDuration = pushedMessageSizeMeasurementSnapshot?.Count > 0 ? pushedMessageSizeMeasurementSnapshot.Sum(x => x.Value) : 0
+                DownStreamSize = pushedMessageSizeMeasurementSnapshot?.Count > 0 ? pushedMessageSizeMeasurementSnapshot.Average(x => x.Value) : 0,
+                DownStreamDuration = feedersHandledDurationMeasurementSnapshot?.Count > 0 ? feedersHandledDurationMeasurementSnapshot.Sum(x => x.Value) : 0
             };
         }
     }
