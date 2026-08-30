@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.119] — 2026-08-30
+
+### 🐛 Bug Fixes
+
+- Fix swapped DownStreamSize/DownStreamDuration metrics in ThroughputChannelFeeder `(9fe824c)` — Kiarash Minoo
+
 ## [1.0.1-beta.118] — 2026-08-30
 
 ### 🚀 Features
