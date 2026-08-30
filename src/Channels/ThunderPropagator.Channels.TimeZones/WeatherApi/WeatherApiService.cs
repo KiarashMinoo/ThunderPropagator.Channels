@@ -13,13 +13,15 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
 #endif
         class WeatherApiService
     {
-        // Instance-scoped (see #17): a static semaphore serializes every WeatherApiService instance
-        // in the process — including one constructed directly in a test, outside DI — rather than
-        // only concurrent calls through the single registered instance. WeatherApiService is
-        // registered as a singleton (see TimeZonesChannelExtensions.AddTimeZonesChannel), so this is
-        // behaviorally identical for that real usage; it only removes the unintended cross-instance
-        // coupling.
-        private readonly SemaphoreSlim _semaphore = new(1, 1);
+        // The single concurrency gate for calls to the upstream weather API (see #18): callers such
+        // as TimeZonesChannelFeeder issue many calls via Task.WhenAll rather than serially, so this
+        // is what actually bounds how many of them hit the upstream API at once. Instance-scoped
+        // (see #17) rather than static, since WeatherApiService is registered as a singleton anyway
+        // (TimeZonesChannelExtensions.AddTimeZonesChannel) — this only avoids unintended coupling
+        // between separately-constructed instances outside DI, e.g. in tests.
+        internal const int MaxConcurrentApiCalls = 10;
+
+        private readonly SemaphoreSlim _semaphore = new(MaxConcurrentApiCalls, MaxConcurrentApiCalls);
 
         private readonly ILogger<WeatherApiService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
