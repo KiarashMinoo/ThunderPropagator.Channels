@@ -1,5 +1,5 @@
-## [1.0.1-beta.117] — 2026-08-30
+## [1.0.1-beta.118] — 2026-08-30
 
 ### 🚀 Features
 
-- Use Interlocked.Exchange for _lastBytesReceived/_lastBytesSent `(e5de814)` — Kiarash Minoo
+- Make PeekRandomPlayer's opponent selection atomic with reservation `(52febb7)` — Kiarash Minoo

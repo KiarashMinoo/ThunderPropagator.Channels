@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.118] — 2026-08-30
+
+### 🚀 Features
+
+- Make PeekRandomPlayer's opponent selection atomic with reservation `(52febb7)` — Kiarash Minoo
+
 ## [1.0.1-beta.117] — 2026-08-30
 
 ### 🚀 Features
