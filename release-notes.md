@@ -1,5 +1,5 @@
-## [1.0.1-beta.123] — 2026-08-30
+## [1.0.1-beta.124] — 2026-08-30
 
 ### 🚀 Features
 
-- Enable ChatChannelMetadata's transport-level authentication flag `(eb05f39)` — Kiarash Minoo
+- Stop exposing full group membership through Groups/GetAll `(615e529)` — Kiarash Minoo
