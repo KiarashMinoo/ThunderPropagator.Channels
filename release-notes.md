@@ -1,5 +1,5 @@
-## [1.0.1-beta.121] — 2026-08-30
+## [1.0.1-beta.122] — 2026-08-30
 
 ### 🐛 Bug Fixes
 
-- Fix IDOR: require group membership before AddUser/RemoveUser/Rename/SetIcon `(0e6e984)` — Kiarash Minoo
+- Fix IDOR: require group membership before fanning out a group message `(6ce7eed)` — Kiarash Minoo

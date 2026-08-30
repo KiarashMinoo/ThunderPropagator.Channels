@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.122] — 2026-08-30
+
+### 🐛 Bug Fixes
+
+- Fix IDOR: require group membership before fanning out a group message `(6ce7eed)` — Kiarash Minoo
+
 ## [1.0.1-beta.121] — 2026-08-30
 
 ### 🐛 Bug Fixes
