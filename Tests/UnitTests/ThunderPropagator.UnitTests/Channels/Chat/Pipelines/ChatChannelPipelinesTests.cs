@@ -170,6 +170,22 @@
             Assert.True(type.IsNotPublic);
         }
 
+        // Issue #35: this DTO's Groups property used to be IReadOnlyCollection<Group>, exposing every
+        // member (via each Group's GroupUsers) of every group in the system to any authenticated
+        // caller. Now IReadOnlyCollection<ChatChannelGroupSummaryDto>, the same reduced projection
+        // #131 already built for the REST group-listing endpoint for the identical reason — a type
+        // check here is what actually proves the leak can't recur, since neither Group nor GroupUser
+        // is reachable through it any more.
+        [Fact]
+        public void ChatChannelGetGroupsReceiverPipelineResponseDto_GroupsProperty_NeverExposesRawGroupOrGroupUser()
+        {
+            var property = typeof(ThunderPropagator.Channels.Chat.Pipelines.Groups.GetAll.ChatChannelGetGroupsReceiverPipelineResponseDto)
+                .GetProperty(nameof(ThunderPropagator.Channels.Chat.Pipelines.Groups.GetAll.ChatChannelGetGroupsReceiverPipelineResponseDto.Groups))!;
+            var elementType = property.PropertyType.GetGenericArguments().Single();
+
+            Assert.Equal(typeof(ThunderPropagator.Channels.Chat.Endpoints.ChatChannelGroupSummaryDto), elementType);
+        }
+
         [Fact]
         public void ChatChannelJoinUserToGroupReceiverPipeline_IsInternal()
         {
