@@ -35,9 +35,8 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.UserLeave
             var userLeaveRequest = context.Request.GetRequestContentFormData<ChatChannelUserLeaveFromGroupReceiverPipelineRequestDto>()!;
 
             var user = await userService.GetByIdAsync(currentUserId, cancellationToken) ?? throw new UserNotFoundException();
-            var group = await groupService.GetByIdAsync(userLeaveRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
 
-            await groupService.RemoveUserFromGroupAsync(group.Id, user.Id, cancellationToken);
+            var group = await groupService.RemoveUserFromGroupAsync(currentUserId, userLeaveRequest.GroupId, user.Id, cancellationToken);
 
             //Send Added Message To User
             chatChannel.EmitMessage(new ChatChannelFeederMessage(

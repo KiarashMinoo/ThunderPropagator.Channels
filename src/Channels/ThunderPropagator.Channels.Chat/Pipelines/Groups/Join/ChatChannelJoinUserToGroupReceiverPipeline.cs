@@ -35,9 +35,8 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.Join
             var joinUserRequest = context.Request.GetRequestContentFormData<ChatChannelJoinUserToGroupReceiverPipelineRequestDto>()!;
 
             var user = await userService.GetByIdAsync(currentUserId, cancellationToken) ?? throw new UserNotFoundException();
-            var group = await groupService.GetByIdAsync(joinUserRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
 
-            await groupService.AddUserToGroupAsync(group.Id, user.Id, cancellationToken);
+            var group = await groupService.AddUserToGroupAsync(currentUserId, joinUserRequest.GroupId, user.Id, cancellationToken);
 
             //Send Added Message To User
             chatChannel.EmitMessage(new ChatChannelFeederMessage(

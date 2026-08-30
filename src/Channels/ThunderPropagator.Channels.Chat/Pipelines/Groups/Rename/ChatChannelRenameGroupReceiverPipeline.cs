@@ -36,12 +36,12 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.Rename
             var renameGroupRequest = context.Request.GetRequestContentFormData<ChatChannelRenameGroupReceiverPipelineRequestDto>()!;
 
             var user = await userService.GetByIdAsync(currentUserId, cancellationToken) ?? throw new UserNotFoundException();
-            var group = await groupService.GetByIdAsync(renameGroupRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
+            var group = await groupService.GetGroupDetailsAsync(currentUserId, renameGroupRequest.GroupId, cancellationToken);
             if (group.Name == renameGroupRequest.Name)
                 throw new InvalidOperationException("New group name must be different from existing group name");
 
             var oldGroupName = group.Name;
-            var newGroup = await groupService.RenameGroupAsync(group.Id, renameGroupRequest.Name, cancellationToken);
+            var newGroup = await groupService.RenameGroupAsync(currentUserId, group.Id, renameGroupRequest.Name, cancellationToken);
 
             //Send Added Message To User
             chatChannel.EmitMessage(new ChatChannelFeederMessage(

@@ -35,9 +35,8 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.RemoveUser
             var addUserRequest = context.Request.GetRequestContentFormData<ChatChannelRemoveUserToGroupReceiverPipelineRequestDto>()!;
 
             var user = await userService.GetByIdAsync(addUserRequest.UserId, cancellationToken) ?? throw new UserNotFoundException();
-            var group = await groupService.GetByIdAsync(addUserRequest.GroupId, cancellationToken) ?? throw new GroupNotFoundException();
 
-            await groupService.RemoveUserFromGroupAsync(group.Id, user.Id, cancellationToken);
+            var group = await groupService.RemoveUserFromGroupAsync(currentUserId, addUserRequest.GroupId, user.Id, cancellationToken);
 
             var sender = (await userService.GetByIdAsync(currentUserId, cancellationToken))!;
 
