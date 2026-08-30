@@ -173,5 +173,26 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
 
             Assert.Equal([nameof(ChatChannelFeederMessage.UserId)], subscribingKeyNames);
         }
+
+        // Issue #34: ChatChannelMetadata never called the framework's own SetChannelAuthentication,
+        // leaving its transport-level Authentication.IsEnabled at its false default. Chat's real
+        // authentication is entirely application-layer (see AuthenticatedChatChannelReceiverPipeline,
+        // #109), so AuthenticationType.None is correct here rather than Basic/OAuth2 — this only
+        // proves the flag itself is turned on, not that it changes any application-layer behavior.
+        [Fact]
+        public void Authentication_IsEnabled()
+        {
+            var channel = CreateChannel();
+
+            Assert.True(channel.Metadata.Authentication.IsEnabled);
+        }
+
+        [Fact]
+        public void Authentication_UsesNoneAsItsAuthenticationType()
+        {
+            var channel = CreateChannel();
+
+            Assert.Equal(AuthenticationType.None, channel.Metadata.Authentication.AuthenticationType);
+        }
     }
 }
