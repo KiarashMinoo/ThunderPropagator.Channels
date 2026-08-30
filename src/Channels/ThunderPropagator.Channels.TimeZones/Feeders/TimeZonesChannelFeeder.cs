@@ -54,9 +54,17 @@ namespace ThunderPropagator.Channels.TimeZones.Feeders
 
             var zoneLocations = Guard.Against.Null(TzdbDateTimeZoneSource.Default.ZoneLocations).ToArray();
 
-            foreach (var source in zoneLocations)
+            // Issued concurrently rather than one source at a time (see #18): with dozens of zone
+            // locations, awaiting each weather call serially made total push latency the sum of every
+            // individual call. WeatherApiService.MaxConcurrentApiCalls is the actual bound on how many
+            // of these run against the upstream API at once, so no separate limit is applied here.
+            var weathers = await Task.WhenAll(zoneLocations.Select(source =>
+                _weatherApiService.GetWeatherOne($"{source.Latitude},{source.Longitude}", cancellationToken)));
+
+            for (var sourceIndex = 0; sourceIndex < zoneLocations.Length; sourceIndex++)
             {
-                var weather = await _weatherApiService.GetWeatherOne($"{source.Latitude},{source.Longitude}", cancellationToken);
+                var source = zoneLocations[sourceIndex];
+                var weather = weathers[sourceIndex];
 
                 foreach (var target in zoneLocations)
                 {
