@@ -1,5 +1,5 @@
-## [1.0.1-beta.125] — 2026-08-31
+## [1.0.1-beta.126] — 2026-08-31
 
 ### 🐛 Bug Fixes
 
-- Fix IDOR: derive portfolio Key from the caller's own subscription `(42f48ed)` — Kiarash Minoo
+- Fix unconditional throw after a valid TicTacToe move `(0774cde)` — Kiarash Minoo
