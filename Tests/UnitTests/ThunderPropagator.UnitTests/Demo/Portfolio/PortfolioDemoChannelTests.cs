@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using ThunderPropagator.Channels.Demo.Portfolio.Channel;
 using ThunderPropagator.Channels.Demo.Portfolio.Configuration;
 using ThunderPropagator.Channels.Demo.Portfolio.Messages;
@@ -8,6 +12,38 @@ namespace ThunderPropagator.UnitTests.Demo.Portfolio
 {
     public class PortfolioDemoChannelTests
     {
+        private static PortfolioDemoChannel CreateChannel()
+        {
+            var serviceProvider = Substitute.For<IServiceProvider>();
+            serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
+            serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
+            serviceProvider.GetService(typeof(ILogger<PortfolioDemoChannel>)).Returns(NullLogger<PortfolioDemoChannel>.Instance);
+            serviceProvider.GetService(typeof(PortfolioDemoChannelConfiguration)).Returns(new PortfolioDemoChannelConfiguration());
+
+            var channel = new PortfolioDemoChannel(serviceProvider);
+            channel.Initialize(CancellationToken.None);
+
+            return channel;
+        }
+
+        // Issue #36: FindSubscribedKey is what Buy/Sell now use instead of trusting a caller-supplied
+        // Key. A connection with no active subscription (never subscribed, or already unsubscribed)
+        // must get null back, not some stale or default Key that could accidentally resolve to a real
+        // portfolio entry. The "found" path (a real subscription actually mapping to its own Key)
+        // isn't covered here: constructing a real Subscription needs the framework's own internal
+        // subscribe pipeline, whose constructor this project has no access to — the same limitation
+        // RockPaperScissorsComputerTests already documents for that module's own subscription-dependent
+        // paths.
+        [Fact]
+        public void FindSubscribedKey_ForAConnectionWithNoActiveSubscription_ReturnsNull()
+        {
+            var channel = CreateChannel();
+
+            var key = channel.FindSubscribedKey("unknown-connection");
+
+            Assert.Null(key);
+        }
+
         [Fact]
         public void PortfolioDemoChannel_IsPublic()
         {

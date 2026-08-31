@@ -48,6 +48,19 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
 
         internal static decimal GeneratePrice() => new Faker().Random.Decimal(1M, 100M);
 
+        /// <summary>
+        /// The subscribing <see cref="PortfolioDemoChannelFeederMessage.Key"/> <paramref name="connectionId"/>
+        /// is currently subscribed under, or <see langword="null"/> if it is not (or no longer)
+        /// subscribed to this channel. Issue #36's own fix: Buy/Sell resolve their target portfolio
+        /// entry through this rather than trusting a caller-supplied Key in the request body, so a
+        /// connection can only ever buy/sell against the position it subscribed to create, never an
+        /// arbitrary other subscriber's.
+        /// </summary>
+        internal string? FindSubscribedKey(string connectionId) =>
+            Subscriptions.Subscriptions
+                .FirstOrDefault(subscription => subscription.ConnectionInfo.ConnectionId == connectionId)
+                ?.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
+
         // Issue #14: Subscribe()/Unsubscribe() (which invoke these hooks) are synchronous,
         // non-awaitable base-class APIs with no async counterpart, and the only snapshot search
         // available is Task-returning — so the search and its follow-up work can't be awaited here
