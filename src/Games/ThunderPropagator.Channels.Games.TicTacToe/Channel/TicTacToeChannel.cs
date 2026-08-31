@@ -103,12 +103,27 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Channel
             if (_games.TryGetValue(sessionId, out var game))
             {
                 if (game.Player1.ConnectionId == connectionInfo.ConnectionId && game.Player1 is HumanPlayer player1)
+                {
                     player1.HumanMove(row, column);
-                else if (game.Player2.ConnectionId == connectionInfo.ConnectionId && game.Player2 is HumanPlayer player2)
+                    return;
+                }
+
+                // Player2 is null until a second player joins via StartGame, so this must be a
+                // null-conditional access — a stray Move call against a not-yet-started game would
+                // otherwise throw NullReferenceException instead of falling through to the
+                // KeyNotFoundException below.
+                if (game.Player2?.ConnectionId == connectionInfo.ConnectionId && game.Player2 is HumanPlayer player2)
+                {
                     player2.HumanMove(row, column);
+                    return;
+                }
             }
 
-            throw new KeyNotFoundException($"Game {sessionId} not found");
+            // Issue #37: this used to sit unconditionally after the lookup, so even a successful move
+            // above still threw immediately afterward. Also no longer echoes the caller-supplied
+            // sessionId, since once the throw only fires on an actual failure, its presence/absence
+            // becomes a real session-enumeration signal.
+            throw new KeyNotFoundException("Game not found");
         }
 
         private void GameOnBoardChanged(object? sender, BoardChangedEventArgs e)
