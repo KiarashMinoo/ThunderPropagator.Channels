@@ -58,8 +58,18 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
                         return;
                     }
 
+                    // Issue #36: Key is resolved from the caller's own subscription rather than
+                    // trusted from the request body, so a connection can only ever sell from the
+                    // portfolio position it subscribed to create, never another subscriber's.
+                    var key = ((PortfolioDemoChannel)channelInfo.Channel).FindSubscribedKey(context.WebSocketConnectionInfo.ConnectionId);
+                    if (key is null)
+                    {
+                        Logger.LogWarning("Rejected a sell request from a connection with no active portfolio subscription.");
+                        return;
+                    }
+
                     var snapshotEntries = await channelInfo.Channel
-                        .SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Keys[nameof(PortfolioDemoChannelFeederMessage.Key)]?.Equals(portfolioRequest.Key) == true &&
+                        .SearchSnapshotsAsync(snapshotEntry => snapshotEntry.Keys[nameof(PortfolioDemoChannelFeederMessage.Key)]?.Equals(key) == true &&
                                                                snapshotEntry.Keys[nameof(PortfolioDemoChannelFeederMessage.Stock)]?.Equals(portfolioRequest.Stock) == true,
                             0,
                             0,

@@ -9,12 +9,11 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines.Dtos
 #endif
         class PortfolioDemoChannelReceiverPipelineRequestDto : BindingDictionary<string, object>, IRequestContentFormCollection
     {
-        public required string Key
-        {
-            get => (string)this[nameof(Key)];
-            set => this[nameof(Key)] = value;
-        }
-
+        // Issue #36: Key used to be supplied here and trusted directly to search/mutate a snapshot
+        // entry, with no check tying it to the calling connection — any caller could buy/sell against
+        // any other subscriber's position just by knowing (or guessing) their Key. Buy/Sell now
+        // resolve the caller's own Key from PortfolioDemoChannel.FindSubscribedKey instead, so it's no
+        // longer part of the request at all.
         public required string Stock
         {
             get => (string)this[nameof(Stock)];
