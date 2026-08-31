@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           # ThunderPropagator.UnitTests.csproj targets net10.0 only (see its own <TargetFramework>) --
           # that's the sole SDK this job's dotnet test call needs, even though the VideoPlayer src
