@@ -1,5 +1,6 @@
-## [1.0.1-beta.126] — 2026-08-31
+## [1.0.1-beta.127] — 2026-08-31
 
-### 🐛 Bug Fixes
+### ⚙️ CI / Tooling
 
-- Fix unconditional throw after a valid TicTacToe move `(0774cde)` — Kiarash Minoo
+- Bump actions/setup-dotnet from 4 to 6 `(d97d1d8)` — dependabot[bot]
+- Bump actions/checkout from 4 to 7 `(3df50d1)` — dependabot[bot]
