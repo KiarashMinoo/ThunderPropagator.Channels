@@ -1,5 +1,5 @@
-## [1.0.1-beta.124] — 2026-08-30
+## [1.0.1-beta.125] — 2026-08-31
 
-### 🚀 Features
+### 🐛 Bug Fixes
 
-- Stop exposing full group membership through Groups/GetAll `(615e529)` — Kiarash Minoo
+- Fix IDOR: derive portfolio Key from the caller's own subscription `(42f48ed)` — Kiarash Minoo

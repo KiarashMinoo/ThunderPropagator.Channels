@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.125] — 2026-08-31
+
+### 🐛 Bug Fixes
+
+- Fix IDOR: derive portfolio Key from the caller's own subscription `(42f48ed)` — Kiarash Minoo
+
 ## [1.0.1-beta.124] — 2026-08-30
 
 ### 🚀 Features
