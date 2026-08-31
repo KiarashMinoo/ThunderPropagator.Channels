@@ -1,6 +1,5 @@
-## [1.0.1-beta.127] — 2026-08-31
+## [1.0.1-beta.128] — 2026-08-31
 
-### ⚙️ CI / Tooling
+### 🚀 Features
 
-- Bump actions/setup-dotnet from 4 to 6 `(d97d1d8)` — dependabot[bot]
-- Bump actions/checkout from 4 to 7 `(3df50d1)` — dependabot[bot]
+- Bound previously-unbounded Chat input fields, close WS message-blank gap `(9fe2c72)` — Kiarash Minoo
