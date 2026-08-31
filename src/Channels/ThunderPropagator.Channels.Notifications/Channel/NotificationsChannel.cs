@@ -78,7 +78,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
 #if !DEBUG
         sealed
 #endif
-        class NotificationsChannel<TNotificationsChannelConfiguration> : AbstractChannel<NotificationsChannelMetadata<TNotificationsChannelConfiguration>, TNotificationsChannelConfiguration>
+        partial class NotificationsChannel<TNotificationsChannelConfiguration> : AbstractChannel<NotificationsChannelMetadata<TNotificationsChannelConfiguration>, TNotificationsChannelConfiguration>
         where TNotificationsChannelConfiguration : AbstractChannelConfiguration, new()
     {
         private readonly CancellationToken _cancellationToken;
@@ -197,7 +197,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception, "Failed to send missed broadcasts to user {UserId} on channel {ChannelName}.", userId, Metadata.ChannelName);
+                Log.MissedBroadcastsSendFailed(Logger, exception, userId, Metadata.ChannelName);
             }
         }
 
@@ -214,7 +214,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
                 return;
 
             _ = emitTask.ContinueWith(
-                task => Logger.LogError(task.Exception, "Failed to emit message on channel {ChannelName}.", Metadata.ChannelName),
+                task => Log.MessageEmitFailed(Logger, task.Exception, Metadata.ChannelName),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
@@ -257,7 +257,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
         {
             if (!ChannelConfiguration.IsEnabled)
             {
-                Logger.LogWarning("Rejected message emission on channel {ChannelName} because the channel is disabled.", Metadata.ChannelName);
+                Log.MessageEmissionRejectedDisabled(Logger, Metadata.ChannelName);
                 throw new ChannelIsNotEnabledException();
             }
 
@@ -272,7 +272,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
                 // unlike the IsEnabled check above. Checked once here, before branching on UserId, so
                 // an already-expired broadcast never produces any per-recipient copies either (the
                 // copy constructor would otherwise propagate the same ExpiresAt to every copy).
-                Logger.LogInformation("Skipped emitting message {Id} on channel {ChannelName} because it is already expired.", notificationsChannelFeederMessage.Id, Metadata.ChannelName);
+                Log.MessageEmitSkippedExpired(Logger, notificationsChannelFeederMessage.Id, Metadata.ChannelName);
                 return;
             }
 
@@ -436,7 +436,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
 
             if (!ChannelConfiguration.IsEnabled)
             {
-                Logger.LogWarning("Rejected acknowledgement on channel {ChannelName} because the channel is disabled.", Metadata.ChannelName);
+                Log.AcknowledgementRejectedDisabled(Logger, Metadata.ChannelName);
                 throw new ChannelIsNotEnabledException();
             }
 
@@ -461,7 +461,7 @@ namespace ThunderPropagator.Channels.Notifications.Channel
 
                 await base.EmitMessageAsync(updatedMessage, cancellationToken).ConfigureAwait(false);
 
-                Logger.LogInformation("Acknowledged {State} for notification {Id} on channel {ChannelName}.", state, id, Metadata.ChannelName);
+                Log.NotificationAcknowledged(Logger, state, id, Metadata.ChannelName);
 
                 return mergedState;
             }
@@ -510,5 +510,34 @@ namespace ThunderPropagator.Channels.Notifications.Channel
         /// </summary>
         private bool IsExpired(DateTime? expiresAt)
             => expiresAt is { } value && value <= _timeProvider.GetUtcNow().UtcDateTime;
+
+        // Issue #39: LoggerMessage-generated methods for this channel's log call sites. EventIds
+        // 1201-1206 are this file's own block; no cross-file EventId registry exists yet in this repo.
+        private static partial class Log
+        {
+            /// <summary>Logs that sending missed broadcasts to a user failed.</summary>
+            [LoggerMessage(EventId = 1201, Level = LogLevel.Error, Message = "Failed to send missed broadcasts to user {UserId} on channel {ChannelName}.")]
+            public static partial void MissedBroadcastsSendFailed(ILogger logger, Exception exception, string userId, string channelName);
+
+            /// <summary>Logs that a fire-and-forget message emission faulted.</summary>
+            [LoggerMessage(EventId = 1202, Level = LogLevel.Error, Message = "Failed to emit message on channel {ChannelName}.")]
+            public static partial void MessageEmitFailed(ILogger logger, Exception? exception, string channelName);
+
+            /// <summary>Logs that a message emission was rejected because the channel is disabled.</summary>
+            [LoggerMessage(EventId = 1203, Level = LogLevel.Warning, Message = "Rejected message emission on channel {ChannelName} because the channel is disabled.")]
+            public static partial void MessageEmissionRejectedDisabled(ILogger logger, string channelName);
+
+            /// <summary>Logs that emitting an already-expired message was skipped.</summary>
+            [LoggerMessage(EventId = 1204, Level = LogLevel.Information, Message = "Skipped emitting message {Id} on channel {ChannelName} because it is already expired.")]
+            public static partial void MessageEmitSkippedExpired(ILogger logger, string id, string channelName);
+
+            /// <summary>Logs that an acknowledgement was rejected because the channel is disabled.</summary>
+            [LoggerMessage(EventId = 1205, Level = LogLevel.Warning, Message = "Rejected acknowledgement on channel {ChannelName} because the channel is disabled.")]
+            public static partial void AcknowledgementRejectedDisabled(ILogger logger, string channelName);
+
+            /// <summary>Logs that a notification's delivery state was acknowledged.</summary>
+            [LoggerMessage(EventId = 1206, Level = LogLevel.Information, Message = "Acknowledged {State} for notification {Id} on channel {ChannelName}.")]
+            public static partial void NotificationAcknowledged(ILogger logger, NotificationDeliveryState state, string id, string channelName);
+        }
     }
 }

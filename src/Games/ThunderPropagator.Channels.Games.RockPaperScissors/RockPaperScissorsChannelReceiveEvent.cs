@@ -9,7 +9,7 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
 #if !DEBUG
         sealed
 #endif
-        class RockPaperScissorsChannelReceiveEvent : AbstractReceiveEvent<RockPaperScissorsChannel>
+        partial class RockPaperScissorsChannelReceiveEvent : AbstractReceiveEvent<RockPaperScissorsChannel>
     {
         private readonly RockPaperScissorsComputer _rockPaperScissorsComputer;
 
@@ -42,10 +42,19 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "RockPaperScissorsChannelReceiveEvent failed while processing connection {ConnectionId}.", context.Response.ConnectionId);
+                Log.SubscriptionHandlingFailed(Logger, ex, context.Response.ConnectionId);
             }
 
             return Task.CompletedTask;
+        }
+
+        // Issue #39: LoggerMessage-generated method for this event's log call site. EventId 3001 is
+        // this file's own block; no cross-file EventId registry exists yet in this repo.
+        private static partial class Log
+        {
+            /// <summary>Logs that handling a connection's subscription failed.</summary>
+            [LoggerMessage(EventId = 3001, Level = LogLevel.Error, Message = "RockPaperScissorsChannelReceiveEvent failed while processing connection {ConnectionId}.")]
+            public static partial void SubscriptionHandlingFailed(ILogger logger, Exception exception, string connectionId);
         }
     }
 }

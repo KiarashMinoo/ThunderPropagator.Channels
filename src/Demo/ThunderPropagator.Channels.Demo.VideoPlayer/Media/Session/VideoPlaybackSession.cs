@@ -95,7 +95,7 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
     /// generations), so a seek, source change, epoch change, or session removal resets/disposes audio
     /// work exactly as coherently as it already does for video — #224's own AC.
     /// </remarks>
-    public sealed class VideoPlaybackSession : IAsyncDisposable
+    public sealed partial class VideoPlaybackSession : IAsyncDisposable
     {
         private readonly Func<IVideoFrameSource> _sourceFactory;
         private readonly Func<IAudioFrameSource>? _audioSourceFactory;
@@ -581,7 +581,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                 // interpolate VideoSource.Location (only a generic FFmpeg error description), so ex.Message
                 // is safe to log verbatim here without any extra scrubbing.
                 _telemetry?.RecordSessionFailure("open");
-                _logger?.LogError(ex, "VideoPlaybackSession {SessionId} failed to open a source for epoch {Epoch}", SessionId, myEpoch);
+                if (_logger is not null)
+                    Log.SourceOpenFailed(_logger, ex, SessionId, myEpoch);
 
                 await _lifecycleLock.WaitAsync().ConfigureAwait(false);
                 try
@@ -808,8 +809,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
             var previous = _state;
             _state = state;
 
-            if (previous != state)
-                _logger?.LogInformation("VideoPlaybackSession {SessionId} transitioned from {PreviousState} to {State}", SessionId, previous, state);
+            if (previous != state && _logger is not null)
+                Log.StateTransitioned(_logger, SessionId, previous, state);
         }
 
         private async Task RunDecodeLoopAsync(Generation generation, TimeSpan startPosition, CancellationToken token)
@@ -1148,7 +1149,8 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                     // See SwitchGenerationAsync's own catch block for why logging `fault` verbatim here
                     // never leaks a source URL/path.
                     _telemetry?.RecordSessionFailure("playback");
-                    _logger?.LogError(fault, "VideoPlaybackSession {SessionId} faulted at epoch {Epoch}", SessionId, generation.Epoch);
+                    if (_logger is not null)
+                        Log.SessionFaulted(_logger, fault, SessionId, generation.Epoch);
                 }
                 else
                 {
@@ -1230,6 +1232,25 @@ namespace ThunderPropagator.Channels.Demo.VideoPlayer.Media.Session
                     await _cleanupCompleted.Task.ConfigureAwait(false);
                 }
             }
+        }
+
+        // Issue #39: LoggerMessage-generated methods for this session's log call sites. Plain static
+        // methods, not extension methods — a nested class can't declare extension methods (CS1109) —
+        // so call sites null-check `_logger` explicitly rather than using `_logger?.`. EventIds
+        // 2301-2303 are this file's own block; no cross-file EventId registry exists yet in this repo.
+        private static partial class Log
+        {
+            /// <summary>Logs that opening a source for an epoch failed.</summary>
+            [LoggerMessage(EventId = 2301, Level = LogLevel.Error, Message = "VideoPlaybackSession {SessionId} failed to open a source for epoch {Epoch}")]
+            public static partial void SourceOpenFailed(ILogger logger, Exception exception, string sessionId, int epoch);
+
+            /// <summary>Logs a session's play-state transition.</summary>
+            [LoggerMessage(EventId = 2302, Level = LogLevel.Information, Message = "VideoPlaybackSession {SessionId} transitioned from {PreviousState} to {State}")]
+            public static partial void StateTransitioned(ILogger logger, string sessionId, PlayState previousState, PlayState state);
+
+            /// <summary>Logs that a session faulted at a given epoch.</summary>
+            [LoggerMessage(EventId = 2303, Level = LogLevel.Error, Message = "VideoPlaybackSession {SessionId} faulted at epoch {Epoch}")]
+            public static partial void SessionFaulted(ILogger logger, Exception? exception, string sessionId, int epoch);
         }
     }
 }

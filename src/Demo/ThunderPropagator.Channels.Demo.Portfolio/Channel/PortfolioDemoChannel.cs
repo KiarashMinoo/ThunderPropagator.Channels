@@ -17,7 +17,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
 #if !DEBUG
         sealed
 #endif
-        class PortfolioDemoChannel : AbstractChannel<PortfolioDemoChannelMetadata, PortfolioDemoChannelConfiguration>
+        partial class PortfolioDemoChannel : AbstractChannel<PortfolioDemoChannelMetadata, PortfolioDemoChannelConfiguration>
     {
         public const string PortfolioDemo = nameof(PortfolioDemo);
         public const string PortfolioDemoItems = nameof(PortfolioDemoItems);
@@ -40,7 +40,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
             // token it carries — so graceful shutdown (the loop's while condition/Task.Delay observing
             // _cancellationToken) never logs an error here.
             _ = SimulateAsync().ContinueWith(
-                task => _logger.LogError(task.Exception, "PortfolioDemoChannel's background simulation loop faulted and stopped running."),
+                task => Log.SimulationLoopFaulted(_logger, task.Exception),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
@@ -77,7 +77,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
             var key = subscription.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
 
             _ = HandleSubscriptionAddedAsync(key).ContinueWith(
-                task => _logger.LogError(task.Exception, "Failed to handle new subscription for key {Key} on channel {ChannelName}.", key, Metadata.ChannelName),
+                task => Log.SubscriptionAddedFailed(_logger, task.Exception, key, Metadata.ChannelName),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
@@ -90,7 +90,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
             var key = subscription.SubscribedPrograms.SubscribedKeys[nameof(PortfolioDemoChannelFeederMessage.Key)];
 
             _ = HandleSubscriptionRemovedAsync(key).ContinueWith(
-                task => _logger.LogError(task.Exception, "Failed to handle subscription removal for key {Key} on channel {ChannelName}.", key, Metadata.ChannelName),
+                task => Log.SubscriptionRemovedFailed(_logger, task.Exception, key, Metadata.ChannelName),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
@@ -162,6 +162,23 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Channel
                     await EmitMessageAsync(portfolioDemoChannelFeederMessage, _cancellationToken);
                 }
             }
+        }
+
+        // Issue #39: LoggerMessage-generated methods for this channel's log call sites. EventIds
+        // 2201-2203 are this file's own block; no cross-file EventId registry exists yet in this repo.
+        private static partial class Log
+        {
+            /// <summary>Logs that the background simulation loop faulted and stopped running.</summary>
+            [LoggerMessage(EventId = 2201, Level = LogLevel.Error, Message = "PortfolioDemoChannel's background simulation loop faulted and stopped running.")]
+            public static partial void SimulationLoopFaulted(ILogger logger, Exception? exception);
+
+            /// <summary>Logs that handling a new subscription for a key failed.</summary>
+            [LoggerMessage(EventId = 2202, Level = LogLevel.Error, Message = "Failed to handle new subscription for key {Key} on channel {ChannelName}.")]
+            public static partial void SubscriptionAddedFailed(ILogger logger, Exception? exception, string? key, string channelName);
+
+            /// <summary>Logs that handling a subscription removal for a key failed.</summary>
+            [LoggerMessage(EventId = 2203, Level = LogLevel.Error, Message = "Failed to handle subscription removal for key {Key} on channel {ChannelName}.")]
+            public static partial void SubscriptionRemovedFailed(ILogger logger, Exception? exception, string? key, string channelName);
         }
     }
 }
