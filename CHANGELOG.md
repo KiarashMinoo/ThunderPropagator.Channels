@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.129] — 2026-08-31
+
+### 🚀 Features
+
+- Migrate direct ILogger calls to LoggerMessageAttribute source-generated logging `(1b257a3)` — Kiarash Minoo
+
 ## [1.0.1-beta.128] — 2026-08-31
 
 ### 🚀 Features
