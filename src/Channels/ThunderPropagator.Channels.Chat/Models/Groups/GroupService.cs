@@ -75,6 +75,12 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
             if (string.IsNullOrWhiteSpace(name))
                 throw new InvalidGroupCreateRequestException("Name cannot be empty.");
 
+            // Issue #38: unbounded before this — a group name of arbitrary size was accepted and
+            // persisted as-is, the same unbounded-input gap MaxMessageLength (#141) already closed
+            // for message Body.
+            if (name.Length > configuration.MaxGroupNameLength)
+                throw new InvalidGroupCreateRequestException($"Name must not exceed {configuration.MaxGroupNameLength} characters (was {name.Length}).");
+
             var memberIds = users.Distinct().ToArray();
 
             if (memberIds.Length > configuration.MaxGroupMembers)
@@ -135,8 +141,19 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
             return group;
         }
 
+        // Issue #38: unlike CreateAsync, this used to enforce no bound on name at all — the caller's
+        // string reached Group.SetName directly, which only rejects null/whitespace (via a raw
+        // ArgumentException, not this domain's usual BadRequest-mapped exception shape). Applying the
+        // same two checks CreateAsync already enforces keeps rename and create consistent with each
+        // other and gives a caller the same friendly error contract for either.
         public async Task<Group> RenameGroupAsync(Guid currentUserId, Guid groupId, string name, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidGroupCreateRequestException("Name cannot be empty.");
+
+            if (name.Length > configuration.MaxGroupNameLength)
+                throw new InvalidGroupCreateRequestException($"Name must not exceed {configuration.MaxGroupNameLength} characters (was {name.Length}).");
+
             var group = await GetGroupDetailsAsync(currentUserId, groupId, cancellationToken);
 
             group.SetName(name);
@@ -144,8 +161,14 @@ namespace ThunderPropagator.Channels.Chat.Models.Groups
             return group;
         }
 
+        // Issue #38: icon was previously unbounded and unvalidated — any length string was accepted
+        // and persisted as-is. Unlike Name, an empty icon is a legitimate "clear the icon" request (the
+        // domain's GroupIcon is nullable), so this only caps length, it doesn't require non-empty.
         public async Task<Group> SetGroupIconAsync(Guid currentUserId, Guid groupId, string icon, CancellationToken cancellationToken = default)
         {
+            if (icon.Length > configuration.MaxGroupIconLength)
+                throw new InvalidGroupIconRequestException($"Icon must not exceed {configuration.MaxGroupIconLength} characters (was {icon.Length}).");
+
             var group = await GetGroupDetailsAsync(currentUserId, groupId, cancellationToken);
 
             group.SetGroupIcon(icon);

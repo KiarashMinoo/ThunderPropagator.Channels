@@ -64,6 +64,29 @@ namespace ThunderPropagator.Channels.Chat.Configuration
         // this setting existed, so an unconfigured consumer sees no behavior change.
         public bool AllowGuestRegister { get; set; } = true;
 
+        // Issue #38: bounds for the free-text fields GroupService/UserService accept but, before this
+        // issue, never capped — an unbounded group/display name, bio, avatar, or icon is an unbounded
+        // per-record storage/emit cost the same way MaxMessageLength (#141) already bounds a message
+        // Body. Values are generous defaults for their field, not policy; a consumer can widen or
+        // narrow any of them via the channelConfigurator callback AddChatChannel already accepts.
+        public int MaxGroupNameLength { get; set; } = 100;
+
+        public int MaxUserNameLength { get; set; } = 50;
+
+        public int MaxDisplayNameLength { get; set; } = 100;
+
+        public int MaxBioLength { get; set; } = 500;
+
+        public int MaxAvatarLength { get; set; } = 2048;
+
+        public int MaxGroupIconLength { get; set; } = 2048;
+
+        // Issue #38: caps RegisterAsync's password parameter before it reaches IPasswordHasher —
+        // guards against a caller submitting a pathologically long password purely to inflate hashing
+        // cost (a password-hashing-cost DoS), not a usability limit. 128 comfortably exceeds any
+        // legitimate passphrase.
+        public int MaxPasswordLength { get; set; } = 128;
+
         // Issue #141: called once by AddChatChannel immediately after the consumer's
         // channelConfigurator callback runs, so a misconfigured value fails host startup with a
         // property-specific message rather than surfacing later as a confusing failure the first
@@ -78,6 +101,27 @@ namespace ThunderPropagator.Channels.Chat.Configuration
 
             if (MessageHistoryPageSize < 1 || MessageHistoryPageSize > MessageService.MaxPageSize)
                 throw new ArgumentOutOfRangeException(nameof(MessageHistoryPageSize), MessageHistoryPageSize, $"{nameof(MessageHistoryPageSize)} must be between 1 and {MessageService.MaxPageSize}.");
+
+            if (MaxGroupNameLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxGroupNameLength), MaxGroupNameLength, $"{nameof(MaxGroupNameLength)} must be at least 1.");
+
+            if (MaxUserNameLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxUserNameLength), MaxUserNameLength, $"{nameof(MaxUserNameLength)} must be at least 1.");
+
+            if (MaxDisplayNameLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxDisplayNameLength), MaxDisplayNameLength, $"{nameof(MaxDisplayNameLength)} must be at least 1.");
+
+            if (MaxBioLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxBioLength), MaxBioLength, $"{nameof(MaxBioLength)} must be at least 1.");
+
+            if (MaxAvatarLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxAvatarLength), MaxAvatarLength, $"{nameof(MaxAvatarLength)} must be at least 1.");
+
+            if (MaxGroupIconLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxGroupIconLength), MaxGroupIconLength, $"{nameof(MaxGroupIconLength)} must be at least 1.");
+
+            if (MaxPasswordLength < 1)
+                throw new ArgumentOutOfRangeException(nameof(MaxPasswordLength), MaxPasswordLength, $"{nameof(MaxPasswordLength)} must be at least 1.");
         }
     }
 }

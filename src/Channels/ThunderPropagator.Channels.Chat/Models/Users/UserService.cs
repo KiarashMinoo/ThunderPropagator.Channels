@@ -37,6 +37,30 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             if (!configuration.AllowGuestRegister)
                 throw new GuestRegistrationDisabledException();
 
+            // Issue #38: previously unvalidated here — an empty/over-length username or display name
+            // reached User's constructor (which only rejects null/whitespace, via a raw
+            // ArgumentException rather than this domain's usual BadRequest-mapped exception shape),
+            // and an empty or arbitrarily long password reached IPasswordHasher directly, hashing
+            // either a blank credential or a pathologically long one with no rejection. Checked before
+            // the uniqueness lookup, same reasoning as the AllowGuestRegister check above.
+            if (string.IsNullOrWhiteSpace(username))
+                throw new InvalidUserRegistrationRequestException("Username cannot be empty.");
+
+            if (username.Length > configuration.MaxUserNameLength)
+                throw new InvalidUserRegistrationRequestException($"Username must not exceed {configuration.MaxUserNameLength} characters (was {username.Length}).");
+
+            if (string.IsNullOrWhiteSpace(password))
+                throw new InvalidUserRegistrationRequestException("Password cannot be empty.");
+
+            if (password.Length > configuration.MaxPasswordLength)
+                throw new InvalidUserRegistrationRequestException($"Password must not exceed {configuration.MaxPasswordLength} characters.");
+
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidUserRegistrationRequestException("Name cannot be empty.");
+
+            if (name.Length > configuration.MaxDisplayNameLength)
+                throw new InvalidUserRegistrationRequestException($"Name must not exceed {configuration.MaxDisplayNameLength} characters (was {name.Length}).");
+
             var dbUser = await GetByUsernameAsync(username, cancellationToken);
             if (dbUser is not null)
                 throw new InvalidOperationException("Username already exists");
@@ -82,8 +106,14 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
         public Task<IReadOnlyCollection<User>> GetUserContactsAsync(Guid id, CancellationToken cancellationToken = default)
             => chatContext.GetContactsAsync(id, cancellationToken);
 
+        // Issue #38: bio was previously unbounded — any length string was accepted and persisted
+        // as-is. Unlike SetNameAsync's name, an empty bio is a legitimate "clear my bio" request (the
+        // domain's Bio is nullable), so this only caps length, it doesn't require non-empty.
         public async Task<User> UpdateAsync(Guid userId, string bio, DateOnly? birthDate, CancellationToken cancellationToken = default)
         {
+            if (bio.Length > configuration.MaxBioLength)
+                throw new InvalidUserProfileRequestException($"Bio must not exceed {configuration.MaxBioLength} characters (was {bio.Length}).");
+
             var user = await chatContext.GetAsync<User, Guid>(userId, cancellationToken: cancellationToken) ?? throw new UserNotFoundException();
 
             user.SetBio(bio);
@@ -95,8 +125,17 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             return user;
         }
 
+        // Issue #38: previously delegated straight to User.SetName, which only rejects
+        // null/whitespace (via a raw ArgumentException) and enforces no length bound at all — the same
+        // gap CreateAsync/RenameGroupAsync had for group names before this issue.
         public async Task SetNameAsync(Guid userId, string name, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidUserProfileRequestException("Name cannot be empty.");
+
+            if (name.Length > configuration.MaxDisplayNameLength)
+                throw new InvalidUserProfileRequestException($"Name must not exceed {configuration.MaxDisplayNameLength} characters (was {name.Length}).");
+
             var user = await chatContext.GetAsync<User, Guid>(userId, cancellationToken: cancellationToken) ?? throw new UserNotFoundException();
 
             user.SetName(name);
@@ -104,8 +143,14 @@ namespace ThunderPropagator.Channels.Chat.Models.Users
             await chatContext.UpdateAsync(user, cancellationToken);
         }
 
+        // Issue #38: avatar was previously unbounded and unvalidated, the same gap as GroupService's
+        // SetGroupIconAsync — an empty avatar remains a legitimate "clear my avatar" request (Avatar is
+        // nullable), so this only caps length.
         public async Task SetAvatarAsync(Guid userId, string avatar, CancellationToken cancellationToken = default)
         {
+            if (avatar.Length > configuration.MaxAvatarLength)
+                throw new InvalidUserProfileRequestException($"Avatar must not exceed {configuration.MaxAvatarLength} characters (was {avatar.Length}).");
+
             var user = await chatContext.GetAsync<User, Guid>(userId, cancellationToken: cancellationToken) ?? throw new UserNotFoundException();
 
             user.SetAvatar(avatar);

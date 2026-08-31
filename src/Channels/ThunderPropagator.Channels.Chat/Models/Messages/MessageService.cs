@@ -215,9 +215,24 @@ namespace ThunderPropagator.Channels.Chat.Models.Messages
         // both the direct and group send paths (and, by extension, both the REST SendMessageAsync
         // endpoint and the WebSocket Messages/Send pipeline, which call these same methods) enforce
         // MaxMessageLength identically rather than each transport re-implementing it.
+        //
+        // Issue #38: also rejects a null/blank body. ChatChannelEndpoints.SendMessageAsync (REST) had
+        // its own separate IsNullOrWhiteSpace(request.Body) pre-check, but the WebSocket Messages/Send
+        // pipeline calls straight into SendMessageAsync/SendMessageToGroupAsync with no equivalent
+        // guard — a transport-parity gap, since a WS caller could send a blank message a REST caller
+        // never could. Enforcing it here, in the one method both send paths already share for
+        // MaxMessageLength, closes that gap for both transports at once rather than duplicating a
+        // second check into the pipeline. REST's own pre-check is now redundant but harmless (its
+        // "Body must not be empty." response fires first; this method's own
+        // InvalidMessageSendException, for any caller that reaches it, is already caught by that same
+        // endpoint's catch block and mapped to an equivalent ValidationProblem) — left in place rather
+        // than removed, to keep this change scoped to closing the WS gap.
         private void ValidateBodyLength(string body)
         {
-            if (body is not null && body.Length > configuration.MaxMessageLength)
+            if (string.IsNullOrWhiteSpace(body))
+                throw new InvalidMessageSendException("Body cannot be empty.");
+
+            if (body.Length > configuration.MaxMessageLength)
                 throw new InvalidMessageSendException($"Body must not exceed {configuration.MaxMessageLength} characters (was {body.Length}).");
         }
     }
