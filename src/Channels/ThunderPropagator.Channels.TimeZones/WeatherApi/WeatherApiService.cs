@@ -11,7 +11,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
 #if !DEBUG
         sealed
 #endif
-        class WeatherApiService
+        partial class WeatherApiService
     {
         // The single concurrency gate for calls to the upstream weather API (see #18): callers such
         // as TimeZonesChannelFeeder issue many calls via Task.WhenAll rather than serially, so this
@@ -49,7 +49,7 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Weather API call failed: {Message}", ex.Message);
+                Log.WeatherApiCallFailed(_logger, ex, ex.Message);
                 throw;
             }
             finally
@@ -74,13 +74,27 @@ namespace ThunderPropagator.Channels.TimeZones.WeatherApi
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Weather Bulk API call failed: {Message}", ex.Message);
+                Log.WeatherBulkApiCallFailed(_logger, ex, ex.Message);
                 throw;
             }
             finally
             {
                 _semaphore.Release();
             }
+        }
+
+        // Issue #39: LoggerMessage-generated methods for this class's log call sites — allocation-free
+        // and compile-time validated, replacing direct ILogger extension-method calls. EventIds 1001-1002
+        // are this file's own block; no cross-file EventId registry exists yet in this repo.
+        private static partial class Log
+        {
+            /// <summary>Logs that a single-location weather API call failed.</summary>
+            [LoggerMessage(EventId = 1001, Level = LogLevel.Error, Message = "Weather API call failed: {Message}")]
+            public static partial void WeatherApiCallFailed(ILogger logger, Exception exception, string message);
+
+            /// <summary>Logs that a bulk weather API call failed.</summary>
+            [LoggerMessage(EventId = 1002, Level = LogLevel.Error, Message = "Weather Bulk API call failed: {Message}")]
+            public static partial void WeatherBulkApiCallFailed(ILogger logger, Exception exception, string message);
         }
     }
 }

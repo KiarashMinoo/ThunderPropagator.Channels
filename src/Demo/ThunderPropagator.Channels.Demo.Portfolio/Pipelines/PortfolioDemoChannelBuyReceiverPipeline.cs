@@ -20,7 +20,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
 #if !DEBUG
         sealed
 #endif
-        class PortfolioDemoChannelBuyReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<PortfolioDemoChannel>(loggerFactory)
+        partial class PortfolioDemoChannelBuyReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<PortfolioDemoChannel>(loggerFactory)
     {
         private Counter<long>? _counter;
 
@@ -47,13 +47,13 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
                     var portfolioRequest = context.Request.GetRequestContentFormData<PortfolioDemoChannelReceiverPipelineRequestDto>()!;
                     if (!portfolioRequest.IsBuy)
                     {
-                        Logger.LogWarning("The request content form is not buy");
+                        Log.RequestFormNotBuy(Logger);
                         return;
                     }
 
                     if (portfolioRequest.Quantity <= 0)
                     {
-                        Logger.LogWarning("The quantity of portfolio request is zero or negative.");
+                        Log.QuantityNotPositive(Logger);
                         return;
                     }
 
@@ -63,7 +63,7 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
                     var key = ((PortfolioDemoChannel)channelInfo.Channel).FindSubscribedKey(context.WebSocketConnectionInfo.ConnectionId);
                     if (key is null)
                     {
-                        Logger.LogWarning("Rejected a buy request from a connection with no active portfolio subscription.");
+                        Log.RejectedBuyNoSubscription(Logger);
                         return;
                     }
 
@@ -116,6 +116,23 @@ namespace ThunderPropagator.Channels.Demo.Portfolio.Pipelines
             {
                 activity?.SetStatus(ActivityStatusCode.Ok);
             }
+        }
+
+        // Issue #39: LoggerMessage-generated methods for this pipeline's log call sites. EventIds
+        // 2001-2003 are this file's own block; no cross-file EventId registry exists yet in this repo.
+        private static partial class Log
+        {
+            /// <summary>Logs that a request routed to the Buy pipeline was not itself a buy request.</summary>
+            [LoggerMessage(EventId = 2001, Level = LogLevel.Warning, Message = "The request content form is not buy")]
+            public static partial void RequestFormNotBuy(ILogger logger);
+
+            /// <summary>Logs that a buy request's quantity was zero or negative.</summary>
+            [LoggerMessage(EventId = 2002, Level = LogLevel.Warning, Message = "The quantity of portfolio request is zero or negative.")]
+            public static partial void QuantityNotPositive(ILogger logger);
+
+            /// <summary>Logs that a buy request was rejected because its connection has no active portfolio subscription.</summary>
+            [LoggerMessage(EventId = 2003, Level = LogLevel.Warning, Message = "Rejected a buy request from a connection with no active portfolio subscription.")]
+            public static partial void RejectedBuyNoSubscription(ILogger logger);
         }
     }
 }
