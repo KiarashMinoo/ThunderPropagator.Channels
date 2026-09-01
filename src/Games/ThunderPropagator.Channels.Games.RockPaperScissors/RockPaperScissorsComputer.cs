@@ -64,7 +64,7 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
         /// <paramref name="connectionId"/> is not (or no longer) a subscriber — e.g. a receive event
         /// racing a near-simultaneous unsubscribe.
         /// </summary>
-        public void HandleSubscription(string connectionId)
+        public async Task HandleSubscriptionAsync(string connectionId, CancellationToken cancellationToken = default)
         {
             var subscription = _channel.FindSubscription(connectionId);
             if (subscription is null)
@@ -73,24 +73,24 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
             var player = new Player(subscription);
 
             if (player.RequestedOpponent == PlayerType.Computer)
-                PlayWithComputer(player);
+                await PlayWithComputerAsync(player, cancellationToken);
             else
-                PlayWithHuman(player);
+                await PlayWithHumanAsync(player, cancellationToken);
         }
 
-        internal void PlayWithComputer(Player player) =>
-            Play(player, new Player(new Person().FullName, PlayerType.Computer, Move()));
+        internal Task PlayWithComputerAsync(Player player, CancellationToken cancellationToken = default) =>
+            PlayAsync(player, new Player(new Person().FullName, PlayerType.Computer, Move()), cancellationToken);
 
-        internal void PlayWithHuman(Player player)
+        internal async Task PlayWithHumanAsync(Player player, CancellationToken cancellationToken = default)
         {
-            var opponentSubscription = _channel.PeekRandomPlayer(player.Subscription?.ConnectionInfo.ConnectionId);
+            var opponentSubscription = await _channel.PeekRandomPlayerAsync(player.Subscription?.ConnectionInfo.ConnectionId, cancellationToken);
             if (opponentSubscription is null)
                 return;
 
-            Play(player, new Player(opponentSubscription));
+            await PlayAsync(player, new Player(opponentSubscription), cancellationToken);
         }
 
-        private void Play(Player firstPlayer, Player secondPlayer)
+        private async Task PlayAsync(Player firstPlayer, Player secondPlayer, CancellationToken cancellationToken)
         {
             // Issue #12's own fix: this must call the RPS-aware static CompareTo above, not
             // firstPlayer.Move.CompareTo(secondPlayer.Move) (the original code's own call, which resolves
@@ -98,7 +98,7 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
             // and has nothing to do with who actually wins a round).
             var winningValue = CompareTo(firstPlayer.Move, secondPlayer.Move);
 
-            _channel.RecordSession(firstPlayer, secondPlayer);
+            await _channel.RecordSessionAsync(firstPlayer, secondPlayer, cancellationToken);
 
             SendPlayResponse(firstPlayer, secondPlayer, winningValue == -1, winningValue == 0);
 

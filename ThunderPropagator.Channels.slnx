@@ -106,6 +106,21 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="src/Games/ThunderPropagator.Channels.Games.RockPaperScissors.EntityFrameworkCore/ThunderPropagator.Channels.Games.RockPaperScissors.EntityFrameworkCore.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="src/Games/ThunderPropagator.Channels.Games.RockPaperScissors.MongoDB/ThunderPropagator.Channels.Games.RockPaperScissors.MongoDB.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="src/Games/ThunderPropagator.Channels.Games.RockPaperScissors.InMemory/ThunderPropagator.Channels.Games.RockPaperScissors.InMemory.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
     <Project Path="src/Games/ThunderPropagator.Channels.Games.TicTacToe/ThunderPropagator.Channels.Games.TicTacToe.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
@@ -227,6 +242,33 @@
   </Folder>
   <Folder Name="/Tests/Games/">
     <Project Path="Tests/Games/ThunderPropagator.Channels.Games.RockPaperScissors.UnitTests/ThunderPropagator.Channels.Games.RockPaperScissors.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Games/ThunderPropagator.Channels.Games.RockPaperScissors.InMemory.UnitTests/ThunderPropagator.Channels.Games.RockPaperScissors.InMemory.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Games/ThunderPropagator.Channels.Games.RockPaperScissors.EntityFrameworkCore.UnitTests/ThunderPropagator.Channels.Games.RockPaperScissors.EntityFrameworkCore.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Games/ThunderPropagator.Channels.Games.RockPaperScissors.MongoDB.UnitTests/ThunderPropagator.Channels.Games.RockPaperScissors.MongoDB.UnitTests.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
