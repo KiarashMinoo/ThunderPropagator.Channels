@@ -1,7 +1,9 @@
+using System.Diagnostics.Metrics;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
+using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
 using ThunderPropagator.Channels.Chat.Models.Users;
@@ -24,7 +26,13 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.Rename
             MessageService messageService)
         : AuthenticatedChatChannelReceiverPipeline(loggerFactory)
     {
+        private const string TelemetryActivityName = "thunderpropagator.channels.chat.groups.rename";
+        private static readonly Counter<long>? TelemetryRequestCounter =
+            Telemetry.CreateCounter<long>(TelemetryActivityName, "{request}", "Total rename-group requests received.");
+
         public override string RequestKey => $"{nameof(Groups)}/{nameof(Rename)}";
+        protected override string ActivityName => TelemetryActivityName;
+        protected override Counter<long>? RequestCounter => TelemetryRequestCounter;
 
         protected override async Task InvokeAuthenticatedAsync(
             ChannelInfo channelInfo,

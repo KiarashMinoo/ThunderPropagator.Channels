@@ -1,7 +1,9 @@
+using System.Diagnostics.Metrics;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
+using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Infrastructure.Channels;
@@ -17,7 +19,13 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Online
 #endif
         class ChatChannelGetOnlineUsersReceiverPipeline(ILoggerFactory loggerFactory, UserService userService) : AuthenticatedChatChannelReceiverPipeline(loggerFactory)
     {
+        private const string TelemetryActivityName = "thunderpropagator.channels.chat.users.online";
+        private static readonly Counter<long>? TelemetryRequestCounter =
+            Telemetry.CreateCounter<long>(TelemetryActivityName, "{request}", "Total get-online-users requests received.");
+
         public override string RequestKey => $"{nameof(Users)}/{nameof(Online)}";
+        protected override string ActivityName => TelemetryActivityName;
+        protected override Counter<long>? RequestCounter => TelemetryRequestCounter;
 
         protected override async Task InvokeAuthenticatedAsync(
             ChannelInfo channelInfo,

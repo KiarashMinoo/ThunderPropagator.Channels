@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
-using System.Reflection;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
@@ -22,8 +21,9 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Register
 #endif
         class ChatChannelRegisterReceiverPipeline(ILoggerFactory loggerFactory, UserService userService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
-        private Counter<long>? _counter;
-        private readonly object _counterLock = new();
+        private const string TelemetryActivityName = "thunderpropagator.channels.chat.users.register";
+        private static readonly Counter<long>? TelemetryRequestCounter =
+            Telemetry.CreateCounter<long>(TelemetryActivityName, "{request}", "Total register requests received.");
 
         public override string RequestKey => $"{nameof(Users)}/{nameof(Register)}";
 
@@ -32,14 +32,10 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Register
             ReceivePipelineDelegate next,
             CancellationToken cancellationToken = default)
         {
-            var activityName = $"{channelInfo.ChannelName}_{GetType().GetTypeInfo().Name}_{nameof(Invoke)}";
-            _counter = ChatChannelPipelineTelemetry.EnsureCounter(ref _counter, _counterLock,
-                () => Telemetry.CreateCounter<long>($"thunderpropagator.{activityName.ToLowerInvariant().Replace('_', '.')}"));
-
-            using var activity = Telemetry.StartActivity(activityName, ActivityKind.Consumer)?
-                .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType)
-                .SetTag(nameof(ChannelInfo.ChannelKey), channelInfo.ChannelKey)
-                .SetTag(nameof(ChannelInfo.ChannelName), channelInfo.ChannelName);
+            using var activity = Telemetry.StartActivity(TelemetryActivityName, ActivityKind.Consumer)?
+                .SetTag(ChatChannelTelemetryTags.ChannelType, channelInfo.ChannelType)
+                .SetTag(ChatChannelTelemetryTags.ChannelKey, channelInfo.ChannelKey)
+                .SetTag(ChatChannelTelemetryTags.ChannelName, channelInfo.ChannelName);
 
             try
             {
@@ -53,7 +49,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Register
                         User = await userService.RegisterAsync(registerRequest.UserName, registerRequest.Password, registerRequest.Name, cancellationToken)
                     };
 
-                    _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));
+                    TelemetryRequestCounter?.Add(1, new KeyValuePair<string, object?>(ChatChannelTelemetryTags.ChannelName, channelInfo.ChannelName));
                 }
                 else
                 {
