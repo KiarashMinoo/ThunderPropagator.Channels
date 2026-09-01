@@ -126,6 +126,21 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="src/Games/ThunderPropagator.Channels.Games.TicTacToe.EntityFrameworkCore/ThunderPropagator.Channels.Games.TicTacToe.EntityFrameworkCore.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="src/Games/ThunderPropagator.Channels.Games.TicTacToe.MongoDB/ThunderPropagator.Channels.Games.TicTacToe.MongoDB.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="src/Games/ThunderPropagator.Channels.Games.TicTacToe.InMemory/ThunderPropagator.Channels.Games.TicTacToe.InMemory.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
   </Folder>
   <Folder Name="/Tests/" />
   <Folder Name="/Tests/Channels/">
@@ -269,6 +284,33 @@
       <Build Solution="Release|Any CPU" Project="false" />
     </Project>
     <Project Path="Tests/Games/ThunderPropagator.Channels.Games.RockPaperScissors.MongoDB.UnitTests/ThunderPropagator.Channels.Games.RockPaperScissors.MongoDB.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Games/ThunderPropagator.Channels.Games.TicTacToe.InMemory.UnitTests/ThunderPropagator.Channels.Games.TicTacToe.InMemory.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Games/ThunderPropagator.Channels.Games.TicTacToe.EntityFrameworkCore.UnitTests/ThunderPropagator.Channels.Games.TicTacToe.EntityFrameworkCore.UnitTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+    <Project Path="Tests/Games/ThunderPropagator.Channels.Games.TicTacToe.MongoDB.UnitTests/ThunderPropagator.Channels.Games.TicTacToe.MongoDB.UnitTests.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />

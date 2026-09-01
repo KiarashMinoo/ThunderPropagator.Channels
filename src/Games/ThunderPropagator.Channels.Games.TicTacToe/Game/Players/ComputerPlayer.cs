@@ -1,4 +1,4 @@
-﻿using ThunderPropagator.Channels.Games.TicTacToe.Game.Enums;
+using ThunderPropagator.Channels.Games.TicTacToe.Game.Enums;
 
 namespace ThunderPropagator.Channels.Games.TicTacToe.Game.Players
 {
@@ -24,81 +24,95 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Game.Players
             _otherPlayer = ticTacToeGame.Player1 == this ? ticTacToeGame.Player2 : ticTacToeGame.Player1;
         }
 
-        private void RandomMove()
+        private (int Row, int Column) ChooseRandomCell()
         {
             ArgumentNullException.ThrowIfNull(TicTacToeGame);
 
-            var rand = new Random();
             int row, column;
             do
             {
-                row = rand.Next(0, 3);
-                column = rand.Next(0, 3);
+                row = Random.Shared.Next(0, 3);
+                column = Random.Shared.Next(0, 3);
             } while (!TicTacToeGame.IsValidMove(row, column));
 
-            TicTacToeGame.Move(this, row, column);
+            return (row, column);
         }
 
-        private bool BlockOrWin()
+        /// <summary>
+        /// A cell that makes <paramref name="player"/> win immediately, tried and undone via
+        /// <see cref="TicTacToeGame.PlaceMarkForSearch"/>/<see cref="TicTacToeGame.EmptyCell"/> — never
+        /// <see cref="TicTacToeGame.Move"/>, which would broadcast every trial cell to both real
+        /// players as if it were an actual move (see that method's own comment). Null if no single
+        /// move wins for <paramref name="player"/> right now.
+        /// </summary>
+        private (int Row, int Column)? FindWinningCellFor(Player player)
         {
             ArgumentNullException.ThrowIfNull(TicTacToeGame);
+
+            for (var row = 0; row < 3; row++)
+            {
+                for (var column = 0; column < 3; column++)
+                {
+                    if (!TicTacToeGame.CellIsEmpty(row, column))
+                        continue;
+
+                    TicTacToeGame.PlaceMarkForSearch(player, row, column);
+                    var wins = TicTacToeGame.CheckWinner(player);
+                    TicTacToeGame.EmptyCell(row, column);
+
+                    if (wins)
+                        return (row, column);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>Takes an immediate win if there is one; otherwise blocks the opponent's immediate win. Null if neither applies.</summary>
+        private (int Row, int Column)? BlockOrWin()
+        {
             ArgumentNullException.ThrowIfNull(_otherPlayer);
 
-            for (int row = 0; row < 3; row++)
-            {
-                for (int column = 0; column < 3; column++)
-                {
-                    if (TicTacToeGame.CellIsEmpty(row, column))
-                    {
-                        TicTacToeGame.Move(this, row, column);
-                        if (TicTacToeGame.CheckWinner(this))
-                            return true;
-
-                        TicTacToeGame.Move(_otherPlayer, row, column);
-                        if (TicTacToeGame.CheckWinner(_otherPlayer))
-                        {
-                            TicTacToeGame.Move(this, row, column);
-                            return true;
-                        }
-
-                        TicTacToeGame.EmptyCell(row, column);
-                    }
-                }
-            }
-
-            return false;
+            return FindWinningCellFor(this) ?? FindWinningCellFor(_otherPlayer);
         }
 
-        private void MinimaxMove()
+        private (int Row, int Column) ChooseBestCell()
         {
             ArgumentNullException.ThrowIfNull(TicTacToeGame);
 
-            int bestScore = int.MinValue;
+            var bestScore = int.MinValue;
             int moveRow = -1, moveColumn = -1;
 
-            for (int row = 0; row < 3; row++)
+            for (var row = 0; row < 3; row++)
             {
-                for (int column = 0; column < 3; column++)
+                for (var column = 0; column < 3; column++)
                 {
-                    if (TicTacToeGame.CellIsEmpty(row, column))
-                    {
-                        TicTacToeGame.Move(this, row, column);
-                        int score = Minimax(false);
-                        TicTacToeGame.EmptyCell(row, column);
-                        if (score > bestScore)
-                        {
-                            bestScore = score;
-                            moveRow = row;
-                            moveColumn = column;
-                        }
-                    }
+                    if (!TicTacToeGame.CellIsEmpty(row, column))
+                        continue;
+
+                    TicTacToeGame.PlaceMarkForSearch(this, row, column);
+                    var score = Minimax(false, int.MinValue, int.MaxValue);
+                    TicTacToeGame.EmptyCell(row, column);
+
+                    if (score <= bestScore)
+                        continue;
+
+                    bestScore = score;
+                    moveRow = row;
+                    moveColumn = column;
                 }
             }
 
-            TicTacToeGame.Move(this, moveRow, moveColumn);
+            return (moveRow, moveColumn);
         }
 
-        private int Minimax(bool isMaximizing)
+        // Alpha-beta pruning: not needed for raw performance on a 3x3 board (unpruned minimax already
+        // runs in milliseconds), but it's the standard, correct way to write minimax search, and it
+        // keeps the search from wastefully exploring branches the opponent would never let it reach.
+        // alpha is the best score the maximizer can already guarantee, beta the best the minimizer can
+        // already guarantee; once beta <= alpha, this branch can't change the outcome the parent call
+        // will pick, so both loop conditions below stop iterating for the remainder of this call.
+        private int Minimax(bool isMaximizing, int alpha, int beta)
         {
             ArgumentNullException.ThrowIfNull(TicTacToeGame);
             ArgumentNullException.ThrowIfNull(_otherPlayer);
@@ -107,18 +121,28 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Game.Players
             if (TicTacToeGame.CheckWinner(_otherPlayer)) return -1;
             if (TicTacToeGame.IsBoardFull()) return 0;
 
-            int bestScore = isMaximizing ? int.MinValue : int.MaxValue;
+            var bestScore = isMaximizing ? int.MinValue : int.MaxValue;
 
-            for (int row = 0; row < 3; row++)
+            for (var row = 0; row < 3 && beta > alpha; row++)
             {
-                for (int column = 0; column < 3; column++)
+                for (var column = 0; column < 3 && beta > alpha; column++)
                 {
-                    if (TicTacToeGame.CellIsEmpty(row, column))
+                    if (!TicTacToeGame.CellIsEmpty(row, column))
+                        continue;
+
+                    TicTacToeGame.PlaceMarkForSearch(isMaximizing ? this : _otherPlayer, row, column);
+                    var score = Minimax(!isMaximizing, alpha, beta);
+                    TicTacToeGame.EmptyCell(row, column);
+
+                    if (isMaximizing)
                     {
-                        TicTacToeGame.Move(isMaximizing ? this : _otherPlayer, row, column);
-                        var score = Minimax(!isMaximizing);
-                        TicTacToeGame.EmptyCell(row, column);
-                        bestScore = isMaximizing ? Math.Max(score, bestScore) : Math.Min(score, bestScore);
+                        bestScore = Math.Max(score, bestScore);
+                        alpha = Math.Max(alpha, bestScore);
+                    }
+                    else
+                    {
+                        bestScore = Math.Min(score, bestScore);
+                        beta = Math.Min(beta, bestScore);
                     }
                 }
             }
@@ -128,26 +152,22 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Game.Players
 
         public void ComputerMove()
         {
+            ArgumentNullException.ThrowIfNull(TicTacToeGame);
+
             OnBeforePlayerMovedHandler();
 
-            switch (_difficulty)
+            var (row, column) = _difficulty switch
             {
-                case DifficultyLevel.Easy:
-                    RandomMove();
-                    break;
-                case DifficultyLevel.Medium:
-                {
-                    if (!BlockOrWin())
-                    {
-                        RandomMove();
-                    }
+                DifficultyLevel.Easy => ChooseRandomCell(),
+                DifficultyLevel.Medium => BlockOrWin() ?? ChooseRandomCell(),
+                DifficultyLevel.Hard => ChooseBestCell(),
+                _ => throw new ArgumentOutOfRangeException(nameof(_difficulty), _difficulty, "Unsupported difficulty level.")
+            };
 
-                    break;
-                }
-                case DifficultyLevel.Hard:
-                    MinimaxMove();
-                    break;
-            }
+            // The only real, notifying move for this whole turn — every candidate cell considered
+            // above was tried and undone through PlaceMarkForSearch/EmptyCell, never Move, so this is
+            // the first and only BoardChanged this turn actually raises.
+            TicTacToeGame.Move(this, row, column);
 
             OnPlayerMoved();
         }

@@ -44,10 +44,11 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Pipelines.Move
                 {
                     var channel = (TicTacToeChannel)channelInfo.Channel;
                     var moveRequest = context.Request.GetRequestContentFormData<TicTacToeChannelMoveReceiverPipelineRequestDto>()!;
-                    channel.Move(moveRequest.SessionId,
+                    await channel.MoveAsync(moveRequest.SessionId,
                         context.WebSocketConnectionInfo,
                         moveRequest.Row,
-                        moveRequest.Column);
+                        moveRequest.Column,
+                        cancellationToken);
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
                     context.Response.ResponseContent = new TicTacToeChannelMoveReceiverPipelineResponseDto();

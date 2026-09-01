@@ -42,11 +42,12 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Pipelines.GetGames
                 if (addGame)
                 {
                     var channel = (TicTacToeChannel)channelInfo.Channel;
+                    var games = await channel.GetGamesAsync(cancellationToken);
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
                     context.Response.ResponseContent = new TicTacToeChannelGetGamesReceiverPipelineResponseDto
                     {
-                        Items = channel.GetGames().Select(game => new GetGamesItemResponseDto(game.SessionId, game.PlayerName))
+                        Items = games.Select(game => new GetGamesItemResponseDto(game.SessionId, game.PlayerName))
                     };
 
                     _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));
