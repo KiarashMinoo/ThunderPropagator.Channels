@@ -1,7 +1,9 @@
+using System.Diagnostics.Metrics;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
+using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Infrastructure.Channels;
 using ThunderPropagator.Channels.Chat.Channel;
@@ -16,7 +18,13 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Groups.Delete
 #endif
         class ChatChannelDeleteGroupReceiverPipeline(ILoggerFactory loggerFactory, GroupService groupService) : AuthenticatedChatChannelReceiverPipeline(loggerFactory)
     {
+        private const string TelemetryActivityName = "thunderpropagator.channels.chat.groups.delete";
+        private static readonly Counter<long>? TelemetryRequestCounter =
+            Telemetry.CreateCounter<long>(TelemetryActivityName, "{request}", "Total delete-group requests received.");
+
         public override string RequestKey => $"{nameof(Groups)}/{nameof(Delete)}";
+        protected override string ActivityName => TelemetryActivityName;
+        protected override Counter<long>? RequestCounter => TelemetryRequestCounter;
 
         protected override async Task InvokeAuthenticatedAsync(
             ChannelInfo channelInfo,

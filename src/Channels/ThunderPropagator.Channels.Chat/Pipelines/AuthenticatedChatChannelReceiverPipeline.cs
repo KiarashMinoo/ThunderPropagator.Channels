@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using System.Reflection;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
@@ -20,25 +19,39 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
     /// unauthenticated caller can never reach a state mutation. See
     /// ChatChannelPipelineAuthenticationTests for the reflection sweep that fails if a new pipeline
     /// skips this base class.
+    ///
+    /// Issue #40: the activity/counter name used to be derived at runtime from
+    /// $"{channelInfo.ChannelName}_{GetType().Name}_{nameof(Invoke)}" — unstable across renames,
+    /// PascalCase (violates OTel's lowercase-dot-separated convention), and one counter per distinct
+    /// channel name (unbounded cardinality). Each derived pipeline now supplies its own static,
+    /// OTel-convention instrument name and a Counter&lt;long&gt; created once as a static readonly
+    /// field — the CLR's type-initializer guarantee makes that inherently race-free, so the
+    /// double-checked-locking ChatChannelPipelineTelemetry helper this class used to route through is
+    /// gone; the channel is instead carried as the channel.name tag on both the activity and the
+    /// counter, so per-pipeline cardinality is bounded by channel count, not by pipeline type name.
     /// </summary>
     internal abstract class AuthenticatedChatChannelReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
-        private Counter<long>? _counter;
-        private readonly object _counterLock = new();
+        /// <summary>
+        /// Static, lowercase dot-separated OTel instrument/span name for this pipeline, e.g.
+        /// "thunderpropagator.channels.chat.groups.create".
+        /// </summary>
+        protected abstract string ActivityName { get; }
+
+        /// <summary>
+        /// This pipeline's request counter, named after <see cref="ActivityName"/>.
+        /// </summary>
+        protected abstract Counter<long>? RequestCounter { get; }
 
         public async Task Invoke(ChannelInfo channelInfo,
             ReceiveContext context,
             ReceivePipelineDelegate next,
             CancellationToken cancellationToken = default)
         {
-            var activityName = $"{channelInfo.ChannelName}_{GetType().GetTypeInfo().Name}_{nameof(Invoke)}";
-            _counter = ChatChannelPipelineTelemetry.EnsureCounter(ref _counter, _counterLock,
-                () => Telemetry.CreateCounter<long>($"thunderpropagator.{activityName.ToLowerInvariant().Replace('_', '.')}"));
-
-            using var activity = Telemetry.StartActivity(activityName, ActivityKind.Consumer)?
-                .SetTag(nameof(ChannelInfo.ChannelType), channelInfo.ChannelType)
-                .SetTag(nameof(ChannelInfo.ChannelKey), channelInfo.ChannelKey)
-                .SetTag(nameof(ChannelInfo.ChannelName), channelInfo.ChannelName);
+            using var activity = Telemetry.StartActivity(ActivityName, ActivityKind.Consumer)?
+                .SetTag(ChatChannelTelemetryTags.ChannelType, channelInfo.ChannelType)
+                .SetTag(ChatChannelTelemetryTags.ChannelKey, channelInfo.ChannelKey)
+                .SetTag(ChatChannelTelemetryTags.ChannelName, channelInfo.ChannelName);
 
             try
             {
@@ -50,7 +63,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
 
                     await InvokeAuthenticatedAsync(channelInfo, context, chatChannel, currentUserId, cancellationToken);
 
-                    _counter?.Add(1, new KeyValuePair<string, object?>(nameof(channelInfo.ChannelName), channelInfo.ChannelName));
+                    RequestCounter?.Add(1, new KeyValuePair<string, object?>(ChatChannelTelemetryTags.ChannelName, channelInfo.ChannelName));
                 }
                 else
                 {
