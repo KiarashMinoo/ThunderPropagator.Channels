@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.BuildingBlocks.Application;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines;
 using ThunderPropagator.Infrastructure.Channels;
@@ -19,13 +20,13 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Logout
     // ChatChannelUnauthorizedException before any pipeline-specific code runs when the connection
     // isn't logged in, which would make a repeated logout throw — directly contradicting this
     // ticket's "repeated logout does not throw or corrupt state". Logout instead checks
-    // ChatChannel.TryLogOut's own result and treats "wasn't logged in" as a no-op success, not an
-    // authorization failure.
+    // ChatUserSessionService.LogOutAsync's own result and treats "wasn't logged in" as a no-op
+    // success, not an authorization failure.
     internal
 #if !DEBUG
         sealed
 #endif
-        class ChatChannelLogoutReceiverPipeline(ILoggerFactory loggerFactory, UserService userService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
+        class ChatChannelLogoutReceiverPipeline(ILoggerFactory loggerFactory, UserService userService, ChatUserSessionService sessionService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private const string TelemetryActivityName = "thunderpropagator.channels.chat.users.logout";
         private static readonly Counter<long>? TelemetryRequestCounter =
@@ -49,14 +50,16 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Logout
                 {
                     var chatChannel = (ChatChannel)channelInfo.Channel;
 
-                    // Only the call that actually removes the session (see TryLogOut's own comment)
-                    // publishes offline status — a repeat logout, or one that loses a race against
-                    // disconnect cleanup, is a safe no-op past this point.
-                    if (chatChannel.TryLogOut(context.WebSocketConnectionInfo.ConnectionId, out var userId))
+                    // Only the call that actually removes the persisted session (see
+                    // ChatUserSessionService.LogOutAsync's own comment) publishes offline status — a
+                    // repeat logout, or one that loses a race against disconnect cleanup, is a safe
+                    // no-op past this point.
+                    var userId = await sessionService.LogOutAsync(context.WebSocketConnectionInfo.ConnectionId, cancellationToken);
+                    if (userId is not null)
                     {
-                        var contacts = await userService.GetUserContactsAsync(userId, cancellationToken);
+                        var contacts = await userService.GetUserContactsAsync(userId.Value, cancellationToken);
                         foreach (var contact in contacts)
-                            chatChannel.EmitMessage(new ChatChannelFeederMessage(contact.Id, userId));
+                            chatChannel.EmitMessage(new ChatChannelFeederMessage(contact.Id, userId.Value));
                     }
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;

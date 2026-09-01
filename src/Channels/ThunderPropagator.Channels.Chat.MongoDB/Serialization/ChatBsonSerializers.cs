@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization;
 using ThunderPropagator.Channels.Chat.MongoDB.Serialization;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 
 namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
@@ -35,6 +36,7 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Serialization
                 BsonSerializer.RegisterSerializer(typeof(Group), new GroupSerializer());
                 BsonSerializer.RegisterSerializer(typeof(GroupUser), new GroupUserSerializer());
                 BsonSerializer.RegisterSerializer(typeof(Message), new MessageSerializer());
+                BsonSerializer.RegisterSerializer(typeof(ChatUserSession), new ChatUserSessionSerializer());
 
                 _registered = true;
             }

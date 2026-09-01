@@ -30,6 +30,7 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
             serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
             serviceProvider.GetService(typeof(ChatChannelConfiguration)).Returns(new ChatChannelConfiguration());
+            serviceProvider.GetService(typeof(IServiceScopeFactory)).Returns(Substitute.For<IServiceScopeFactory>());
 
             var channel = new ChatChannel(serviceProvider);
             channel.Initialize(CancellationToken.None);

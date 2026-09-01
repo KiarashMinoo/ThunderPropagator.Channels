@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -6,6 +8,10 @@ using NSubstitute;
 using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Application.Connections;
 using ThunderPropagator.Channels.Chat;
+using ThunderPropagator.Channels.Chat.Models;
+using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
+using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines;
 using ThunderPropagator.Channels.Chat.Channel;
 using ThunderPropagator.Channels.Chat.Configuration;
@@ -16,24 +22,78 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
     /// Issue #106: ChatChannelSendMessageReceiverPipeline used to index LoggedInUsers directly, so
     /// an unauthenticated connection (never logged in, or logged in on a connection that has since
     /// disconnected) triggered an unhandled KeyNotFoundException instead of a controlled Unauthorized
-    /// response. ChatChannel.TryGetLoggedInUserId replaces that indexing — these tests cover its
+    /// response. ChatChannel.TryGetLoggedInUserIdAsync replaces that indexing — these tests cover its
     /// three states (missing, removed, valid session) directly, since the pipeline's own Invoke
     /// method can't be exercised in isolation (ChannelInfo's constructor is internal to a
     /// closed-source assembly, the same limitation noted for Notifications' receive pipelines).
     /// Issue #109 generalized the pipeline-specific unauthorized exception this originally covered
     /// into the shared ChatChannelUnauthorizedException used by every authenticated pipeline; see
     /// ChatChannelPipelineAuthenticationTests for the guard's cross-pipeline enforcement.
+    ///
+    /// Issue #46: session state moved from ChatChannel's own node-local LoggedInUsers dictionary to
+    /// the persisted, cluster-wide ChatUserSessionService — see that class's own doc comment. These
+    /// tests exercise it against a minimal in-memory IChatContext fake, mirroring
+    /// UserServiceAuthenticationTests' own FakeChatContext rather than depending on the separate
+    /// InMemory provider package. ChatChannel.TryGetLoggedInUserIdAsync/disconnect cleanup create a
+    /// fresh DI scope per call (see their own comments), so CreateChannel below builds a real,
+    /// minimal ServiceProvider rather than an NSubstitute-faked one.
     /// </summary>
     public sealed class ChatChannelAuthenticationTests
     {
+        private sealed class FakeChatContext : IChatContext
+        {
+            private readonly List<ChatUserSession> _sessions = [];
+
+            public Task<TEntity?> GetAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
+                => Task.FromResult(_sessions.OfType<TEntity>().AsQueryable().FirstOrDefault(expression));
+
+            public Task<TEntity?> GetAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
+                => throw new NotSupportedException();
+
+            public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(Expression<Func<TEntity, bool>> expression, CancellationToken cancellationToken = default) where TEntity : class
+                => throw new NotSupportedException();
+
+            public Task<IReadOnlyCollection<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellationToken = default) where TEntity : class
+                => Task.FromResult<IReadOnlyCollection<TEntity>>(_sessions.OfType<TEntity>().ToList());
+
+            public Task<TEntity> CreateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
+            {
+                _sessions.Add((ChatUserSession)(object)entity!);
+                return Task.FromResult(entity);
+            }
+
+            public Task<TEntity> UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default) where TEntity : class
+                => throw new NotSupportedException();
+
+            public Task<bool> DeleteAsync<TEntity, TPk>(TPk id, CancellationToken cancellationToken = default) where TEntity : class
+            {
+                var removed = _sessions.RemoveAll(session => Equals(session.Id, id)) > 0;
+                return Task.FromResult(removed);
+            }
+
+            public Task<IReadOnlyCollection<User>> GetContactsAsync(Guid userId, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public Task<MessageHistoryPage> GetDirectMessageHistoryAsync(Guid userId, Guid otherUserId, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public Task<MessageHistoryPage> GetGroupMessageHistoryAsync(Guid groupId, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public Task<UserSearchPage> SearchUsersAsync(string normalizedTerm, int page, int pageSize, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+        }
+
         private static ChatChannel CreateChannel()
         {
-            var serviceProvider = Substitute.For<IServiceProvider>();
-            serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
-            serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
-            serviceProvider.GetService(typeof(ChatChannelConfiguration)).Returns(new ChatChannelConfiguration());
+            var services = new ServiceCollection();
+            services.AddSingleton<IChatContext>(new FakeChatContext());
+            services.AddScoped<ChatUserSessionService>();
+            services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
+            services.AddSingleton(new ChatChannelConfiguration());
+            services.AddSingleton(Substitute.For<IHostApplicationLifetime>());
 
-            var channel = new ChatChannel(serviceProvider);
+            var channel = new ChatChannel(services.BuildServiceProvider());
             channel.Initialize(CancellationToken.None);
 
             return channel;
@@ -54,123 +114,96 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
             method.Invoke(channel, [subscription]);
         }
 
-        [Fact]
-        public void TryGetLoggedInUserId_ForAConnectionThatNeverLoggedIn_ReturnsFalse()
+        /// <summary>
+        /// Disconnect cleanup (<see cref="ChatChannel.OnSubscriptionRemoved"/>) is fire-and-forget —
+        /// see its own comment — so tests that need to observe its effect await the private async
+        /// method it kicks off directly, rather than polling for eventual consistency.
+        /// </summary>
+        private static async Task InvokeCleanUpSessionOnDisconnectAsync(ChatChannel channel, string connectionId)
         {
-            var channel = CreateChannel();
-
-            var found = channel.TryGetLoggedInUserId("never-logged-in", out var userId);
-
-            Assert.False(found);
-            Assert.Equal(Guid.Empty, userId);
+            var method = typeof(ChatChannel).GetMethod("CleanUpSessionOnDisconnectAsync", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new MissingMethodException(typeof(ChatChannel).FullName, "CleanUpSessionOnDisconnectAsync");
+            await (Task)method.Invoke(channel, [connectionId, CancellationToken.None])!;
         }
 
         [Fact]
-        public void TryGetLoggedInUserId_ForALoggedInConnection_ReturnsTrueAndTheUserId()
+        public async Task TryGetLoggedInUserIdAsync_ForAConnectionThatNeverLoggedIn_ReturnsNull()
+        {
+            var channel = CreateChannel();
+
+            var userId = await channel.TryGetLoggedInUserIdAsync("never-logged-in", CancellationToken.None);
+
+            Assert.Null(userId);
+        }
+
+        [Fact]
+        public async Task TryGetLoggedInUserIdAsync_ForALoggedInConnection_ReturnsTheUserId()
         {
             var channel = CreateChannel();
             var expectedUserId = Guid.NewGuid();
-            channel.LoggedInUsers["connection-1"] = expectedUserId;
+            await LogInAsync(channel, "connection-1", expectedUserId);
 
-            var found = channel.TryGetLoggedInUserId("connection-1", out var userId);
+            var userId = await channel.TryGetLoggedInUserIdAsync("connection-1", CancellationToken.None);
 
-            Assert.True(found);
             Assert.Equal(expectedUserId, userId);
         }
 
         [Fact]
-        public void TryGetLoggedInUserId_ForARemovedSession_ReturnsFalse()
+        public async Task TryGetLoggedInUserIdAsync_ForARemovedSession_ReturnsNull()
         {
             var channel = CreateChannel();
-            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
-            var subscription = CreateSubscription(channel, "connection-1");
+            await LogInAsync(channel, "connection-1", Guid.NewGuid());
 
-            InvokeOnSubscriptionRemoved(channel, subscription);
+            await InvokeCleanUpSessionOnDisconnectAsync(channel, "connection-1");
 
-            var found = channel.TryGetLoggedInUserId("connection-1", out _);
-            Assert.False(found);
+            var userId = await channel.TryGetLoggedInUserIdAsync("connection-1", CancellationToken.None);
+            Assert.Null(userId);
         }
 
-        // Issue #121: contract coverage for ChatChannel.TryLogOut — the state-transition logic
-        // ChatChannelLogoutReceiverPipeline relies on, tested directly for the same reason
-        // TryGetLoggedInUserId is above (the pipeline's own Invoke can't be exercised in isolation).
+        // Issue #121: contract coverage for the persisted logout state transition
+        // ChatChannelLogoutReceiverPipeline relies on (ChatUserSessionService.LogOutAsync), tested
+        // via the same disconnect-cleanup path for the reason above (the pipeline's own Invoke can't
+        // be exercised in isolation).
         [Fact]
-        public void TryLogOut_ForAConnectionThatNeverLoggedIn_ReturnsFalse()
+        public async Task DisconnectCleanup_ForAConnectionThatNeverLoggedIn_DoesNotThrow()
         {
             var channel = CreateChannel();
 
-            var loggedOut = channel.TryLogOut("never-logged-in", out var userId);
+            var exception = await Record.ExceptionAsync(() => InvokeCleanUpSessionOnDisconnectAsync(channel, "never-logged-in"));
 
-            Assert.False(loggedOut);
-            Assert.Equal(Guid.Empty, userId);
-        }
-
-        [Fact]
-        public void TryLogOut_ForALoggedInConnection_RemovesTheSessionAndReturnsTrueWithTheUserId()
-        {
-            var channel = CreateChannel();
-            var expectedUserId = Guid.NewGuid();
-            channel.LoggedInUsers["connection-1"] = expectedUserId;
-
-            var loggedOut = channel.TryLogOut("connection-1", out var userId);
-
-            Assert.True(loggedOut);
-            Assert.Equal(expectedUserId, userId);
+            Assert.Null(exception);
         }
 
         [Fact]
-        public void TryLogOut_ThenTryGetLoggedInUserId_ReturnsFalse()
+        public async Task DisconnectCleanup_ForALoggedInConnection_RemovesTheSession()
         {
-            // The AC's "the connection cannot call protected pipelines after logout" — protected
-            // pipelines authenticate via TryGetLoggedInUserId, so this is the same guarantee
-            // TryGetLoggedInUserId_ForARemovedSession_ReturnsFalse already proves for disconnect,
-            // proven again for the explicit-logout path.
             var channel = CreateChannel();
-            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
-            channel.TryLogOut("connection-1", out _);
+            await LogInAsync(channel, "connection-1", Guid.NewGuid());
 
-            var found = channel.TryGetLoggedInUserId("connection-1", out _);
+            await InvokeCleanUpSessionOnDisconnectAsync(channel, "connection-1");
 
-            Assert.False(found);
+            Assert.Null(await channel.TryGetLoggedInUserIdAsync("connection-1", CancellationToken.None));
         }
 
         [Fact]
-        public void TryLogOut_CalledTwiceForTheSameConnection_TheSecondCallReturnsFalseAndDoesNotThrow()
+        public async Task DisconnectCleanup_CalledTwiceForTheSameConnection_DoesNotThrow()
         {
             var channel = CreateChannel();
-            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
-            channel.TryLogOut("connection-1", out _);
+            await LogInAsync(channel, "connection-1", Guid.NewGuid());
+            await InvokeCleanUpSessionOnDisconnectAsync(channel, "connection-1");
 
-            var secondLogOut = channel.TryLogOut("connection-1", out var userId);
+            var exception = await Record.ExceptionAsync(() => InvokeCleanUpSessionOnDisconnectAsync(channel, "connection-1"));
 
-            Assert.False(secondLogOut);
-            Assert.Equal(Guid.Empty, userId);
+            Assert.Null(exception);
         }
 
         [Fact]
-        public void TryLogOut_AfterDisconnectCleanupAlreadyRemovedTheSession_ReturnsFalse()
+        public void OnSubscriptionRemoved_DoesNotThrowSynchronously()
         {
-            // One direction of the AC's "disconnect races": the connection drops (or its cleanup
-            // simply wins the race) before an in-flight explicit Logout call reaches TryLogOut.
+            // OnSubscriptionRemoved is a synchronous, non-awaitable override (see its own comment) —
+            // this confirms kicking off the fire-and-forget cleanup itself never throws inline,
+            // regardless of whether a session exists for the connection.
             var channel = CreateChannel();
-            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
-            var subscription = CreateSubscription(channel, "connection-1");
-            InvokeOnSubscriptionRemoved(channel, subscription);
-
-            var loggedOut = channel.TryLogOut("connection-1", out _);
-
-            Assert.False(loggedOut);
-        }
-
-        [Fact]
-        public void OnSubscriptionRemoved_AfterLogoutAlreadyRemovedTheSession_DoesNotThrow()
-        {
-            // The other direction: an explicit Logout call wins the race, and disconnect cleanup for
-            // the same connection runs afterward — TryRemove on an already-removed key is a no-op,
-            // not an exception.
-            var channel = CreateChannel();
-            channel.LoggedInUsers["connection-1"] = Guid.NewGuid();
-            channel.TryLogOut("connection-1", out _);
             var subscription = CreateSubscription(channel, "connection-1");
 
             var exception = Record.Exception(() => InvokeOnSubscriptionRemoved(channel, subscription));
@@ -199,6 +232,24 @@ namespace ThunderPropagator.UnitTests.Channels.Chat
 
             Assert.DoesNotContain("connection-1", exception.Message, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(Guid.Empty.ToString(), exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// No public/internal seam on ChatChannel itself creates a session (that's
+        /// ChatChannelLoginReceiverPipeline's job, calling ChatUserSessionService directly) — tests
+        /// reach the same scoped ChatUserSessionService ChatChannel itself uses via reflection on its
+        /// private _scopeFactory field, so a session set up here is visible through
+        /// TryGetLoggedInUserIdAsync exactly as it would be in production.
+        /// </summary>
+        private static async Task LogInAsync(ChatChannel channel, string connectionId, Guid userId)
+        {
+            var scopeFactoryField = typeof(ChatChannel).GetField("_scopeFactory", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new MissingFieldException(typeof(ChatChannel).FullName, "_scopeFactory");
+            var scopeFactory = (IServiceScopeFactory)scopeFactoryField.GetValue(channel)!;
+
+            using var scope = scopeFactory.CreateScope();
+            var sessionService = scope.ServiceProvider.GetRequiredService<ChatUserSessionService>();
+            await sessionService.LogInAsync(connectionId, userId);
         }
     }
 }

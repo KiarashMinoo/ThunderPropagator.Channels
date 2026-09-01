@@ -29,6 +29,13 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
     /// double-checked-locking ChatChannelPipelineTelemetry helper this class used to route through is
     /// gone; the channel is instead carried as the channel.name tag on both the activity and the
     /// counter, so per-pipeline cardinality is bounded by channel count, not by pipeline type name.
+    ///
+    /// Issue #46: sender identity used to be resolved via ChatChannel.LoggedInUsers, a node-local
+    /// dictionary — a request landing on a different cluster node than the one a connection logged
+    /// in on would find nothing there. Now resolved via ChatChannel.TryGetLoggedInUserIdAsync, which
+    /// queries the persisted, cluster-wide ChatUserSessionService instead — see that method's own
+    /// comment for why the lookup lives on ChatChannel rather than being injected into this class
+    /// directly.
     /// </summary>
     internal abstract class AuthenticatedChatChannelReceiverPipeline(ILoggerFactory loggerFactory) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
@@ -58,10 +65,11 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
                 if (context.Request.RouteTable["RequestType"].Equals(RequestKey))
                 {
                     var chatChannel = (ChatChannel)channelInfo.Channel;
-                    if (!chatChannel.TryGetLoggedInUserId(context.WebSocketConnectionInfo.ConnectionId, out var currentUserId))
+                    var currentUserId = await chatChannel.TryGetLoggedInUserIdAsync(context.WebSocketConnectionInfo.ConnectionId, cancellationToken);
+                    if (currentUserId is null)
                         throw new ChatChannelUnauthorizedException();
 
-                    await InvokeAuthenticatedAsync(channelInfo, context, chatChannel, currentUserId, cancellationToken);
+                    await InvokeAuthenticatedAsync(channelInfo, context, chatChannel, currentUserId.Value, cancellationToken);
 
                     RequestCounter?.Add(1, new KeyValuePair<string, object?>(ChatChannelTelemetryTags.ChannelName, channelInfo.ChannelName));
                 }
@@ -79,7 +87,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines
         /// <summary>
         /// Called only after the caller's session has been resolved. <paramref name="currentUserId"/>
         /// is the validated current-user identifier; implementations must not look it up again via
-        /// <c>ChatChannel.LoggedInUsers</c> directly.
+        /// <c>ChatChannel.TryGetLoggedInUserIdAsync</c> directly.
         /// </summary>
         protected abstract Task InvokeAuthenticatedAsync(
             ChannelInfo channelInfo,

@@ -16,7 +16,7 @@ namespace ThunderPropagator.Channels.Chat.Metadata
         // Issue #34: enables the framework's own transport-level authentication gate, which this
         // metadata class never turned on (defaults to disabled). AuthenticationType.None rather than
         // Basic/OAuth2 — Chat's real authentication is entirely application-layer (UserService.LoginAsync,
-        // tracked via ChatChannel.LoggedInUsers, enforced per-pipeline by
+        // tracked via the persisted ChatUserSessionService — see #46 — enforced per-pipeline by
         // AuthenticatedChatChannelReceiverPipeline — see #109), not one of this framework's own
         // transport-level credential schemes.
         public ChatChannelMetadata()

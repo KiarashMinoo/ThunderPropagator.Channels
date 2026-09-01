@@ -962,10 +962,11 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.InMemory.Context
         // duplicate connection ids collapsing to one entry per user, pagination, and paging
         // validation, mirroring the AC's coverage list. "Online" here is always an explicit
         // onlineUserIds argument rather than anything read off a real ChatChannel — the pipeline is
-        // the only thing that ever reads ChatChannel.LoggedInUsers itself (see its own comment on
-        // why it's the one that deduplicates connections before calling this method), so login/
-        // logout/disconnect promptness comes from #109/#121's already-tested LoggedInUsers/
-        // OnSubscriptionRemoved machinery, unchanged by this ticket.
+        // the only thing that ever reads the persisted session store itself (see #46's
+        // ChatUserSessionService.GetOnlineUserIdsAsync's own comment on why it's the one that
+        // deduplicates connections before calling this method), so login/logout/disconnect
+        // promptness comes from #46/#109/#121's already-tested session/OnSubscriptionRemoved
+        // machinery, unchanged by this ticket.
         [Fact]
         public async Task GetOnlineContacts_OnlyReturnsContactsWhoAreOnline_NeverAnOnlineStranger()
         {

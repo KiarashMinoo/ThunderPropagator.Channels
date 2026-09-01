@@ -7,6 +7,7 @@ using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.BuildingBlocks.Application;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines;
 using ThunderPropagator.Infrastructure.Channels;
@@ -20,7 +21,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Login
 #if !DEBUG
         sealed
 #endif
-        class ChatChannelLoginReceiverPipeline(ILoggerFactory loggerFactory, UserService userService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
+        class ChatChannelLoginReceiverPipeline(ILoggerFactory loggerFactory, UserService userService, ChatUserSessionService sessionService) : AbstractReceivePipeline<ChatChannel>(loggerFactory)
     {
         private const string TelemetryActivityName = "thunderpropagator.channels.chat.users.login";
         private static readonly Counter<long>? TelemetryRequestCounter =
@@ -48,9 +49,11 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Login
                     {
                         var user = await userService.LoginAsync(loginRequest.UserName, loginRequest.Password, cancellationToken);
 
-                        ((ChatChannel)channelInfo.Channel)
-                            .LoggedInUsers
-                            .AddOrUpdate(context.WebSocketConnectionInfo.ConnectionId, user.Id, (_, _) => user.Id);
+                        // Issue #46: persisted instead of the old node-local LoggedInUsers dictionary
+                        // — see ChatUserSession's own doc comment — so both "who is this request
+                        // from" (AuthenticatedChatChannelReceiverPipeline) and "who's online"
+                        // (ChatChannelGetOnlineUsersReceiverPipeline) are answerable cluster-wide.
+                        await sessionService.LogInAsync(context.WebSocketConnectionInfo.ConnectionId, user.Id, cancellationToken);
 
                         context.Response.ResponseCode = (int)HttpStatusCode.OK;
                         context.Response.ResponseContent = new ChatChannelLoginReceiverPipelineResponseDto

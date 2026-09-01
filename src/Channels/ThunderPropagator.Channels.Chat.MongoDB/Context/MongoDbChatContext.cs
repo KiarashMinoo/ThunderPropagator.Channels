@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using ThunderPropagator.Channels.Chat.Models;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.MongoDB.Serialization;
 
@@ -73,11 +74,18 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Context
             new(Builders<Message>.IndexKeys.Ascending(message => message.GroupId))
         ];
 
+        // Issue #46: ChatUserSessionService enforces "at most one row per connectionId" in
+        // application code (see its own comment), but the index still guards against two rows for
+        // the same connectionId ever coexisting.
+        internal static CreateIndexModel<ChatUserSession> GetChatUserSessionConnectionIdIndex()
+            => new(Builders<ChatUserSession>.IndexKeys.Ascending(session => session.ConnectionId), new CreateIndexOptions { Unique = true });
+
         protected override async Task MigrateAsync(CancellationToken cancellationToken)
         {
             await GetCollection<User>().Indexes.CreateOneAsync(GetUserNameIndex(), cancellationToken: cancellationToken);
             await GetCollection<GroupUser>().Indexes.CreateOneAsync(GetGroupUserMembershipIndex(), cancellationToken: cancellationToken);
             await GetCollection<Message>().Indexes.CreateManyAsync(GetMessageIndexes(), cancellationToken);
+            await GetCollection<ChatUserSession>().Indexes.CreateOneAsync(GetChatUserSessionConnectionIdIndex(), cancellationToken: cancellationToken);
         }
 
         // No default seed data — the Chat domain has no fixed reference data to install.
@@ -89,6 +97,7 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Context
             if (typeof(TEntity) == typeof(Group)) return "Groups";
             if (typeof(TEntity) == typeof(GroupUser)) return "GroupUsers";
             if (typeof(TEntity) == typeof(Message)) return "Messages";
+            if (typeof(TEntity) == typeof(ChatUserSession)) return "ChatUserSessions";
 
             throw new NotSupportedException($"No collection mapping for {typeof(TEntity).Name}.");
         }
@@ -102,6 +111,7 @@ namespace ThunderPropagator.Channels.Chat.MongoDB.Context
             Group group => group.Id,
             GroupUser groupUser => groupUser.Id,
             Message message => message.Id,
+            ChatUserSession session => session.Id,
             _ => throw new NotSupportedException($"No id accessor for {typeof(TEntity).Name}.")
         };
 

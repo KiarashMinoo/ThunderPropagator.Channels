@@ -26,11 +26,21 @@ namespace ThunderPropagator.Channels.ResourceMonitoring.Feeders
         private readonly ResourceMonitoringChannelFeederConfiguration _feederConfiguration;
         private readonly ISystemResourceMonitor _resourceMonitor;
         private readonly long _window;
+
+        // Issue #46 audit: node-local by design, not a candidate for cluster-shared state — dedupes
+        // this node's own repeated alert against this node's own previous poll of its own
+        // ISystemResourceMonitor (CPU/memory are per-machine OS state). Node A's resource alert has
+        // no meaning applied to Node B's, so sharing this value across the cluster would be wrong,
+        // not merely unnecessary — the same reasoning NetworkMonitoringChannelFeeder's own audit
+        // comment gives for its byte counters.
         private string _lastAlert = "";
 
         // Tracks active subscriptions locally via the channel's public SubscriptionAdded/Removed
         // events, since neither is exposed to feeder code any other way. Read with Volatile.Read
-        // and written with Interlocked so the poll loop always sees the latest count.
+        // and written with Interlocked so the poll loop always sees the latest count. Issue #46
+        // audit: also node-local by design — it gates whether *this* node's feeder has any reason to
+        // poll/emit at all, a per-node efficiency check, not state a subscriber on another node needs
+        // visibility into.
         private int _activeSubscriptions;
 
         public ResourceMonitoringChannelFeeder(ResourceMonitoringChannel channel,
