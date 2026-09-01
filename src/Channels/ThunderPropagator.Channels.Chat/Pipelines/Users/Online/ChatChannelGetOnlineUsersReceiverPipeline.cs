@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels.Contexts;
 using ThunderPropagator.Application.Pipelines.Receivers.Attributes;
 using ThunderPropagator.BuildingBlocks.Application;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.Pipelines.Users.Get;
 using ThunderPropagator.Infrastructure.Channels;
@@ -17,7 +18,7 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Online
 #if !DEBUG
         sealed
 #endif
-        class ChatChannelGetOnlineUsersReceiverPipeline(ILoggerFactory loggerFactory, UserService userService) : AuthenticatedChatChannelReceiverPipeline(loggerFactory)
+        class ChatChannelGetOnlineUsersReceiverPipeline(ILoggerFactory loggerFactory, UserService userService, ChatUserSessionService sessionService) : AuthenticatedChatChannelReceiverPipeline(loggerFactory)
     {
         private const string TelemetryActivityName = "thunderpropagator.channels.chat.users.online";
         private static readonly Counter<long>? TelemetryRequestCounter =
@@ -36,10 +37,10 @@ namespace ThunderPropagator.Channels.Chat.Pipelines.Users.Online
         {
             var onlineRequest = context.Request.GetRequestContentFormData<ChatChannelGetOnlineUsersReceiverPipelineRequestDto>()!;
 
-            // Distinct: a user with more than one open connection has more than one entry in
-            // LoggedInUsers (one per connectionId), but appears exactly once in the online list —
-            // "online" is a property of the user, not of any single connection.
-            var onlineUserIds = chatChannel.LoggedInUsers.Values.Distinct().ToList();
+            // Issue #46: sourced from the persisted, cluster-wide ChatUserSessionService instead of
+            // the old node-local LoggedInUsers dictionary — see its own doc comment. Already distinct
+            // (a user with more than one open connection appears once, not once per connection).
+            var onlineUserIds = await sessionService.GetOnlineUserIdsAsync(cancellationToken);
 
             var page = await userService.GetOnlineContactsAsync(currentUserId, onlineUserIds, onlineRequest.Page, onlineRequest.PageSize, cancellationToken);
 

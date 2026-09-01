@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.InMemory.Context;
 using ThunderPropagator.Channels.Chat.InMemory.Extensions;
@@ -50,6 +51,7 @@ namespace ThunderPropagator.Channels.Chat.InMemory.Context
         private readonly ConcurrentDictionary<Guid, Group> _groups = new();
         private readonly ConcurrentDictionary<Guid, GroupUser> _groupUsers = new();
         private readonly ConcurrentDictionary<Guid, Message> _messages = new();
+        private readonly ConcurrentDictionary<Guid, ChatUserSession> _chatUserSessions = new();
 
         /// <summary>Clears every collection — for test isolation between cases sharing one store.</summary>
         public void Reset()
@@ -60,6 +62,7 @@ namespace ThunderPropagator.Channels.Chat.InMemory.Context
                 _groups.Clear();
                 _groupUsers.Clear();
                 _messages.Clear();
+                _chatUserSessions.Clear();
             }
         }
 
@@ -80,6 +83,7 @@ namespace ThunderPropagator.Channels.Chat.InMemory.Context
             if (typeof(TEntity) == typeof(Group)) return (ConcurrentDictionary<Guid, TEntity>)(object)_groups;
             if (typeof(TEntity) == typeof(GroupUser)) return (ConcurrentDictionary<Guid, TEntity>)(object)_groupUsers;
             if (typeof(TEntity) == typeof(Message)) return (ConcurrentDictionary<Guid, TEntity>)(object)_messages;
+            if (typeof(TEntity) == typeof(ChatUserSession)) return (ConcurrentDictionary<Guid, TEntity>)(object)_chatUserSessions;
 
             throw new NotSupportedException($"No store for {typeof(TEntity).Name}.");
         }
@@ -90,6 +94,7 @@ namespace ThunderPropagator.Channels.Chat.InMemory.Context
             Group group => group.Id,
             GroupUser groupUser => groupUser.Id,
             Message message => message.Id,
+            ChatUserSession session => session.Id,
             _ => throw new NotSupportedException($"No id accessor for {typeof(TEntity).Name}.")
         };
 
@@ -173,6 +178,11 @@ namespace ThunderPropagator.Channels.Chat.InMemory.Context
                             && existing.GroupId == groupUser.GroupId && existing.UserId == groupUser.UserId))
                         throw new InMemoryUniqueConstraintException(
                             $"User '{groupUser.UserId}' is already a member of group '{groupUser.GroupId}'.");
+                    break;
+                case ChatUserSession session:
+                    if (_chatUserSessions.Values.Any(existing => existing.Id != session.Id
+                            && string.Equals(existing.ConnectionId, session.ConnectionId, StringComparison.Ordinal)))
+                        throw new InMemoryUniqueConstraintException($"A chat session for connection '{session.ConnectionId}' already exists.");
                     break;
             }
         }

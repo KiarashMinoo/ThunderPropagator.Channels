@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ThunderPropagator.Channels.Chat.Models.Groups;
 using ThunderPropagator.Channels.Chat.Models.Messages;
+using ThunderPropagator.Channels.Chat.Models.Sessions;
 using ThunderPropagator.Channels.Chat.Models.Users;
 using ThunderPropagator.Channels.Chat.EntityFrameworkCore.Extensions;
 
@@ -23,6 +24,7 @@ namespace ThunderPropagator.Channels.Chat.EntityFrameworkCore.Context
         public DbSet<Group> Groups => Set<Group>();
         public DbSet<GroupUser> GroupUsers => Set<GroupUser>();
         public DbSet<Message> Messages => Set<Message>();
+        public DbSet<ChatUserSession> ChatUserSessions => Set<ChatUserSession>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -197,6 +198,10 @@ namespace ThunderPropagator.UnitTests.Channels.Chat.Endpoints
             serviceProvider.GetService(typeof(IHostApplicationLifetime)).Returns(Substitute.For<IHostApplicationLifetime>());
             serviceProvider.GetService(typeof(ILoggerFactory)).Returns(NullLoggerFactory.Instance);
             serviceProvider.GetService(typeof(ChatChannelConfiguration)).Returns(new ChatChannelConfiguration());
+            // Issue #46: ChatChannel's constructor now also resolves IServiceScopeFactory (used to
+            // scope ChatUserSessionService lookups — see its own comment); these endpoint tests never
+            // exercise that path, so an unconfigured fake is enough to satisfy the constructor.
+            serviceProvider.GetService(typeof(IServiceScopeFactory)).Returns(Substitute.For<IServiceScopeFactory>());
 
             var channel = new ChatChannel(serviceProvider);
             channel.Initialize(CancellationToken.None);
