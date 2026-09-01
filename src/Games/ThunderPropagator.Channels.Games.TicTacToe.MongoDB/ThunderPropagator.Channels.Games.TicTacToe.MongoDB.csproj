@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- See ThunderPropagator.Channels.Games.TicTacToe.InMemory's own csproj comment for why
+             CA2252 is suppressed rather than using EnablePreviewFeatures. -->
+        <NoWarn>$(NoWarn);CA2252</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MongoDB.Driver" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Channels.Games.TicTacToe\ThunderPropagator.Channels.Games.TicTacToe.csproj" />
+    </ItemGroup>
+
+</Project>

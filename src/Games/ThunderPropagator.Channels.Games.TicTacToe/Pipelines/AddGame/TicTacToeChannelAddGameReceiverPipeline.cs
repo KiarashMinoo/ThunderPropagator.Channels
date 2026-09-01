@@ -44,13 +44,14 @@ namespace ThunderPropagator.Channels.Games.TicTacToe.Pipelines.AddGame
                 {
                     var channel = (TicTacToeChannel)channelInfo.Channel;
                     var addGameRequest = context.Request.GetRequestContentFormData<TicTacToeChannelAddGameReceiverPipelineRequestDto>()!;
-                    var subscription = channel.AddGame(context.WebSocketConnectionInfo,
+                    var subscription = await channel.AddGameAsync(context.WebSocketConnectionInfo,
                         context.Request.RequestId,
                         addGameRequest.SessionId,
                         addGameRequest.PlayerName,
                         addGameRequest.Sign,
                         addGameRequest.OpponentKind,
-                        addGameRequest.DifficultyLevel);
+                        addGameRequest.DifficultyLevel,
+                        cancellationToken);
 
                     context.Response.ResponseCode = (int)HttpStatusCode.OK;
                     context.Response.ResponseContent = new TicTacToeChannelAddGameReceiverPipelineResponseDto

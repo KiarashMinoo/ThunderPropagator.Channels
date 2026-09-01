@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- ThunderPropagator.Channels.Games.TicTacToe's whole public surface is marked
+             [assembly: RequiresPreviewFeatures] — a repo-wide "pre-1.0/beta API" marker, not tied to
+             any actual preview C#/BCL feature. The attribute has no runtime enforcement of its own —
+             it only drives this one build-time analyzer — so suppressing it here is correct instead
+             of reaching for EnablePreviewFeatures (which the SDK only honors for its own current
+             target framework anyway; see ThunderPropagator.Channels.Games.RockPaperScissors.InMemory's
+             own csproj comment for the same finding). -->
+        <NoWarn>$(NoWarn);CA2252</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Channels.Games.TicTacToe\ThunderPropagator.Channels.Games.TicTacToe.csproj" />
+    </ItemGroup>
+
+</Project>

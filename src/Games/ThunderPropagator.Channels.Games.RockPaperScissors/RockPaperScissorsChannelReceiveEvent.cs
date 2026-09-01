@@ -34,18 +34,16 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors
         /// #12's own suggested fix, "wrap in a try/catch that logs the error" — rather than either
         /// crashing the host or disappearing.
         /// </summary>
-        public Task Invoke(ReceiveContext context, CancellationToken cancellationToken = default)
+        public async Task Invoke(ReceiveContext context, CancellationToken cancellationToken = default)
         {
             try
             {
-                _rockPaperScissorsComputer.HandleSubscription(context.Response.ConnectionId);
+                await _rockPaperScissorsComputer.HandleSubscriptionAsync(context.Response.ConnectionId, cancellationToken);
             }
             catch (Exception ex)
             {
                 Log.SubscriptionHandlingFailed(Logger, ex, context.Response.ConnectionId);
             }
-
-            return Task.CompletedTask;
         }
 
         // Issue #39: LoggerMessage-generated method for this event's log call site. EventId 3001 is

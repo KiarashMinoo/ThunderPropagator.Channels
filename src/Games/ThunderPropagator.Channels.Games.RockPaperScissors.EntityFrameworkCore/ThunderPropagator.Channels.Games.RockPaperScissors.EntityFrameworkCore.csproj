@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- See ThunderPropagator.Channels.Games.RockPaperScissors.InMemory's own csproj comment for
+             why CA2252 is suppressed rather than using EnablePreviewFeatures. -->
+        <NoWarn>$(NoWarn);CA2252</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Channels.Games.RockPaperScissors\ThunderPropagator.Channels.Games.RockPaperScissors.csproj" />
+    </ItemGroup>
+
+</Project>

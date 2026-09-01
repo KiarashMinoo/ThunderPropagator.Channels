@@ -1,9 +1,10 @@
-using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Channels.Subscribers;
 using ThunderPropagator.Channels.Games.RockPaperScissors.Configuration;
 using ThunderPropagator.Channels.Games.RockPaperScissors.Messages;
 using ThunderPropagator.Channels.Games.RockPaperScissors.Metadata;
+using ThunderPropagator.Channels.Games.RockPaperScissors.Models;
 
 namespace ThunderPropagator.Channels.Games.RockPaperScissors.Channel
 {
@@ -13,20 +14,21 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors.Channel
 #endif
         class RockPaperScissorsChannel : AbstractChannel<RockPaperScissorsChannelMetadata, RockPaperScissorsChannelConfiguration>
     {
-        // Issue #12's own scope, "keep a session for the game": every resolved match, keyed by its own
-        // server-generated SessionId — see RockPaperScissorsGameSession's own remarks on why this stays
-        // server-side only.
-        private readonly ConcurrentDictionary<string, RockPaperScissorsGameSession> _sessions = new();
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        // ConnectionIds already consumed by a resolved session (as either player) — PeekRandomPlayer
-        // excludes these so a subscriber who has already played is never handed out as a second player's
-        // own opponent again. Issue #21: also doubles as the atomic reservation gate PeekRandomPlayer
-        // itself uses (via TryAdd) to select and claim a candidate in one step, so two concurrent
-        // PlayWithHuman calls can never both walk away with the same not-yet-recorded opponent.
-        private readonly ConcurrentDictionary<string, byte> _matchedConnectionIds = new();
-
+        // Issue #288: RockPaperScissorsMatchmakingService is Scoped (like Chat's
+        // ChatUserSessionService — see #46), so it can't be injected directly into this Singleton
+        // channel — a fresh scope is created per call instead, mirroring ChatChannel's own reasoning
+        // for the same constraint.
         public RockPaperScissorsChannel(IServiceProvider serviceProvider) : base(serviceProvider)
         {
+            _scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+        }
+
+        private Task<T> UseMatchmakingServiceAsync<T>(Func<RockPaperScissorsMatchmakingService, Task<T>> action)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            return action(scope.ServiceProvider.GetRequiredService<RockPaperScissorsMatchmakingService>());
         }
 
         /// <summary>The current subscription for <paramref name="connectionId"/>, or <see langword="null"/> if it is not (or no longer) subscribed to this channel.</summary>
@@ -37,59 +39,64 @@ namespace ThunderPropagator.Channels.Games.RockPaperScissors.Channel
         /// A random currently-subscribed player available to be matched against, excluding
         /// <paramref name="excludeConnectionId"/> (the player requesting a match — issue #12's own fix:
         /// the original implementation could match a player against themselves) and every connection
-        /// already recorded in a resolved <see cref="RockPaperScissorsGameSession"/> (issue #12's own
-        /// fix: the original implementation could hand out an already-played subscriber as a second
-        /// player's own opponent, indefinitely). <see langword="null"/> if nobody is currently eligible.
+        /// already reserved by a resolved match (issue #12's own fix: the original implementation could
+        /// hand out an already-played subscriber as a second player's own opponent, indefinitely).
+        /// <see langword="null"/> if nobody is currently eligible.
         /// </summary>
         /// <remarks>
-        /// Issue #21: selection and reservation happen as one atomic step — the returned player's
-        /// ConnectionId is already added to <see cref="_matchedConnectionIds"/> by the time this
-        /// returns, via <see cref="ConcurrentDictionary{TKey,TValue}.TryAdd"/> racing against any other
-        /// concurrent call. Candidates are shuffled and tried in order, falling through to the next one
-        /// if a concurrent caller wins the race for a given candidate first, so two simultaneous callers
-        /// can never both walk away with the same opponent.
+        /// Issue #21: selection and reservation happen as one atomic step, same as before — the
+        /// returned player's ConnectionId is already reserved (see
+        /// <see cref="RockPaperScissorsMatchmakingService.TryReserveConnectionAsync"/>) by the time this
+        /// returns, so two simultaneous callers can never both walk away with the same opponent.
+        /// Candidates are shuffled and tried in order, falling through to the next one if a concurrent
+        /// caller (on this node or another) wins the reservation for a given candidate first.
+        ///
+        /// Issue #288: the candidate pool itself — <see cref="AbstractChannel{TMetadata,TConfiguration}.Subscriptions"/>
+        /// — remains node-local; the framework has no cluster-wide view of live subscriptions to draw
+        /// from (see #46's own findings on this same limitation for presence). This fix makes the
+        /// reservation itself cluster-safe (durable, visible everywhere), which is as far as this
+        /// mechanism can go without the framework exposing cross-node subscription visibility — a
+        /// human opponent must currently be subscribed to this same node to be found at all.
         /// </remarks>
-        internal Subscription? PeekRandomPlayer(string? excludeConnectionId)
-        {
-            var candidates = Subscriptions.Subscriptions
-                .Where(subscription => subscription.ConnectionInfo.ConnectionId != excludeConnectionId
-                    && !_matchedConnectionIds.ContainsKey(subscription.ConnectionInfo.ConnectionId))
-                .OrderBy(_ => Random.Shared.Next())
-                .ToArray();
-
-            foreach (var candidate in candidates)
+        internal Task<Subscription?> PeekRandomPlayerAsync(string? excludeConnectionId, CancellationToken cancellationToken = default)
+            => UseMatchmakingServiceAsync(async matchmaking =>
             {
-                if (_matchedConnectionIds.TryAdd(candidate.ConnectionInfo.ConnectionId, 0))
-                    return candidate;
-            }
+                var candidates = Subscriptions.Subscriptions
+                    .Where(subscription => subscription.ConnectionInfo.ConnectionId != excludeConnectionId)
+                    .OrderBy(_ => Random.Shared.Next())
+                    .ToArray();
 
-            return null;
-        }
+                foreach (var candidate in candidates)
+                {
+                    if (await matchmaking.TryReserveConnectionAsync(candidate.ConnectionInfo.ConnectionId, cancellationToken))
+                        return candidate;
+                }
+
+                return null;
+            });
 
         /// <summary>Records a resolved match — issue #12's own scope, "keep a session for the game" — and marks both real (non-computer) players as no longer eligible for future matchmaking.</summary>
-        internal RockPaperScissorsGameSession RecordSession(Player firstPlayer, Player secondPlayer)
+        internal async Task RecordSessionAsync(Player firstPlayer, Player secondPlayer, CancellationToken cancellationToken = default)
         {
-            var session = new RockPaperScissorsGameSession
-            {
-                SessionId = Guid.NewGuid().ToString("N"),
-                FirstPlayer = firstPlayer,
-                SecondPlayer = secondPlayer,
-                PlayedAt = DateTimeOffset.UtcNow
-            };
+            using var scope = _scopeFactory.CreateScope();
+            var matchmaking = scope.ServiceProvider.GetRequiredService<RockPaperScissorsMatchmakingService>();
 
-            _sessions.TryAdd(session.SessionId, session);
+            await matchmaking.RecordSessionAsync(firstPlayer, secondPlayer, cancellationToken);
 
+            // Reaffirms whichever of the two wasn't already reserved during PeekRandomPlayerAsync's
+            // own selection step (the requesting player, who is never itself a "candidate") —
+            // idempotent/harmless for the one that was (see TryReserveConnectionAsync's own
+            // contract: already-reserved is a no-op false, not a throw).
             if (firstPlayer.Subscription is not null)
-                _matchedConnectionIds.TryAdd(firstPlayer.Subscription.ConnectionInfo.ConnectionId, 0);
+                await matchmaking.TryReserveConnectionAsync(firstPlayer.Subscription.ConnectionInfo.ConnectionId, cancellationToken);
 
             if (secondPlayer.Subscription is not null)
-                _matchedConnectionIds.TryAdd(secondPlayer.Subscription.ConnectionInfo.ConnectionId, 0);
-
-            return session;
+                await matchmaking.TryReserveConnectionAsync(secondPlayer.Subscription.ConnectionInfo.ConnectionId, cancellationToken);
         }
 
-        /// <summary>Every resolved match recorded so far — a point-in-time snapshot, safe to enumerate while more sessions are being recorded concurrently.</summary>
-        internal IReadOnlyCollection<RockPaperScissorsGameSession> GetSessions() => _sessions.Values.ToArray();
+        /// <summary>Every resolved match recorded so far, cluster-wide.</summary>
+        internal Task<IReadOnlyCollection<RockPaperScissorsGameSessionRecord>> GetSessionsAsync(CancellationToken cancellationToken = default)
+            => UseMatchmakingServiceAsync(matchmaking => matchmaking.GetSessionsAsync(cancellationToken));
 
         /// <summary>
         /// Issue #12's own fix for the previous no-op <c>SendAsync</c> stub (which called a

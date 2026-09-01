@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <TargetFramework>net10.0</TargetFramework>
+        <TargetFrameworks />
+        <!-- Consumes ThunderPropagator.Channels.Games.TicTacToe's public surface, which is marked
+             [assembly: RequiresPreviewFeatures] — see the provider project's own csproj comment. -->
+        <NoWarn>$(NoWarn);CA2252</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="coverlet.collector">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\Games\ThunderPropagator.Channels.Games.TicTacToe\ThunderPropagator.Channels.Games.TicTacToe.csproj" />
+        <ProjectReference Include="..\..\..\src\Games\ThunderPropagator.Channels.Games.TicTacToe.InMemory\ThunderPropagator.Channels.Games.TicTacToe.InMemory.csproj" />
+    </ItemGroup>
+
+</Project>
