@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.131] — 2026-09-01
+
+### 🚀 Features
+
+- Replace ChatChannel's node-local session state with a persisted, cluster-wide store `(647c8b0)` — Kiarash Minoo
+
 ## [1.0.1-beta.130] — 2026-09-01
 
 ### 🚀 Features

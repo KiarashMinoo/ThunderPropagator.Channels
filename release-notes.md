@@ -1,5 +1,5 @@
-## [1.0.1-beta.130] — 2026-09-01
+## [1.0.1-beta.131] — 2026-09-01
 
 ### 🚀 Features
 
-- Replace runtime-derived OTel instrument/activity names with static ones for Chat pipelines `(74dcf90)` — Kiarash Minoo
+- Replace ChatChannel's node-local session state with a persisted, cluster-wide store `(647c8b0)` — Kiarash Minoo
