@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.130] — 2026-09-01
+
+### 🚀 Features
+
+- Replace runtime-derived OTel instrument/activity names with static ones for Chat pipelines `(74dcf90)` — Kiarash Minoo
+
 ## [1.0.1-beta.129] — 2026-08-31
 
 ### 🚀 Features

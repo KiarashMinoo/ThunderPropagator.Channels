@@ -1,5 +1,5 @@
-## [1.0.1-beta.129] — 2026-08-31
+## [1.0.1-beta.130] — 2026-09-01
 
 ### 🚀 Features
 
-- Migrate direct ILogger calls to LoggerMessageAttribute source-generated logging `(1b257a3)` — Kiarash Minoo
+- Replace runtime-derived OTel instrument/activity names with static ones for Chat pipelines `(74dcf90)` — Kiarash Minoo
