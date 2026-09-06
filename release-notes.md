@@ -1,5 +1,5 @@
-## [1.0.1-beta.135] — 2026-09-06
+## [1.0.1-beta.136] — 2026-09-06
 
-### ⚙️ CI / Tooling
+### 🏠 Chores
 
-- ThunderPropagator.Channels: Publish to NuGet via OIDC trusted publishing `(560d7f8)` — Kiarash Minoo
+- ThunderPropagator.Channels: Update Roslyn/SkiaSharp pins, detect unconverted deps `(33d38e4)` — Kiarash Minoo

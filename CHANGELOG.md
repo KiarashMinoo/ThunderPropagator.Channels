@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.136] — 2026-09-06
+
+### 🏠 Chores
+
+- ThunderPropagator.Channels: Update Roslyn/SkiaSharp pins, detect unconverted deps `(33d38e4)` — Kiarash Minoo
+
 ## [1.0.1-beta.135] — 2026-09-06
 
 ### ⚙️ CI / Tooling
