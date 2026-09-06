@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.135] — 2026-09-06
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Channels: Publish to NuGet via OIDC trusted publishing `(560d7f8)` — Kiarash Minoo
+
 ## [1.0.1-beta.134] — 2026-09-02
 
 _No user-facing changes in this release._
