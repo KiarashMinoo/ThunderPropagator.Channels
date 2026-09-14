@@ -103,7 +103,9 @@ redis_data/
 # -----------------------------------------------------------------------------
 # Tooling, automation, and local workspace state
 # -----------------------------------------------------------------------------
-.claude/
+.claude/*
+!.claude/rules/
+!.claude/rules/**
 .shared-props/
 .obsidian/
 graphify-out/
