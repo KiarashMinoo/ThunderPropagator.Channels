@@ -49,7 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="FFmpeg.AutoGen" Version="9.0.1.1" />
-    <PackageVersion Include="SkiaSharp" Version="4.151.2" />
+    <PackageVersion Include="SkiaSharp" Version="4.152.0" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="NodaTime" Version="3.3.4" />
     <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0" />
