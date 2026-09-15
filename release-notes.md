@@ -1,13 +1,5 @@
-## [1.0.1-beta.138] — 2026-09-14
+## [1.0.1-beta.139] — 2026-09-15
 
-### 📦 Dependencies
+### ⚙️ CI / Tooling
 
-| Package | Old | New |
-|---------|-----|-----|
-| $(ThunderPropagatorPackageId) | 1.0.1-beta.216 | 1.0.1-beta.218 |
-
-- ThunderPropagator.Channels: Bump package version to 1.0.1-beta.218 `(b3ede51)` — Kiarash Minoo
-
-### 🏠 Chores
-
-- ThunderPropagator.Channels: Move production-unit patterns into .claude/rules/ `(0a2f3a8)` — Kiarash Minoo
+- ThunderPropagator.Channels: Add publish-mode toggle to release workflow `(a513b3e)` — Kiarash Minoo

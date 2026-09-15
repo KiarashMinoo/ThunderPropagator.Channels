@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.139] — 2026-09-15
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Channels: Add publish-mode toggle to release workflow `(a513b3e)` — Kiarash Minoo
+
 ## [1.0.1-beta.138] — 2026-09-14
 
 ### 📦 Dependencies
