@@ -4,6 +4,7 @@
         <PackageReference Include="$(ThunderPropagatorPackageId)"/>
         <PackageReference Include="Bogus"/>
         <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     </ItemGroup>
 
 </Project>
